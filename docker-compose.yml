@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ticketly
+      POSTGRES_PASSWORD: ticketly
+      POSTGRES_DB: ticketly
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticketly -d ticketly"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3456:3456"
+    environment:
+      DATABASE_URL: postgresql://ticketly:ticketly@db:5432/ticketly?schema=public
+      APP_URL: http://localhost:3456
+      NEXT_PUBLIC_APP_URL: http://localhost:3456
+      AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production-use-openssl-rand}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_placeholder}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_placeholder}
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-pk_test_placeholder}
+      STRIPE_MOCK_MODE: ${STRIPE_MOCK_MODE:-true}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-console}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@ticketly.local}
+      RESERVATION_TTL_MINUTES: "10"
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

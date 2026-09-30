@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.env
+.env.local
+*.md
+tests
+coverage
+Dockerfile
+docker-compose.yml
+.dockerignore
