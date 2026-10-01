@@ -1,0 +1,23 @@
+{
+  "name": "@ticketly/ticketing",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./offline": "./src/offline.ts",
+    "./compliance": "./src/compliance.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'ticketing tests via apps/web for now'"
+  },
+  "dependencies": {
+    "@ticketly/database": "*",
+    "@ticketly/shared-types": "*",
+    "@ticketly/payments": "*",
+    "@ticketly/auth": "*"
+  },
+  "devDependencies": { "typescript": "^5" }
+}

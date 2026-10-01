@@ -1,0 +1,43 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@ticketly/database": ["../../packages/database/src"],
+      "@ticketly/shared-types": ["../../packages/shared-types/src"],
+      "@ticketly/validation": ["../../packages/validation/src"],
+      "@ticketly/auth": ["../../packages/auth/src"],
+      "@ticketly/ticketing": ["../../packages/ticketing/src"],
+      "@ticketly/payments": ["../../packages/payments/src"],
+      "@ticketly/notifications": ["../../packages/notifications/src"],
+      "@ticketly/wallet": ["../../packages/wallet/src"],
+      "@ticketly/ui": ["../../packages/ui/src"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}

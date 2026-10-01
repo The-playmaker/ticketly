@@ -1,0 +1,13 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": ["./*"],
+      "@ticketly/shared-types": ["../../packages/shared-types/src"],
+      "@ticketly/ui": ["../../packages/ui/src"],
+      "@ticketly/validation": ["../../packages/validation/src"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
+}
