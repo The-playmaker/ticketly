@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   bundleBtn: { backgroundColor: "#3f3f46", padding: 10, borderRadius: 8, alignItems: "center" },
   camera: { flex: 1 },
   result: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: "center",
     alignItems: "center",
     padding: spacing.lg,

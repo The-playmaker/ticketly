@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Install · Typecheck · Lint · Test · Build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ticketly
+          POSTGRES_PASSWORD: ticketly
+          POSTGRES_DB: ticketly
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ticketly -d ticketly"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ticketly:ticketly@localhost:5432/ticketly?schema=public
+      AUTH_SECRET: ci-test-secret-at-least-32-characters-long
+      TICKET_TOKEN_SECRET: ci-ticket-token-secret-32chars-min
+      OFFLINE_BUNDLE_SECRET: ci-offline-bundle-secret-32chars
+      APP_URL: http://localhost:3456
+      NEXT_PUBLIC_APP_URL: http://localhost:3456
+      STRIPE_MOCK_MODE: "true"
+      NODE_ENV: development
+      EMAIL_PROVIDER: console
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm install --legacy-peer-deps
+
+      - name: Prisma migrate + generate
+        run: |
+          npm run db:generate
+          npm run db:migrate
+
+      - name: Seed
+        run: npm run db:seed
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit + integration tests
+        run: npm test
+
+      - name: Build web
+        run: npm run build -w @ticketly/web
+
+  # Explicit production deployment is intentionally NOT triggered here.
+  # Add a separate workflow with environment approvals for production deploys.

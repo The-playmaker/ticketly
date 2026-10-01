@@ -1,9 +1,12 @@
 import { PrismaClient, GlobalRole, OrgRole, EventStatus, Visibility, ServiceFeeMode, PaymentStatus, OrderStatus, TicketStatus, CheckInResult } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { randomBytes } from "crypto";
+import { createHash, randomBytes } from "crypto";
 
 function generateSecureToken(bytes = 32): string {
   return randomBytes(bytes).toString("base64url");
+}
+function hashTicketToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
 }
 function generatePublicTicketId(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -259,6 +262,28 @@ async function main() {
   ]);
   const vip = await upsertTicketType("VIP", 49900, 50, 2);
 
+  // Guest / comps — not publicly purchasable
+  const existingGuest = await prisma.ticketType.findFirst({
+    where: { eventId: event.id, name: "Guest List" },
+  });
+  if (!existingGuest) {
+    await prisma.ticketType.create({
+      data: {
+        eventId: event.id,
+        name: "Guest List",
+        description: "Gratis gjesteliste — kun via arrangør",
+        price: 0,
+        quantityTotal: 100,
+        maxPerOrder: 1,
+        minPerOrder: 1,
+        isVisible: false,
+        isPubliclyPurchasable: false,
+        sortOrder: 99,
+      },
+    });
+  }
+  void vip;
+
   // Promo
   await prisma.promoCode.upsert({
     where: {
@@ -334,10 +359,13 @@ async function main() {
     });
 
     const item = order.items[0]!;
+    const raw1 = generateSecureToken();
+    const raw2 = generateSecureToken();
     const t1 = await prisma.ticket.create({
       data: {
         publicId: generatePublicTicketId(),
-        secureToken: generateSecureToken(),
+        tokenHash: hashTicketToken(raw1),
+        secureToken: raw1, // seed only — production issues cipher-only
         orderId: order.id,
         orderItemId: item.id,
         eventId: event.id,
@@ -351,7 +379,8 @@ async function main() {
     await prisma.ticket.create({
       data: {
         publicId: generatePublicTicketId(),
-        secureToken: generateSecureToken(),
+        tokenHash: hashTicketToken(raw2),
+        secureToken: raw2,
         orderId: order.id,
         orderItemId: item.id,
         eventId: event.id,

@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test -c playwright.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -74,6 +75,7 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
-    "vitest": "^3.2.7"
+    "vitest": "^3.2.7",
+    "@playwright/test": "^1.55.0"
   }
 }

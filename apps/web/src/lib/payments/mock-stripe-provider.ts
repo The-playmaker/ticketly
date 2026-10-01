@@ -48,6 +48,7 @@ export class MockStripePaymentProvider implements PaymentProvider {
       providerSessionId: payload.sessionId,
       providerPaymentId: payload.paymentId ?? payload.sessionId,
       amount: payload.amount,
+      currency: payload.currency,
       raw: payload,
     };
   }

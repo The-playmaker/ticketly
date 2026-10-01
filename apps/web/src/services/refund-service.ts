@@ -8,6 +8,8 @@ import { prisma } from "@/lib/db";
 import { getPaymentProvider } from "@/lib/payments";
 import { writeAuditLog } from "@/lib/audit";
 import { sendRefundEmail } from "@/lib/email/templates";
+import { assertTicketTransition } from "@/services/ticket-state-machine";
+import { AppError } from "@/lib/api-error";
 
 export class RefundService {
   static async refundOrder(input: {
@@ -16,19 +18,30 @@ export class RefundService {
     reason?: string;
     actorId?: string;
     ipAddress?: string;
+    /** Never trust client org — optional assert against session org */
+    organizationId?: string;
   }) {
     const order = await prisma.order.findUniqueOrThrow({
       where: { id: input.orderId },
       include: {
         tickets: true,
-        payments: { where: { status: PaymentStatus.PAID }, orderBy: { createdAt: "desc" }, take: 1 },
+        payments: {
+          where: { status: { in: [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED] } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        refunds: { where: { status: RefundStatus.SUCCEEDED } },
         organization: true,
         event: true,
       },
     });
 
+    if (input.organizationId && order.organizationId !== input.organizationId) {
+      throw new AppError("FORBIDDEN", "Ingen tilgang til denne ordren", 403);
+    }
+
     if (order.paymentStatus === PaymentStatus.REFUNDED) {
-      throw new Error("Ordren er allerede fullstendig refundert");
+      throw new AppError("ALREADY_REFUNDED", "Ordren er allerede fullstendig refundert", 409);
     }
 
     const ticketsToRefund = input.ticketIds?.length
@@ -36,12 +49,28 @@ export class RefundService {
       : order.tickets.filter((t) => t.status !== TicketStatus.REFUNDED);
 
     if (ticketsToRefund.length === 0) {
-      throw new Error("Ingen billetter å refundere");
+      throw new AppError("NO_TICKETS", "Ingen billetter å refundere", 400);
     }
 
+    for (const t of ticketsToRefund) {
+      assertTicketTransition(t.status, TicketStatus.REFUNDED);
+    }
+
+    const alreadyRefunded = order.refunds.reduce((s, r) => s + r.amount, 0);
     const isPartial = ticketsToRefund.length < order.tickets.length;
-    const amountPerTicket = order.tickets.length > 0 ? Math.round(order.total / order.tickets.length) : order.total;
-    const refundAmount = isPartial ? amountPerTicket * ticketsToRefund.length : order.total;
+    const amountPerTicket =
+      order.tickets.length > 0 ? Math.round(order.total / order.tickets.length) : order.total;
+    let refundAmount = isPartial ? amountPerTicket * ticketsToRefund.length : order.total - alreadyRefunded;
+
+    if (refundAmount <= 0) {
+      throw new AppError("REFUND_ZERO", "Ingen beløp å refundere", 400);
+    }
+    if (alreadyRefunded + refundAmount > order.total) {
+      refundAmount = order.total - alreadyRefunded;
+    }
+    if (refundAmount <= 0) {
+      throw new AppError("REFUND_EXCEEDS_PAID", "Refusjon overstiger betalt beløp", 400);
+    }
 
     const payment = order.payments[0];
     let providerRefundId: string | undefined;
@@ -114,7 +143,7 @@ export class RefundService {
     await writeAuditLog({
       actorId: input.actorId,
       organizationId: order.organizationId,
-      action: "ORDER_REFUNDED",
+      action: "ORDER_REFUND",
       entityType: "Order",
       entityId: order.id,
       metadata: {

@@ -459,6 +459,8 @@ model TicketType {
   salesStartAt     DateTime?
   salesEndAt       DateTime?
   isVisible        Boolean   @default(true)
+  /// Free/guest types must set this false unless intentionally sold publicly at 0 kr
+  isPubliclyPurchasable Boolean @default(true)
   sortOrder        Int       @default(0)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
@@ -549,6 +551,10 @@ model Order {
   termsAcceptedAt      DateTime?
   refundPolicyType     RefundPolicyType?
   marketingOptIn       Boolean       @default(false) // NEVER auto-set from purchase alone
+  /// Unguessable token required to view QR / PDF for guest checkout
+  accessToken          String        @unique @default(cuid())
+  paymentAnomaly       Boolean       @default(false)
+  paymentAnomalyReason String?
   paidAt               DateTime?
   cancelledAt          DateTime?
   createdAt            DateTime      @default(now())
@@ -566,6 +572,7 @@ model Order {
   snapshot     OrderSnapshot?
 
   @@index([orderNumber])
+  @@index([accessToken])
   @@index([customerEmail])
   @@index([customerId])
   @@index([eventId, paymentStatus])
@@ -656,7 +663,12 @@ model WebhookEvent {
 model Ticket {
   id              String       @id @default(cuid())
   publicId        String       @unique // human-readable e.g. TKT-A1B2C3
-  secureToken     String       @unique // crypto-secure random for QR
+  /// SHA-256 hex of QR token — used for lookup; raw token not required for validation
+  tokenHash       String       @unique
+  /// Encrypted raw token for re-display (AES); never use for validation alone
+  tokenCipher     String?
+  /// DEPRECATED plaintext — kept nullable during migration; prefer tokenHash/tokenCipher
+  secureToken     String?      @unique
   orderId         String
   orderItemId     String
   eventId         String
@@ -675,12 +687,27 @@ model Ticket {
   checkIns   CheckIn[]
   transfers  TicketTransfer[]
 
+  @@index([tokenHash])
   @@index([secureToken])
   @@index([publicId])
   @@index([orderId])
   @@index([eventId, status])
   @@index([holderEmail])
   @@index([ticketTypeId])
+}
+
+/// Revocable mobile API sessions (HMAC token jti)
+model MobileSession {
+  id        String    @id @default(cuid())
+  jti       String    @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model TicketTransfer {

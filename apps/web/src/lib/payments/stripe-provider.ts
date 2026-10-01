@@ -108,6 +108,7 @@ export class StripePaymentProvider implements PaymentProvider {
           providerPaymentId:
             typeof session.payment_intent === "string" ? session.payment_intent : undefined,
           amount: session.amount_total ?? undefined,
+          currency: session.currency ?? undefined,
           raw: session,
         };
       }
@@ -121,6 +122,7 @@ export class StripePaymentProvider implements PaymentProvider {
           paymentStatus: PaymentStatus.PAID,
           providerPaymentId: pi.id,
           amount: pi.amount,
+          currency: pi.currency ?? undefined,
           raw: pi,
         };
       }

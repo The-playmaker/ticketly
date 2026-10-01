@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyMobileToken } from "@/app/api/mobile/auth/login/route";
+import { verifyMobileSession } from "@/app/api/mobile/auth/login/route";
 import { canScanTickets } from "@/lib/auth/rbac";
 
 export async function GET(req: Request) {
-  const userId = verifyMobileToken(req.headers.get("authorization"));
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await verifyMobileSession(req.headers.get("authorization"));
+  if (!userId) {
+    return NextResponse.json(
+      { error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+      { status: 401 }
+    );
+  }
 
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },

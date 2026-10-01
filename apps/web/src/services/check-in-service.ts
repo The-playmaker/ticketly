@@ -5,6 +5,10 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/lib/audit";
+import { hashTicketToken } from "@/lib/tickets/token";
+import { assertTicketTransition } from "@/services/ticket-state-machine";
+import { assertDeviceNotRevoked } from "@/lib/auth/org-access";
+import { AppError } from "@/lib/api-error";
 
 export type CheckInResponse = {
   result: CheckInResult;
@@ -20,8 +24,8 @@ export type CheckInResponse = {
 
 export class CheckInService {
   /**
-   * Atomic check-in: validates token server-side and ensures
-   * two scanners cannot approve the same ticket concurrently.
+   * Atomic check-in: validates token by hash (legacy secureToken fallback)
+   * and ensures two scanners cannot approve the same ticket concurrently.
    */
   static async checkInByToken(input: {
     token: string;
@@ -31,10 +35,24 @@ export class CheckInService {
     isManual?: boolean;
     note?: string;
   }): Promise<CheckInResponse> {
+    try {
+      await assertDeviceNotRevoked(input.deviceId);
+    } catch (e) {
+      if (e instanceof AppError && e.code === "DEVICE_REVOKED") {
+        return { result: CheckInResult.INVALID, message: "SCANNER DEAKTIVERT" };
+      }
+      throw e;
+    }
+
+    const tokenHash = hashTicketToken(input.token);
+
     return prisma.$transaction(async (tx) => {
-      // Lock ticket row
+      // Lock by hash first; fallback to deprecated plaintext column during migration
       const rows = await tx.$queryRaw<{ id: string }[]>`
-        SELECT id FROM "Ticket" WHERE "secureToken" = ${input.token} FOR UPDATE
+        SELECT id FROM "Ticket"
+        WHERE "tokenHash" = ${tokenHash}
+           OR "secureToken" = ${input.token}
+        FOR UPDATE
       `;
 
       if (!rows[0]) {
@@ -57,7 +75,15 @@ export class CheckInService {
 
       const ticket = await tx.ticket.findUniqueOrThrow({
         where: { id: rows[0].id },
-        include: { ticketType: true, event: true, checkIns: { where: { result: CheckInResult.SUCCESS }, orderBy: { checkedInAt: "desc" }, take: 1 } },
+        include: {
+          ticketType: true,
+          event: true,
+          checkIns: {
+            where: { result: CheckInResult.SUCCESS },
+            orderBy: { checkedInAt: "desc" },
+            take: 1,
+          },
+        },
       });
 
       if (ticket.eventId !== input.eventId) {
@@ -172,6 +198,8 @@ export class CheckInService {
         };
       }
 
+      assertTicketTransition(ticket.status, TicketStatus.CHECKED_IN);
+
       const now = new Date();
       await tx.ticket.update({
         where: { id: ticket.id },
@@ -190,6 +218,17 @@ export class CheckInService {
           checkedInAt: now,
         },
       });
+
+      if (input.isManual && input.checkedInBy) {
+        await writeAuditLog({
+          actorId: input.checkedInBy,
+          action: "MANUAL_CHECKIN",
+          entityType: "Ticket",
+          entityId: ticket.id,
+          organizationId: ticket.event.organizationId,
+          metadata: { eventId: input.eventId, deviceId: input.deviceId },
+        });
+      }
 
       return {
         result: CheckInResult.SUCCESS,
@@ -216,26 +255,86 @@ export class CheckInService {
       return { result: CheckInResult.INVALID, message: "UGYLDIG BILLETT" } satisfies CheckInResponse;
     }
 
-    const result = await this.checkInByToken({
-      token: ticket.secureToken,
-      eventId: input.eventId,
-      checkedInBy: input.checkedInBy,
-      deviceId: input.deviceId,
-      isManual: true,
-      note: input.note,
-    });
-
-    if (input.checkedInBy) {
-      await writeAuditLog({
-        actorId: input.checkedInBy,
-        action: "CHECKIN_MANUAL_OVERRIDE",
-        entityType: "Ticket",
-        entityId: input.ticketId,
-        metadata: { result: result.result, eventId: input.eventId },
+    // Manual check-in by ticket id — lock and transition without requiring raw QR token
+    return prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Ticket" WHERE id = ${input.ticketId} FOR UPDATE`;
+      const locked = await tx.ticket.findUniqueOrThrow({
+        where: { id: input.ticketId },
+        include: {
+          ticketType: true,
+          event: true,
+          checkIns: {
+            where: { result: CheckInResult.SUCCESS },
+            orderBy: { checkedInAt: "desc" },
+            take: 1,
+          },
+        },
       });
-    }
 
-    return result;
+      if (locked.eventId !== input.eventId) {
+        return { result: CheckInResult.WRONG_EVENT, message: "FEIL ARRANGEMENT" };
+      }
+      if (locked.event.status === EventStatus.CANCELLED) {
+        return { result: CheckInResult.EVENT_CANCELLED, message: "ARRANGEMENT KANSELLERT" };
+      }
+      if (locked.status === TicketStatus.REFUNDED) {
+        return { result: CheckInResult.REFUNDED, message: "REFUNDERT BILLETT" };
+      }
+      if (locked.status === TicketStatus.CANCELLED) {
+        return { result: CheckInResult.CANCELLED, message: "KANSELLERT BILLETT" };
+      }
+      if (locked.status === TicketStatus.CHECKED_IN) {
+        return {
+          result: CheckInResult.ALREADY_USED,
+          message: "ALLEREDE BRUKT",
+          previousCheckInAt: locked.checkIns[0]?.checkedInAt ?? locked.checkedInAt,
+        };
+      }
+      if (locked.status !== TicketStatus.VALID) {
+        return { result: CheckInResult.INVALID, message: "UGYLDIG BILLETT" };
+      }
+
+      assertTicketTransition(locked.status, TicketStatus.CHECKED_IN);
+      const now = new Date();
+      await tx.ticket.update({
+        where: { id: locked.id },
+        data: { status: TicketStatus.CHECKED_IN, checkedInAt: now },
+      });
+      await tx.checkIn.create({
+        data: {
+          ticketId: locked.id,
+          eventId: input.eventId,
+          result: CheckInResult.SUCCESS,
+          checkedInBy: input.checkedInBy,
+          deviceId: input.deviceId,
+          isManual: true,
+          note: input.note,
+          checkedInAt: now,
+        },
+      });
+
+      if (input.checkedInBy) {
+        await writeAuditLog({
+          actorId: input.checkedInBy,
+          action: "MANUAL_CHECKIN",
+          entityType: "Ticket",
+          entityId: input.ticketId,
+          organizationId: locked.event.organizationId,
+          metadata: { result: CheckInResult.SUCCESS, eventId: input.eventId },
+        });
+      }
+
+      return {
+        result: CheckInResult.SUCCESS,
+        message: "GYLDIG BILLETT",
+        ticket: {
+          publicId: locked.publicId,
+          holderName: locked.holderName,
+          ticketType: locked.ticketType.name,
+          checkedInAt: now,
+        },
+      };
+    });
   }
 
   static async searchGuests(eventId: string, query: string) {

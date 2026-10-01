@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { buildQrPayload } from "@/lib/tickets/token";
-import { verifyMobileToken } from "@/app/api/mobile/auth/login/route";
+import { buildQrPayload, resolveRawTicketToken } from "@/lib/tickets/token";
+import { verifyMobileSession } from "@/app/api/mobile/auth/login/route";
 
 export async function GET(req: Request) {
-  const userId = verifyMobileToken(req.headers.get("authorization"));
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await verifyMobileSession(req.headers.get("authorization"));
+  if (!userId) {
+    return NextResponse.json(
+      { error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+      { status: 401 }
+    );
+  }
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
   const tickets = await prisma.ticket.findMany({
@@ -22,17 +27,20 @@ export async function GET(req: Request) {
   });
 
   return NextResponse.json({
-    tickets: tickets.map((t) => ({
-      publicId: t.publicId,
-      secureToken: t.secureToken,
-      qrPayload: buildQrPayload(t.secureToken),
-      eventName: t.event.name,
-      startsAt: t.event.startsAt,
-      venue: t.event.venue?.name ?? t.event.city ?? "",
-      ticketTypeName: t.ticketType.name,
-      holderName: t.holderName ?? "",
-      orderNumber: t.order.orderNumber,
-      status: t.status,
-    })),
+    tickets: tickets.map((t) => {
+      const raw = resolveRawTicketToken(t);
+      return {
+        publicId: t.publicId,
+        secureToken: raw,
+        qrPayload: raw ? buildQrPayload(raw) : null,
+        eventName: t.event.name,
+        startsAt: t.event.startsAt,
+        venue: t.event.venue?.name ?? t.event.city ?? "",
+        ticketTypeName: t.ticketType.name,
+        holderName: t.holderName ?? "",
+        orderNumber: t.order.orderNumber,
+        status: t.status,
+      };
+    }),
   });
 }

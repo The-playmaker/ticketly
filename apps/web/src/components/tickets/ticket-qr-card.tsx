@@ -11,6 +11,7 @@ type Props = {
   ticket: {
     publicId: string;
     secureToken: string;
+    accessToken?: string;
     holderName: string | null;
     status: string;
     ticketTypeName: string;
@@ -93,7 +94,12 @@ export function TicketQrCard({ ticket, event, orderNumber }: Props) {
             <Button
               size="sm"
               variant="secondary"
-              onClick={() => window.open(`/api/tickets/${ticket.publicId}/pdf`, "_blank")}
+              onClick={() =>
+                window.open(
+                  `/api/tickets/${ticket.publicId}/pdf${ticket.accessToken ? `?t=${ticket.accessToken}` : ""}`,
+                  "_blank"
+                )
+              }
             >
               Last ned PDF
             </Button>

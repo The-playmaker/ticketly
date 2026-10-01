@@ -1,14 +1,30 @@
 import { NextResponse } from "next/server";
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
+import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/db";
-import { buildQrPayload } from "@/lib/tickets/token";
+import { buildQrPayload, resolveRawTicketToken } from "@/lib/tickets/token";
 import { formatEventDateTime } from "@/lib/time";
+import { getOptionalSession } from "@/lib/auth/session";
 
 type Props = { params: Promise<{ publicId: string }> };
 
-export async function GET(_req: Request, { params }: Props) {
+function safeEqual(a: string, b: string) {
+  try {
+    const ba = Buffer.from(a);
+    const bb = Buffer.from(b);
+    if (ba.length !== bb.length) return false;
+    return timingSafeEqual(ba, bb);
+  } catch {
+    return false;
+  }
+}
+
+export async function GET(req: Request, { params }: Props) {
   const { publicId } = await params;
+  const url = new URL(req.url);
+  const accessToken = url.searchParams.get("t");
+
   const ticket = await prisma.ticket.findUnique({
     where: { publicId },
     include: {
@@ -19,10 +35,34 @@ export async function GET(_req: Request, { params }: Props) {
   });
 
   if (!ticket) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(
+      { error: { code: "NOT_FOUND", message: "Not found" } },
+      { status: 404 }
+    );
   }
 
-  const qrDataUrl = await QRCode.toDataURL(buildQrPayload(ticket.secureToken), { width: 300 });
+  const session = await getOptionalSession();
+  const isOwner = Boolean(
+    session && ticket.order.customerId && session.id === ticket.order.customerId
+  );
+  const hasToken = Boolean(accessToken && safeEqual(accessToken, ticket.order.accessToken));
+
+  if (!isOwner && !hasToken) {
+    return NextResponse.json(
+      { error: { code: "FORBIDDEN", message: "Ingen tilgang" } },
+      { status: 403 }
+    );
+  }
+
+  const rawToken = resolveRawTicketToken(ticket);
+  if (!rawToken) {
+    return NextResponse.json(
+      { error: { code: "TOKEN_UNAVAILABLE", message: "QR utilgjengelig" } },
+      { status: 409 }
+    );
+  }
+
+  const qrDataUrl = await QRCode.toDataURL(buildQrPayload(rawToken), { width: 300 });
   const qrBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, "");
   const qrBuffer = Buffer.from(qrBase64, "base64");
 

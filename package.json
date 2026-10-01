@@ -16,7 +16,8 @@
     "db:seed": "npm run seed -w @ticketly/database",
     "db:reset": "npm run reset -w @ticketly/database",
     "test": "npm run test -w @ticketly/web && npm run test -w @ticketly/ticketing --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:e2e": "npm run test:e2e -w @ticketly/web",
+    "typecheck": "npm run typecheck -w @ticketly/web && npm run typecheck -w @ticketly/ticketing && npm run typecheck -w @ticketly/mobile --if-present",
     "lint": "npm run lint --workspaces --if-present"
   },
   "engines": {

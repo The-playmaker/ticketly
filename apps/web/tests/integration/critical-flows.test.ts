@@ -4,7 +4,12 @@ import { ReservationService } from "@/services/reservation-service";
 import { CheckInService } from "@/services/check-in-service";
 import { PaymentService } from "@/services/payment-service";
 import { PaymentProviderType } from "@prisma/client";
-import { generateSecureToken, generatePublicTicketId } from "@/lib/tickets/token";
+import {
+  generateSecureToken,
+  generatePublicTicketId,
+  hashTicketToken,
+  encryptTicketToken,
+} from "@/lib/tickets/token";
 
 const prisma = new PrismaClient();
 
@@ -14,6 +19,9 @@ describe("integration: reservation race & check-in", () => {
   let organizationId: string;
 
   beforeAll(async () => {
+    process.env.STRIPE_MOCK_MODE = "true";
+    process.env.AUTH_SECRET = process.env.AUTH_SECRET ?? "test-secret-at-least-32-chars-long!!";
+
     const event = await prisma.event.findFirst({
       where: { slug: "friday-night" },
       include: { ticketTypes: true },
@@ -21,7 +29,6 @@ describe("integration: reservation race & check-in", () => {
     if (!event) throw new Error("Seed data missing — run npm run db:seed");
     eventId = event.id;
     organizationId = event.organizationId;
-    // Use VIP with limited stock for race tests — create a tiny type
     const tt = await prisma.ticketType.create({
       data: {
         eventId,
@@ -34,6 +41,7 @@ describe("integration: reservation race & check-in", () => {
         minPerOrder: 1,
         sortOrder: 99,
         isVisible: false,
+        isPubliclyPurchasable: true,
       },
     });
     ticketTypeId = tt.id;
@@ -41,6 +49,9 @@ describe("integration: reservation race & check-in", () => {
 
   afterAll(async () => {
     await prisma.ticketReservation.deleteMany({ where: { ticketTypeId } });
+    await prisma.checkIn.deleteMany({ where: { ticket: { ticketTypeId } } });
+    await prisma.ticket.deleteMany({ where: { ticketTypeId } });
+    await prisma.orderItem.deleteMany({ where: { ticketTypeId } });
     await prisma.ticketType.delete({ where: { id: ticketTypeId } }).catch(() => undefined);
     await prisma.$disconnect();
   });
@@ -104,7 +115,9 @@ describe("integration: reservation race & check-in", () => {
     const ticket = await prisma.ticket.create({
       data: {
         publicId: generatePublicTicketId(),
-        secureToken: token,
+        tokenHash: hashTicketToken(token),
+        tokenCipher: encryptTicketToken(token),
+        secureToken: null,
         orderId: order.id,
         orderItemId: order.items[0]!.id,
         eventId,
@@ -158,7 +171,8 @@ describe("integration: reservation race & check-in", () => {
     await prisma.ticket.create({
       data: {
         publicId: generatePublicTicketId(),
-        secureToken: token,
+        tokenHash: hashTicketToken(token),
+        tokenCipher: encryptTicketToken(token),
         orderId: order.id,
         orderItemId: order.items[0]!.id,
         eventId,
@@ -206,6 +220,7 @@ describe("integration: reservation race & check-in", () => {
       sessionId: `cs_${order.id}`,
       paymentId: `pi_${order.id}`,
       amount: 0,
+      currency: "NOK",
     });
 
     const first = await PaymentService.handleProviderWebhook({

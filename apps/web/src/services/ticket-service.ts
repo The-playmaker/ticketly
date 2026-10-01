@@ -3,58 +3,80 @@ import {
   PaymentStatus,
   ReservationStatus,
   TicketStatus,
+  EventStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
   buildQrPayload,
+  encryptTicketToken,
   generatePublicTicketId,
   generateSecureToken,
+  hashTicketToken,
+  resolveRawTicketToken,
 } from "@/lib/tickets/token";
 import { sendOrderConfirmationEmail } from "@/lib/email/templates";
+import { assertTicketTransition } from "@/services/ticket-state-machine";
+import { writeAuditLog } from "@/lib/audit";
+import { AppError } from "@/lib/api-error";
 
 export class TicketService {
-  /**
-   * Called after payment is confirmed via webhook.
-   * Converts reserved inventory to sold and issues unique QR tickets.
-   */
   static async issueTicketsForPaidOrder(orderId: string) {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: { items: true, event: true, tickets: true },
     });
 
-    if (!order) throw new Error("Order not found");
-    if (order.tickets.length > 0) {
-      // Idempotent — already issued
-      return order.tickets;
-    }
+    if (!order) throw new AppError("ORDER_NOT_FOUND", "Order not found", 404);
+    if (order.tickets.length > 0) return order.tickets;
     if (order.paymentStatus !== PaymentStatus.PAID) {
-      throw new Error("Cannot issue tickets for unpaid order");
+      throw new AppError("ORDER_UNPAID", "Cannot issue tickets for unpaid order", 409);
+    }
+    if (order.paymentAnomaly) {
+      throw new AppError("PAYMENT_ANOMALY", "Cannot issue tickets for anomalous payment", 409);
+    }
+    if (order.event.status === EventStatus.CANCELLED) {
+      throw new AppError("EVENT_CANCELLED", "Arrangement er kansellert", 409);
     }
 
     const tickets = await prisma.$transaction(async (tx) => {
       const created = [];
 
       for (const item of order.items) {
-        // Move reserved → sold under lock
-        await tx.$queryRaw`
-          SELECT id FROM "TicketType" WHERE id = ${item.ticketTypeId} FOR UPDATE
+        const locked = await tx.$queryRaw<
+          { id: string; quantity_total: number; quantity_sold: number; quantity_reserved: number }[]
+        >`
+          SELECT id, "quantityTotal" as quantity_total, "quantitySold" as quantity_sold,
+                 "quantityReserved" as quantity_reserved
+          FROM "TicketType" WHERE id = ${item.ticketTypeId} FOR UPDATE
         `;
+        const row = locked[0];
+        if (!row) throw new AppError("TICKET_TYPE_MISSING", "Billettype mangler", 500);
+
+        // After converting reserved→sold, sold must not exceed total
+        if (row.quantity_sold + item.quantity > row.quantity_total) {
+          throw new AppError(
+            "INVENTORY_INVARIANT",
+            "Kan ikke utstede billetter — kapasitet brutt",
+            409
+          );
+        }
 
         await tx.ticketType.update({
           where: { id: item.ticketTypeId },
           data: {
-            quantityReserved: { decrement: item.quantity },
+            quantityReserved: { decrement: Math.min(item.quantity, row.quantity_reserved) },
             quantitySold: { increment: item.quantity },
           },
         });
 
         for (let i = 0; i < item.quantity; i++) {
-          const secureToken = generateSecureToken(32);
+          const rawToken = generateSecureToken(32);
           const ticket = await tx.ticket.create({
             data: {
               publicId: generatePublicTicketId(),
-              secureToken,
+              tokenHash: hashTicketToken(rawToken),
+              tokenCipher: encryptTicketToken(rawToken),
+              secureToken: null,
               orderId: order.id,
               orderItemId: item.id,
               eventId: order.eventId,
@@ -73,7 +95,6 @@ export class TicketService {
         data: { orderStatus: OrderStatus.CONFIRMED },
       });
 
-      // Mark any leftover active reservations for session as converted
       if (order.reservationSessionId) {
         await tx.ticketReservation.updateMany({
           where: {
@@ -96,7 +117,7 @@ export class TicketService {
         eventName: order.event.name,
         total: order.total,
         currency: order.currency,
-        ticketsUrl: `${appUrl}/orders/${order.orderNumber}`,
+        ticketsUrl: `${appUrl}/orders/${order.orderNumber}?t=${order.accessToken}`,
       });
     } catch (err) {
       console.error("Failed to send order confirmation email", err);
@@ -105,8 +126,15 @@ export class TicketService {
     return tickets;
   }
 
-  static getQrValue(secureToken: string) {
-    return buildQrPayload(secureToken);
+  static getQrValue(rawToken: string) {
+    return buildQrPayload(rawToken);
+  }
+
+  static getDisplayToken(ticket: {
+    tokenCipher?: string | null;
+    secureToken?: string | null;
+  }) {
+    return resolveRawTicketToken(ticket);
   }
 
   static async transferTicket(input: {
@@ -116,25 +144,30 @@ export class TicketService {
     fromUserId?: string;
   }) {
     return prisma.$transaction(async (tx) => {
-      const ticket = await tx.ticket.findUnique({
+      const rows = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "Ticket" WHERE id = ${input.ticketId} FOR UPDATE
+      `;
+      if (!rows[0]) throw new AppError("TICKET_NOT_FOUND", "Billett ikke funnet", 404);
+
+      const ticket = await tx.ticket.findUniqueOrThrow({
         where: { id: input.ticketId },
         include: { event: true },
       });
-      if (!ticket) throw new Error("Billett ikke funnet");
       if (!ticket.event.allowTransfer) {
-        throw new Error("Overføring er ikke tillatt for dette arrangementet");
+        throw new AppError("TRANSFER_DISABLED", "Overføring er ikke tillatt", 403);
       }
-      if (ticket.status !== TicketStatus.VALID) {
-        throw new Error("Kun gyldige billetter kan overføres");
-      }
+      assertTicketTransition(ticket.status, TicketStatus.TRANSFERRED);
 
-      const oldToken = ticket.secureToken;
+      const oldRaw = resolveRawTicketToken(ticket) ?? "";
       const newToken = generateSecureToken(32);
 
+      // Invalidate old QR by rotating hash; keep row VALID for new holder
       const updated = await tx.ticket.update({
         where: { id: ticket.id },
         data: {
-          secureToken: newToken,
+          tokenHash: hashTicketToken(newToken),
+          tokenCipher: encryptTicketToken(newToken),
+          secureToken: null,
           holderName: input.toName,
           holderEmail: input.toEmail.toLowerCase(),
           status: TicketStatus.VALID,
@@ -148,12 +181,36 @@ export class TicketService {
           fromEmail: ticket.holderEmail ?? "",
           toEmail: input.toEmail.toLowerCase(),
           toName: input.toName,
-          oldToken,
-          newToken,
+          oldToken: oldRaw ? hashTicketToken(oldRaw) : "unknown",
+          newToken: hashTicketToken(newToken),
         },
       });
 
+      await writeAuditLog({
+        actorId: input.fromUserId,
+        action: "TICKET_TRANSFER",
+        entityType: "Ticket",
+        entityId: ticket.id,
+        organizationId: ticket.event.organizationId,
+        metadata: { toEmail: input.toEmail },
+      });
+
       return updated;
+    });
+  }
+
+  static async transition(ticketId: string, to: TicketStatus, _actorId?: string) {
+    return prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Ticket" WHERE id = ${ticketId} FOR UPDATE`;
+      const ticket = await tx.ticket.findUniqueOrThrow({ where: { id: ticketId } });
+      assertTicketTransition(ticket.status, to);
+      return tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          status: to,
+          checkedInAt: to === TicketStatus.CHECKED_IN ? new Date() : ticket.checkedInAt,
+        },
+      });
     });
   }
 }

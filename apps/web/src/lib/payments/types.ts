@@ -43,6 +43,7 @@ export type WebhookHandleResult = {
   providerPaymentId?: string;
   providerSessionId?: string;
   amount?: number;
+  currency?: string;
   raw?: unknown;
 };
 

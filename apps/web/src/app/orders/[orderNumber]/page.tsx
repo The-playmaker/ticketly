@@ -7,17 +7,36 @@ import { OrderService } from "@/services/order-service";
 import { formatMoney } from "@/lib/utils";
 import { formatEventDateTime } from "@/lib/time";
 import { TicketQrCard } from "@/components/tickets/ticket-qr-card";
+import { getOptionalSession } from "@/lib/auth/session";
+import { TicketService } from "@/services/ticket-service";
+import { timingSafeEqual } from "crypto";
 
 type Props = {
   params: Promise<{ orderNumber: string }>;
-  searchParams: Promise<{ paid?: string; checkout?: string }>;
+  searchParams: Promise<{ paid?: string; checkout?: string; t?: string }>;
 };
+
+function safeEqual(a: string, b: string) {
+  try {
+    const ba = Buffer.from(a);
+    const bb = Buffer.from(b);
+    if (ba.length !== bb.length) return false;
+    return timingSafeEqual(ba, bb);
+  } catch {
+    return false;
+  }
+}
 
 export default async function OrderConfirmationPage({ params, searchParams }: Props) {
   const { orderNumber } = await params;
   const sp = await searchParams;
   const order = await OrderService.getByOrderNumber(orderNumber);
   if (!order) notFound();
+
+  const session = await getOptionalSession();
+  const isOwner = Boolean(session && order.customerId && session.id === order.customerId);
+  const hasAccessToken = Boolean(sp.t && safeEqual(sp.t, order.accessToken));
+  const canViewTickets = isOwner || hasAccessToken;
 
   const isPaid = order.paymentStatus === "PAID";
   const pending = order.paymentStatus === "PENDING";
@@ -63,33 +82,46 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           </p>
         </div>
 
-        {isPaid && order.tickets.length > 0 ? (
+        {isPaid && order.tickets.length > 0 && canViewTickets ? (
           <div className="mt-10 space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-2xl">Dine billetter</h2>
               <Button asChild variant="secondary" size="sm">
-                <Link href={`/orders/${order.orderNumber}/pdf`}>Last ned PDF</Link>
+                <Link
+                  href={`/api/tickets/${order.tickets[0]!.publicId}/pdf?t=${order.accessToken}`}
+                >
+                  Last ned PDF
+                </Link>
               </Button>
             </div>
-            {order.tickets.map((ticket) => (
-              <TicketQrCard
-                key={ticket.id}
-                ticket={{
-                  publicId: ticket.publicId,
-                  secureToken: ticket.secureToken,
-                  holderName: ticket.holderName,
-                  status: ticket.status,
-                  ticketTypeName: ticket.ticketType.name,
-                }}
-                event={{
-                  name: order.event.name,
-                  startsAt: order.event.startsAt.toISOString(),
-                  timezone: order.event.timezone,
-                  venue: order.event.venue?.name ?? order.event.city ?? "",
-                }}
-                orderNumber={order.orderNumber}
-              />
-            ))}
+            {order.tickets.map((ticket) => {
+              const raw = TicketService.getDisplayToken(ticket);
+              if (!raw) return null;
+              return (
+                <TicketQrCard
+                  key={ticket.id}
+                  ticket={{
+                    publicId: ticket.publicId,
+                    secureToken: raw,
+                    accessToken: order.accessToken,
+                    holderName: ticket.holderName,
+                    status: ticket.status,
+                    ticketTypeName: ticket.ticketType.name,
+                  }}
+                  event={{
+                    name: order.event.name,
+                    startsAt: order.event.startsAt.toISOString(),
+                    timezone: order.event.timezone,
+                    venue: order.event.venue?.name ?? order.event.city ?? "",
+                  }}
+                  orderNumber={order.orderNumber}
+                />
+              );
+            })}
+          </div>
+        ) : isPaid && order.tickets.length > 0 ? (
+          <div className="mt-10 rounded-2xl border border-amber-900/50 bg-amber-950/30 p-5 text-sm text-amber-100">
+            Billetter er utstedt. Bruk lenken fra e-posten (eller logg inn som kjøper) for å vise QR-koder.
           </div>
         ) : null}
       </main>

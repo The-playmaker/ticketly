@@ -72,12 +72,26 @@ export class OfflineScannerService {
       },
     });
 
-    const entries: OfflineTicketEntry[] = event.tickets.map((t) => ({
-      publicId: t.publicId,
-      tokenHash: hashTicketToken(t.secureToken),
-      status: t.status === TicketStatus.CHECKED_IN ? "CHECKED_IN" : "VALID",
-      ticketTypeName: t.ticketType.name,
-    }));
+    const entries: OfflineTicketEntry[] = event.tickets
+      .map((t): OfflineTicketEntry | null => {
+        const tokenHash = t.tokenHash || (t.secureToken ? hashTicketToken(t.secureToken) : "");
+        if (!tokenHash) return null;
+        const status: OfflineTicketEntry["status"] =
+          t.status === TicketStatus.CHECKED_IN
+            ? "CHECKED_IN"
+            : t.status === TicketStatus.REFUNDED
+              ? "REFUNDED"
+              : t.status === TicketStatus.CANCELLED
+                ? "CANCELLED"
+                : "VALID";
+        return {
+          publicId: t.publicId,
+          tokenHash,
+          status,
+          ticketTypeName: t.ticketType.name,
+        };
+      })
+      .filter((e): e is OfflineTicketEntry => e != null);
 
     const plaintext = JSON.stringify({ eventId, generatedAt: new Date().toISOString(), entries });
     const key = getOfflineBundleKey();
@@ -153,7 +167,8 @@ export class OfflineScannerService {
         where: { publicId: item.ticketPublicId, eventId: input.eventId },
       });
 
-      if (!ticket || hashTicketToken(ticket.secureToken) !== item.ticketTokenHash) {
+      const expectedHash = ticket?.tokenHash || (ticket?.secureToken ? hashTicketToken(ticket.secureToken) : null);
+      if (!ticket || !expectedHash || expectedHash !== item.ticketTokenHash) {
         await prisma.offlineCheckIn.update({
           where: { id: recorded.id },
           data: {
@@ -171,11 +186,15 @@ export class OfflineScannerService {
           where: { id: recorded.id },
           data: {
             syncStatus: OfflineSyncStatus.CONFLICT,
-            conflictReason: "ALREADY_CHECKED_IN_ONLINE_OR_OTHER_DEVICE",
+            conflictReason: "OFFLINE_CONFLICT_DUPLICATE",
             syncedAt: new Date(),
           },
         });
-        results.push({ localId: item.localId, status: "CONFLICT", result: "ALREADY_USED" as ScanResultCode });
+        results.push({
+          localId: item.localId,
+          status: "OFFLINE_CONFLICT_DUPLICATE",
+          result: "ALREADY_USED" as ScanResultCode,
+        });
         continue;
       }
 

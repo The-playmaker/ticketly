@@ -1,17 +1,35 @@
 import { NextResponse } from "next/server";
 import { offlineSyncSchema } from "@ticketly/validation";
 import { OfflineScannerService } from "@ticketly/ticketing";
-import { verifyMobileToken } from "@/app/api/mobile/auth/login/route";
+import { verifyMobileSession } from "@/app/api/mobile/auth/login/route";
 import { prisma } from "@/lib/db";
 import { canScanTickets } from "@/lib/auth/rbac";
+import { assertDeviceNotRevoked } from "@/lib/auth/org-access";
 
 export async function POST(req: Request) {
-  const userId = verifyMobileToken(req.headers.get("authorization"));
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await verifyMobileSession(req.headers.get("authorization"));
+  if (!userId) {
+    return NextResponse.json(
+      { error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+      { status: 401 }
+    );
+  }
 
   const parsed = offlineSyncSchema.safeParse(await req.json());
   if (!parsed.success) {
-    return NextResponse.json({ error: "Ugyldig payload", details: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json(
+      { error: { code: "VALIDATION_ERROR", message: "Ugyldig payload" } },
+      { status: 400 }
+    );
+  }
+
+  try {
+    await assertDeviceNotRevoked(parsed.data.deviceId);
+  } catch {
+    return NextResponse.json(
+      { error: { code: "DEVICE_REVOKED", message: "Scanner deaktivert" } },
+      { status: 403 }
+    );
   }
 
   const user = await prisma.user.findUniqueOrThrow({

@@ -3,34 +3,66 @@ import {
   PaymentStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { getPaymentProvider } from "@/lib/payments";
+import { getPaymentProvider, isStripeMockMode } from "@/lib/payments";
 import { TicketService } from "@/services/ticket-service";
+import { writeAuditLog } from "@/lib/audit";
+import { createOrderSnapshot } from "@ticketly/ticketing";
+import { AppError } from "@/lib/api-error";
 
 export class PaymentService {
+  static assertMockAllowed() {
+    if (isStripeMockMode()) {
+      if (process.env.NODE_ENV === "production") {
+        throw new AppError(
+          "MOCK_PAYMENTS_DISABLED",
+          "Mock payments are forbidden in production",
+          403
+        );
+      }
+    }
+  }
+
   static async startCheckout(orderId: string, providerType: PaymentProviderType = PaymentProviderType.STRIPE) {
     const order = await prisma.order.findUniqueOrThrow({
       where: { id: orderId },
-      include: { event: true },
+      include: { event: true, items: { include: { ticketType: true } } },
     });
 
     if (order.paymentStatus === PaymentStatus.PAID) {
-      throw new Error("Ordren er allerede betalt");
+      throw new AppError("ORDER_ALREADY_PAID", "Ordren er allerede betalt", 409);
+    }
+    if (order.paymentAnomaly) {
+      throw new AppError("PAYMENT_ANOMALY", "Ordren er sperret for manuell gjennomgang", 409);
     }
 
-    // Free / guest-list style orders
+    // Free orders: only if every ticket type is publicly purchasable at zero
     if (order.total === 0) {
+      const allPublic = order.items.every((i) => i.ticketType.isPubliclyPurchasable);
+      if (!allPublic) {
+        throw new AppError(
+          "FREE_TICKET_NOT_PUBLIC",
+          "Gratisbilletter kan ikke kjøpes offentlig",
+          403
+        );
+      }
       await this.markOrderPaid({
         orderId: order.id,
         provider: providerType,
         providerSessionId: `free_${order.id}`,
         providerPaymentId: `free_${order.id}`,
         externalEventId: `free_${order.id}`,
+        amount: 0,
+        currency: order.currency,
       });
       const appUrl = process.env.APP_URL ?? "http://localhost:3456";
       return {
-        checkoutUrl: `${appUrl}/orders/${order.orderNumber}?paid=1`,
+        checkoutUrl: `${appUrl}/orders/${order.orderNumber}?t=${order.accessToken}&paid=1`,
         sessionId: `free_${order.id}`,
       };
+    }
+
+    if (isStripeMockMode()) {
+      this.assertMockAllowed();
     }
 
     const provider = getPaymentProvider(providerType);
@@ -44,7 +76,7 @@ export class PaymentService {
       customerEmail: order.customerEmail,
       customerName: `${order.customerFirstName} ${order.customerLastName}`,
       description: `${order.event.name} – ${order.orderNumber}`,
-      successUrl: `${appUrl}/orders/${order.orderNumber}?checkout=success`,
+      successUrl: `${appUrl}/orders/${order.orderNumber}?t=${order.accessToken}&checkout=success`,
       cancelUrl: `${appUrl}/checkout?event=${order.event.slug}&cancelled=1`,
       metadata: { eventId: order.eventId },
     });
@@ -65,18 +97,30 @@ export class PaymentService {
     return result;
   }
 
-  /**
-   * Idempotent webhook processing. Never trust frontend redirect for payment success.
-   */
   static async handleProviderWebhook(input: {
     provider: PaymentProviderType;
     rawBody: string | Buffer;
     signature: string | null;
   }) {
+    if (isStripeMockMode() && input.signature === "mock") {
+      this.assertMockAllowed();
+    }
+
     const provider = getPaymentProvider(input.provider);
     const parsed = await provider.parseWebhook(input.rawBody, input.signature);
 
-    // Idempotency via WebhookEvent unique (provider, eventId)
+    const existingWebhook = await prisma.webhookEvent.findUnique({
+      where: {
+        provider_eventId: {
+          provider: input.provider,
+          eventId: parsed.externalEventId,
+        },
+      },
+    });
+    if (existingWebhook) {
+      return { duplicate: true, type: parsed.type };
+    }
+
     try {
       await prisma.webhookEvent.create({
         data: {
@@ -88,7 +132,7 @@ export class PaymentService {
         },
       });
     } catch {
-      // Duplicate webhook — already processed
+      // Race: another worker inserted the same event id
       return { duplicate: true, type: parsed.type };
     }
 
@@ -116,6 +160,7 @@ export class PaymentService {
           providerPaymentId: parsed.providerPaymentId,
           externalEventId: parsed.externalEventId,
           amount: parsed.amount,
+          currency: parsed.currency,
         });
       }
     }
@@ -125,17 +170,6 @@ export class PaymentService {
         where: { id: parsed.orderId },
         data: { paymentStatus: PaymentStatus.FAILED },
       });
-      if (parsed.providerPaymentId) {
-        await prisma.payment.updateMany({
-          where: {
-            OR: [
-              { providerPaymentId: parsed.providerPaymentId },
-              { orderId: parsed.orderId },
-            ],
-          },
-          data: { status: PaymentStatus.FAILED },
-        });
-      }
     }
 
     if (
@@ -164,14 +198,60 @@ export class PaymentService {
     providerPaymentId?: string;
     externalEventId?: string;
     amount?: number;
+    currency?: string;
   }) {
     const order = await prisma.order.findUnique({ where: { id: input.orderId } });
-    if (!order) throw new Error("Order not found");
+    if (!order) throw new AppError("ORDER_NOT_FOUND", "Order not found", 404);
 
-    // Idempotent — already paid
-    if (order.paymentStatus === PaymentStatus.PAID) {
+    if (order.paymentStatus === PaymentStatus.PAID && !order.paymentAnomaly) {
       await TicketService.issueTicketsForPaidOrder(order.id);
       return order;
+    }
+
+    // Amount / currency integrity — never issue tickets on mismatch
+    if (input.amount != null && input.amount !== order.total) {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          paymentAnomaly: true,
+          paymentAnomalyReason: `AMOUNT_MISMATCH expected=${order.total} got=${input.amount}`,
+        },
+      });
+      await writeAuditLog({
+        action: "PAYMENT_ANOMALY",
+        entityType: "Order",
+        entityId: order.id,
+        organizationId: order.organizationId,
+        metadata: {
+          reason: "AMOUNT_MISMATCH",
+          expected: order.total,
+          got: input.amount,
+          externalEventId: input.externalEventId,
+        },
+      });
+      throw new AppError("PAYMENT_AMOUNT_MISMATCH", "Betalingsbeløp matcher ikke ordre", 409);
+    }
+
+    if (input.currency && input.currency.toUpperCase() !== order.currency.toUpperCase()) {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          paymentAnomaly: true,
+          paymentAnomalyReason: `CURRENCY_MISMATCH expected=${order.currency} got=${input.currency}`,
+        },
+      });
+      await writeAuditLog({
+        action: "PAYMENT_ANOMALY",
+        entityType: "Order",
+        entityId: order.id,
+        organizationId: order.organizationId,
+        metadata: { reason: "CURRENCY_MISMATCH", expected: order.currency, got: input.currency },
+      });
+      throw new AppError("PAYMENT_CURRENCY_MISMATCH", "Valuta matcher ikke ordre", 409);
+    }
+
+    if (order.paymentAnomaly) {
+      throw new AppError("PAYMENT_ANOMALY", "Ordren er sperret", 409);
     }
 
     await prisma.$transaction(async (tx) => {
@@ -221,6 +301,11 @@ export class PaymentService {
     });
 
     await TicketService.issueTicketsForPaidOrder(order.id);
+    try {
+      await createOrderSnapshot(order.id);
+    } catch (e) {
+      console.error("OrderSnapshot failed", e);
+    }
     return prisma.order.findUniqueOrThrow({ where: { id: order.id } });
   }
 }

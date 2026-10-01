@@ -2,15 +2,36 @@ import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { prisma, TicketStatus } from "@ticketly/database";
 import { OfflineScannerService, decryptPayload, getOfflineBundleKey } from "@ticketly/ticketing";
-import { verifyMobileToken } from "@/app/api/mobile/auth/login/route";
+import { verifyMobileSession } from "@/app/api/mobile/auth/login/route";
 import { canScanTickets } from "@/lib/auth/rbac";
+import { assertDeviceNotRevoked } from "@/lib/auth/org-access";
 
 export async function GET(req: Request) {
-  const userId = verifyMobileToken(req.headers.get("authorization"));
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await verifyMobileSession(req.headers.get("authorization"));
+  if (!userId) {
+    return NextResponse.json(
+      { error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+      { status: 401 }
+    );
+  }
 
-  const eventId = new URL(req.url).searchParams.get("eventId");
-  if (!eventId) return NextResponse.json({ error: "eventId required" }, { status: 400 });
+  const url = new URL(req.url);
+  const eventId = url.searchParams.get("eventId");
+  const deviceId = url.searchParams.get("deviceId");
+  if (!eventId) {
+    return NextResponse.json(
+      { error: { code: "VALIDATION_ERROR", message: "eventId required" } },
+      { status: 400 }
+    );
+  }
+  try {
+    await assertDeviceNotRevoked(deviceId);
+  } catch {
+    return NextResponse.json(
+      { error: { code: "DEVICE_REVOKED", message: "Scanner deaktivert" } },
+      { status: 403 }
+    );
+  }
 
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },

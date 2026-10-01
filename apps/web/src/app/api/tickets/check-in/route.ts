@@ -5,10 +5,12 @@ import { getOptionalSession } from "@/lib/auth/session";
 import { canScanTickets, AuthorizationError, type AuthUser } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/db";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
-import { verifyMobileToken } from "@/app/api/mobile/auth/login/route";
+import { verifyMobileSession } from "@/app/api/mobile/auth/login/route";
+import { assertDeviceNotRevoked } from "@/lib/auth/org-access";
+import { jsonError } from "@/lib/api-error";
 
 async function resolveUser(req: Request): Promise<AuthUser> {
-  const mobileId = verifyMobileToken(req.headers.get("authorization"));
+  const mobileId = await verifyMobileSession(req.headers.get("authorization"));
   if (mobileId) {
     const user = await prisma.user.findUniqueOrThrow({
       where: { id: mobileId },
@@ -70,6 +72,8 @@ export async function POST(req: Request) {
     const match = raw.match(/\/t\/verify\/([^/?#]+)/);
     const token = match?.[1] ?? raw;
 
+    await assertDeviceNotRevoked(parsed.data.deviceId);
+
     const result = await CheckInService.checkInByToken({
       token,
       eventId: parsed.data.eventId,
@@ -79,10 +83,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json(result);
   } catch (e) {
-    const status = e instanceof AuthorizationError ? (e.message === "Unauthorized" ? 401 : 403) : 401;
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Unauthorized" },
-      { status }
-    );
+    if (e instanceof AuthorizationError) {
+      const status = e.message === "Unauthorized" ? 401 : 403;
+      return NextResponse.json(
+        { error: { code: status === 401 ? "UNAUTHORIZED" : "FORBIDDEN", message: e.message } },
+        { status }
+      );
+    }
+    return jsonError(e);
   }
 }

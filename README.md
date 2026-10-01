@@ -28,6 +28,22 @@ npm run dev:mobile       # Expo (port 8082)
 
 Docker: `docker compose up --build` (web + Postgres).
 
+## Hardening / ops docs
+
+- [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)
+- [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md)
+- [docs/BACKUP_AND_RECOVERY.md](docs/BACKUP_AND_RECOVERY.md)
+- [docs/TICKET_STATE_MACHINE.md](docs/TICKET_STATE_MACHINE.md)
+- [docs/LOAD_TESTING.md](docs/LOAD_TESTING.md)
+
+```bash
+npm test                 # unit + integration
+npm run test:e2e         # Playwright (server must be running)
+k6 run load/k6-smoke.js  # optional load profile
+```
+
+Health: `GET /api/health` · Ready: `GET /api/ready`
+
 ## Demo-brukere
 
 | E-post | Rolle | Passord |

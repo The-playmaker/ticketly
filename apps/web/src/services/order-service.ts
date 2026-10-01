@@ -1,4 +1,5 @@
 import {
+  EventStatus,
   OrderStatus,
   PaymentStatus,
   ServiceFeeMode,
@@ -9,6 +10,8 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { generateOrderNumber } from "@/lib/orders/order-number";
+import { generateOrderAccessToken } from "@/lib/tickets/token";
+import { AppError } from "@/lib/api-error";
 import {
   ReservationService,
   getAvailableQuantity,
@@ -64,7 +67,10 @@ export function calculatePricing(input: {
 
   for (const item of input.items) {
     const tt = input.ticketTypes.find((t) => t.id === item.ticketTypeId);
-    if (!tt) throw new Error(`Ukjent billettype: ${item.ticketTypeId}`);
+    if (!tt) throw new AppError("UNKNOWN_TICKET_TYPE", `Ukjent billettype: ${item.ticketTypeId}`, 400);
+    if (!Number.isInteger(item.quantity) || item.quantity < 1) {
+      throw new AppError("INVALID_QUANTITY", "Ugyldig antall", 400);
+    }
 
     const { fee, mode } = resolveServiceFee(input.organization, input.event, tt.serviceFee);
     let lineSubtotal = 0;
@@ -73,7 +79,6 @@ export function calculatePricing(input: {
     }
     const unitPrice = Math.round(lineSubtotal / item.quantity);
     const lineServiceFee = mode === ServiceFeeMode.ON_TOP ? fee * item.quantity : 0;
-    // If INCLUDED, the advertised price already contains fee; we still track fee for reporting
     const includedFee = mode === ServiceFeeMode.INCLUDED ? fee * item.quantity : 0;
 
     lines.push({
@@ -97,12 +102,15 @@ export function calculatePricing(input: {
   }
 
   const taxableBase = Math.max(0, subtotal - discount);
-  // Simplified VAT extraction assuming prices include VAT at 25% default for display tax field
   const tax = Math.round(taxableBase - taxableBase / 1.25);
 
   const totalOnTop = lines.reduce((s, l) => s + l.lineSubtotal, 0) - discount +
     lines.reduce((s, l) => {
-      const { mode } = resolveServiceFee(input.organization, input.event, input.ticketTypes.find(t => t.id === l.ticketTypeId)?.serviceFee);
+      const { mode } = resolveServiceFee(
+        input.organization,
+        input.event,
+        input.ticketTypes.find((t) => t.id === l.ticketTypeId)?.serviceFee
+      );
       return s + (mode === ServiceFeeMode.ON_TOP ? l.lineServiceFee : 0);
     }, 0);
 
@@ -126,14 +134,16 @@ export function applyPromo(promo: PromoCode, subtotal: number): number {
   if (promo.maxUses != null && promo.usedCount >= promo.maxUses) return 0;
 
   if (promo.discountType === ("PERCENTAGE" as DiscountType)) {
-    // discountValue in basis points: 2000 = 20%
     return Math.round((subtotal * promo.discountValue) / 10000);
   }
-  // FIXED in øre
   return Math.min(subtotal, promo.discountValue);
 }
 
 export class OrderService {
+  /**
+   * Create pending order. Client may only supply ticketTypeId + quantity + promoCode + contact.
+   * Price / fee / tax / total are computed exclusively from DB.
+   */
   static async createPendingOrder(input: {
     eventId: string;
     sessionId: string;
@@ -146,11 +156,23 @@ export class OrderService {
       customerId?: string;
     };
     promoCode?: string;
+    termsAccepted?: boolean;
+    termsVersion?: string;
   }) {
+    // Strip any client-supplied pricing if somehow present on items
+    const safeItems = input.items.map((i) => ({
+      ticketTypeId: i.ticketTypeId,
+      quantity: i.quantity,
+    }));
+
+    if (input.termsAccepted === false) {
+      throw new AppError("TERMS_REQUIRED", "Du må godta vilkårene", 400);
+    }
+
     await ReservationService.reserve({
       eventId: input.eventId,
       sessionId: input.sessionId,
-      items: input.items,
+      items: safeItems,
     });
 
     const event = await prisma.event.findUniqueOrThrow({
@@ -158,40 +180,67 @@ export class OrderService {
       include: { organization: true },
     });
 
+    if (event.status === EventStatus.CANCELLED) {
+      throw new AppError("EVENT_CANCELLED", "Arrangementet er kansellert", 409);
+    }
+
     const ticketTypes = await prisma.ticketType.findMany({
-      where: { eventId: input.eventId, id: { in: input.items.map((i) => i.ticketTypeId) } },
+      where: { eventId: input.eventId, id: { in: safeItems.map((i) => i.ticketTypeId) } },
       include: { priceTiers: true },
     });
 
-    let promo = null;
-    if (input.promoCode) {
-      promo = await prisma.promoCode.findFirst({
-        where: {
-          code: { equals: input.promoCode, mode: "insensitive" },
-          organizationId: event.organizationId,
-          isActive: true,
-          OR: [{ eventId: null }, { eventId: event.id }],
-        },
-      });
+    for (const tt of ticketTypes) {
+      if (!tt.isPubliclyPurchasable) {
+        throw new AppError(
+          "FREE_TICKET_NOT_PUBLIC",
+          "Denne billettypen kan ikke kjøpes offentlig",
+          403
+        );
+      }
     }
 
-    const pricing = calculatePricing({
-      organization: event.organization,
-      event,
-      ticketTypes,
-      items: input.items,
-      promo,
-    });
-
-    if (pricing.total < 0) throw new Error("Ugyldig totalsum");
-
     const orderNumber = await generateOrderNumber();
+    const accessToken = generateOrderAccessToken();
+    const termsVersion = input.termsVersion ?? process.env.TERMS_VERSION ?? "2026-01";
 
     const order = await prisma.$transaction(async (tx) => {
+      let promo: PromoCode | null = null;
+      if (input.promoCode) {
+        const locked = await tx.$queryRaw<PromoCode[]>`
+          SELECT * FROM "PromoCode"
+          WHERE LOWER(code) = LOWER(${input.promoCode})
+            AND "organizationId" = ${event.organizationId}
+            AND "isActive" = true
+            AND ("eventId" IS NULL OR "eventId" = ${event.id})
+          FOR UPDATE
+        `;
+        promo = locked[0] ?? null;
+        if (promo) {
+          const now = new Date();
+          if (promo.startAt && promo.startAt > now) promo = null;
+          else if (promo.expiresAt && promo.expiresAt < now) promo = null;
+          else if (promo.maxUses != null && promo.usedCount >= promo.maxUses) {
+            throw new AppError("PROMO_EXHAUSTED", "Kampanjekoden er oppbrukt", 409);
+          }
+        }
+      }
+
+      const pricing = calculatePricing({
+        organization: event.organization,
+        event,
+        ticketTypes,
+        items: safeItems,
+        promo,
+      });
+
+      if (pricing.total < 0) throw new AppError("INVALID_TOTAL", "Ugyldig totalsum", 400);
+
       const created = await tx.order.create({
         data: {
           orderNumber,
+          accessToken,
           organizationId: event.organizationId,
+          sellerOrganizationId: event.organizationId,
           eventId: event.id,
           customerId: input.customer.customerId,
           customerEmail: input.customer.email.toLowerCase(),
@@ -208,6 +257,8 @@ export class OrderService {
           orderStatus: OrderStatus.PENDING,
           promoCodeId: pricing.promoCodeId,
           reservationSessionId: input.sessionId,
+          termsVersion,
+          termsAcceptedAt: new Date(),
           items: {
             create: pricing.lines.map((line) => ({
               ticketTypeId: line.ticketTypeId,
@@ -252,7 +303,7 @@ export class OrderService {
 
   static async getAvailability(eventId: string) {
     const types = await prisma.ticketType.findMany({
-      where: { eventId },
+      where: { eventId, isVisible: true, isPubliclyPurchasable: true },
       include: { priceTiers: { orderBy: { sortOrder: "asc" } } },
       orderBy: { sortOrder: "asc" },
     });

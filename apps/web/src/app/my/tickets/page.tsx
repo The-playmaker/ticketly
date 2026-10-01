@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { SiteHeader } from "@/components/layout/site-header";
 import { TicketQrCard } from "@/components/tickets/ticket-qr-card";
+import { resolveRawTicketToken } from "@/lib/tickets/token";
 
 export default async function MyTicketsPage() {
   const session = await auth();
@@ -33,25 +34,30 @@ export default async function MyTicketsPage() {
           {tickets.length === 0 ? (
             <p className="text-zinc-400">Du har ingen billetter ennå.</p>
           ) : (
-            tickets.map((t) => (
-              <TicketQrCard
-                key={t.id}
-                ticket={{
-                  publicId: t.publicId,
-                  secureToken: t.secureToken,
-                  holderName: t.holderName,
-                  status: t.status,
-                  ticketTypeName: t.ticketType.name,
-                }}
-                event={{
-                  name: t.event.name,
-                  startsAt: t.event.startsAt.toISOString(),
-                  timezone: t.event.timezone,
-                  venue: t.event.venue?.name ?? t.event.city ?? "",
-                }}
-                orderNumber={t.order.orderNumber}
-              />
-            ))
+            tickets.map((t) => {
+              const raw = resolveRawTicketToken(t);
+              if (!raw) return null;
+              return (
+                <TicketQrCard
+                  key={t.id}
+                  ticket={{
+                    publicId: t.publicId,
+                    secureToken: raw,
+                    accessToken: t.order.accessToken,
+                    holderName: t.holderName,
+                    status: t.status,
+                    ticketTypeName: t.ticketType.name,
+                  }}
+                  event={{
+                    name: t.event.name,
+                    startsAt: t.event.startsAt.toISOString(),
+                    timezone: t.event.timezone,
+                    venue: t.event.venue?.name ?? t.event.city ?? "",
+                  }}
+                  orderNumber={t.order.orderNumber}
+                />
+              );
+            })
           )}
         </div>
       </main>
