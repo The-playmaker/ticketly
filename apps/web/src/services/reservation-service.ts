@@ -12,8 +12,18 @@ import { AppError } from "@/lib/api-error";
 
 export type TicketTypeWithTiers = TicketType & { priceTiers: TicketPriceTier[] };
 
-export function getAvailableQuantity(tt: Pick<TicketType, "quantityTotal" | "quantitySold" | "quantityReserved">) {
-  return Math.max(0, tt.quantityTotal - tt.quantitySold - tt.quantityReserved);
+/** Public/customer available = released − sold − reserved (not full capacity) */
+export function getAvailableQuantity(
+  tt: Pick<TicketType, "quantitySold" | "quantityReserved"> & {
+    quantityReleased?: number;
+    quantityTotal?: number;
+  }
+) {
+  const released =
+    tt.quantityReleased ??
+    tt.quantityTotal ??
+    0;
+  return Math.max(0, released - tt.quantitySold - tt.quantityReserved);
 }
 
 /** Resolve unit price based on early-bird tiers and current sold count */
@@ -114,8 +124,15 @@ export class ReservationService {
       if (event.status === EventStatus.CANCELLED) {
         throw new AppError("EVENT_CANCELLED", "Arrangementet er kansellert", 409);
       }
-      if (event.status === EventStatus.DRAFT || event.status === EventStatus.COMPLETED) {
+      if (
+        event.status === EventStatus.DRAFT ||
+        event.status === EventStatus.SCHEDULED ||
+        event.status === EventStatus.COMPLETED
+      ) {
         throw new AppError("EVENT_NOT_ON_SALE", "Arrangementet er ikke til salgs", 409);
+      }
+      if (event.salesPausedAt || event.status === EventStatus.PAUSED) {
+        throw new AppError("SALES_PAUSED", "Salget er midlertidig satt på pause", 409);
       }
       const now = new Date();
       if (event.salesStartAt && event.salesStartAt > now) {
@@ -149,6 +166,7 @@ export class ReservationService {
           {
             id: string;
             quantity_total: number;
+            quantity_released: number;
             quantity_sold: number;
             quantity_reserved: number;
             event_id: string;
@@ -157,15 +175,17 @@ export class ReservationService {
             is_publicly_purchasable: boolean;
             sales_start_at: Date | null;
             sales_end_at: Date | null;
+            sales_paused_at: Date | null;
             price: number;
+            service_fee: number | null;
           }[]
         >`
-          SELECT id, "quantityTotal" as quantity_total, "quantitySold" as quantity_sold,
-                 "quantityReserved" as quantity_reserved, "eventId" as event_id,
-                 "minPerOrder" as min_per_order, "maxPerOrder" as max_per_order,
+          SELECT id, "quantityTotal" as quantity_total, "quantityReleased" as quantity_released,
+                 "quantitySold" as quantity_sold, "quantityReserved" as quantity_reserved,
+                 "eventId" as event_id, "minPerOrder" as min_per_order, "maxPerOrder" as max_per_order,
                  "isPubliclyPurchasable" as is_publicly_purchasable,
                  "salesStartAt" as sales_start_at, "salesEndAt" as sales_end_at,
-                 price
+                 "salesPausedAt" as sales_paused_at, price, "serviceFee" as service_fee
           FROM "TicketType"
           WHERE id = ${item.ticketTypeId}
           FOR UPDATE
@@ -185,6 +205,9 @@ export class ReservationService {
             403
           );
         }
+        if (row.sales_paused_at) {
+          throw new AppError("SALES_PAUSED", "Salget er midlertidig satt på pause", 409);
+        }
         if (row.sales_start_at && row.sales_start_at > now) {
           throw new AppError("SALES_NOT_STARTED", "Salget for denne billettypen har ikke startet", 409);
         }
@@ -199,8 +222,9 @@ export class ReservationService {
           );
         }
 
+        // Inventory gate = currently released, not full capacity
         const available =
-          row.quantity_total - row.quantity_sold - row.quantity_reserved;
+          row.quantity_released - row.quantity_sold - row.quantity_reserved;
         if (item.quantity > available) {
           throw new AppError(
             "TICKET_SOLD_OUT",
@@ -208,6 +232,19 @@ export class ReservationService {
             409
           );
         }
+
+        // Lock price at reservation time (admin changes do not affect this hold)
+        const ttFull = await tx.ticketType.findUniqueOrThrow({
+          where: { id: item.ticketTypeId },
+          include: { priceTiers: true },
+        });
+        let lineSubtotal = 0;
+        for (let i = 0; i < item.quantity; i++) {
+          lineSubtotal += resolveUnitPrice(ttFull, i);
+        }
+        const unitPrice = Math.round(lineSubtotal / item.quantity);
+        const feePer = row.service_fee ?? event.serviceFee ?? 0;
+        const lineFee = feePer * item.quantity;
 
         await tx.ticketType.update({
           where: { id: item.ticketTypeId },
@@ -222,6 +259,9 @@ export class ReservationService {
             sessionId: input.sessionId,
             expiresAt,
             status: ReservationStatus.ACTIVE,
+            unitPriceSnapshot: unitPrice,
+            serviceFeeSnapshot: lineFee,
+            lineTotalSnapshot: lineSubtotal + lineFee,
           },
         });
         created.push(reservation);

@@ -22,10 +22,34 @@ enum OrgRole {
 
 enum EventStatus {
   DRAFT
+  SCHEDULED
   PUBLISHED
+  PAUSED
   SOLD_OUT
   CANCELLED
   COMPLETED
+}
+
+enum AvailabilityDisplayMode {
+  SHOW_EXACT
+  SHOW_LOW_STOCK_ONLY
+  HIDE
+}
+
+enum SoldOutDisplayMode {
+  SOLD_OUT
+  MORE_COMING
+  PAUSED
+}
+
+enum AnalyticsEventType {
+  PAGE_VIEW
+  TICKET_SELECTION
+  CHECKOUT_STARTED
+  PAYMENT_INITIATED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  RESERVATION_EXPIRED
 }
 
 enum Visibility {
@@ -388,9 +412,15 @@ model Event {
   capacity             Int
   status               EventStatus     @default(DRAFT)
   visibility           Visibility      @default(PUBLIC)
+  category             String?
   salesStartAt         DateTime?
   salesEndAt           DateTime?
   publishAt            DateTime?
+  /// Emergency / manual pause — blocks NEW reservations only
+  salesPausedAt        DateTime?
+  availabilityDisplay  AvailabilityDisplayMode @default(SHOW_LOW_STOCK_ONLY)
+  lowStockThreshold    Int             @default(10)
+  soldOutDisplay       SoldOutDisplayMode @default(SOLD_OUT)
   allowTransfer        Boolean         @default(false)
   serviceFee           Int?
   serviceFeeMode       ServiceFeeMode?
@@ -416,6 +446,9 @@ model Event {
   scannerSessions    ScannerSession[]
   offlineBundles     OfflineValidationBundle[]
   offlineCheckIns    OfflineCheckIn[]
+  analyticsEvents    AnalyticsEvent[]
+  waitlistEntries    WaitlistEntry[]
+  ticketBatches      TicketBatch[]
 
   @@unique([organizationId, slug])
   @@index([slug])
@@ -451,16 +484,22 @@ model TicketType {
   taxTreatmentId   String?
   serviceFee       Int?
   serviceFeeTaxTreatmentId String?
+  /// Event allocation cap for this type (≤ event capacity across types)
   quantityTotal    Int
+  /// Currently released for sale (≤ quantityTotal). Available = released - sold - reserved
+  quantityReleased Int       @default(0)
   quantitySold     Int       @default(0)
   quantityReserved Int       @default(0)
   maxPerOrder      Int       @default(10)
   minPerOrder      Int       @default(1)
   salesStartAt     DateTime?
   salesEndAt       DateTime?
+  salesPausedAt    DateTime?
   isVisible        Boolean   @default(true)
   /// Free/guest types must set this false unless intentionally sold publicly at 0 kr
   isPubliclyPurchasable Boolean @default(true)
+  /// MANUAL (default) or AUTOMATIC batch/price progression
+  releaseMode      String    @default("MANUAL")
   sortOrder        Int       @default(0)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
@@ -474,10 +513,91 @@ model TicketType {
   tickets            Ticket[]
   promoCodes         PromoCode[]
   guestList          GuestListEntry[]
+  priceHistory       PriceHistory[]
+  batches            TicketBatch[]
 
   @@index([eventId, sortOrder])
   @@index([eventId, isVisible])
   @@index([taxTreatmentId])
+}
+
+/// Auditable price changes — never rewrite past orders/reservations
+model PriceHistory {
+  id           String   @id @default(cuid())
+  ticketTypeId String
+  oldPrice     Int
+  newPrice     Int
+  changedById  String?
+  reason       String?
+  ruleId       String? // optional automatic rule reference
+  changedAt    DateTime @default(now())
+
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+
+  @@index([ticketTypeId, changedAt])
+}
+
+/// Optional sales batches / drops (organizer-defined; not always shown to customer)
+model TicketBatch {
+  id           String    @id @default(cuid())
+  eventId      String
+  ticketTypeId String
+  name         String?
+  quantity     Int
+  price        Int // øre at batch open
+  sortOrder    Int       @default(0)
+  releasedAt   DateTime?
+  closedAt     DateTime?
+  autoOpen     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, sortOrder])
+  @@index([ticketTypeId])
+}
+
+/// Waitlist stub — full waitlist post-launch
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  eventId   String
+  email     String
+  name      String?
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  notifiedAt DateTime?
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, createdAt])
+  @@index([email])
+}
+
+/// Lightweight funnel / traffic analytics (not financial SoT)
+model AnalyticsEvent {
+  id           String             @id @default(cuid())
+  eventId      String?
+  organizationId String?
+  type         AnalyticsEventType
+  sessionId    String?
+  orderId      String?
+  utmSource    String?
+  utmMedium    String?
+  utmCampaign  String?
+  utmContent   String?
+  utmTerm      String?
+  referrer     String?
+  path         String?
+  meta         Json?
+  createdAt    DateTime           @default(now())
+
+  event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, type, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([sessionId])
+  @@index([createdAt])
 }
 
 /// Early-bird / tiered pricing: first N tickets at price X, next M at Y, etc.
@@ -507,6 +627,10 @@ model TicketReservation {
   status       ReservationStatus @default(ACTIVE)
   expiresAt    DateTime
   orderId      String?
+  /// Locked unit price (øre) at reservation time — admin price changes do not affect this
+  unitPriceSnapshot Int?
+  serviceFeeSnapshot Int?
+  lineTotalSnapshot  Int?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
 

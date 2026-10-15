@@ -26,6 +26,12 @@ export default async function AdminEventsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Arrangementer</h1>
+        <Link
+          href="/admin/events/new"
+          className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+        >
+          Nytt arrangement
+        </Link>
       </div>
       <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
         <table className="w-full text-left text-sm">

@@ -15,7 +15,7 @@ export class EventService {
     const now = new Date();
     return prisma.event.findMany({
       where: {
-        status: { in: [EventStatus.PUBLISHED, EventStatus.SOLD_OUT] },
+        status: { in: [EventStatus.PUBLISHED, EventStatus.PAUSED, EventStatus.SOLD_OUT] },
         visibility: "PUBLIC",
         startsAt: { gte: now },
         ...(params?.city ? { city: { equals: params.city, mode: "insensitive" } } : {}),
@@ -39,8 +39,8 @@ export class EventService {
       where: {
         slug,
         OR: [
-          { status: { in: [EventStatus.PUBLISHED, EventStatus.SOLD_OUT] } },
-          { visibility: "UNLISTED" },
+          { status: { in: [EventStatus.PUBLISHED, EventStatus.PAUSED, EventStatus.SOLD_OUT] } },
+          { visibility: "UNLISTED", status: { not: EventStatus.DRAFT } },
         ],
       },
       include: {
@@ -98,7 +98,11 @@ export class EventService {
   }
 
   static async publish(id: string, actorId?: string) {
-    return this.update(id, { status: EventStatus.PUBLISHED }, actorId);
+    return this.update(
+      id,
+      { status: EventStatus.PUBLISHED, salesPausedAt: null, visibility: "PUBLIC" },
+      actorId
+    );
   }
 
   static async cancel(

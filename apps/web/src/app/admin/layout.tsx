@@ -7,6 +7,8 @@ import { EventService } from "@/services/event-service";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) redirect("/login?callbackUrl=/admin");

@@ -4,6 +4,8 @@ import { EventCard } from "@/components/events/event-card";
 import { Button } from "@/components/ui/button";
 import { EventService } from "@/services/event-service";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const events = await EventService.listPublic({ take: 6 });
 

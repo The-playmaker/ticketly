@@ -234,9 +234,11 @@ async function main() {
         price,
         vatRate: 2500,
         quantityTotal,
+        quantityReleased: quantityTotal, // demo: fully released; real events start with a batch
         maxPerOrder: 8,
         minPerOrder: 1,
         isVisible: true,
+        isPubliclyPurchasable: true,
         sortOrder,
         priceTiers: tiers
           ? {
@@ -274,6 +276,7 @@ async function main() {
         description: "Gratis gjesteliste — kun via arrangør",
         price: 0,
         quantityTotal: 100,
+        quantityReleased: 0,
         maxPerOrder: 1,
         minPerOrder: 1,
         isVisible: false,

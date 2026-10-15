@@ -225,13 +225,50 @@ export class OrderService {
         }
       }
 
-      const pricing = calculatePricing({
+      // Prefer locked reservation snapshots so mid-checkout admin price changes do not alter total
+      const activeReservations = await tx.ticketReservation.findMany({
+        where: { sessionId: input.sessionId, status: "ACTIVE" },
+      });
+      let pricing = calculatePricing({
         organization: event.organization,
         event,
         ticketTypes,
         items: safeItems,
         promo,
       });
+      if (
+        activeReservations.length > 0 &&
+        activeReservations.every((r) => r.unitPriceSnapshot != null && r.lineTotalSnapshot != null)
+      ) {
+        const lines = activeReservations.map((r) => {
+          const tt = ticketTypes.find((t) => t.id === r.ticketTypeId);
+          return {
+            ticketTypeId: r.ticketTypeId,
+            name: tt?.name ?? "Billett",
+            quantity: r.quantity,
+            unitPrice: r.unitPriceSnapshot!,
+            serviceFeePerTicket: Math.round((r.serviceFeeSnapshot ?? 0) / r.quantity),
+            lineSubtotal: r.unitPriceSnapshot! * r.quantity,
+            lineServiceFee: r.serviceFeeSnapshot ?? 0,
+            lineTotal: r.lineTotalSnapshot!,
+          };
+        });
+        const subtotal = lines.reduce((s, l) => s + l.lineSubtotal, 0);
+        const serviceFee = lines.reduce((s, l) => s + l.lineServiceFee, 0);
+        let discount = 0;
+        if (promo) discount = applyPromo(promo, subtotal);
+        const tax = Math.round(Math.max(0, subtotal - discount) - Math.max(0, subtotal - discount) / 1.25);
+        pricing = {
+          lines,
+          subtotal,
+          serviceFee,
+          discount,
+          tax,
+          total: Math.max(0, subtotal - discount + serviceFee),
+          currency: event.currency,
+          promoCodeId: promo?.id,
+        };
+      }
 
       if (pricing.total < 0) throw new AppError("INVALID_TOTAL", "Ugyldig totalsum", 400);
 

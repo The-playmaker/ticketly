@@ -68,9 +68,14 @@ function mockEvent(overrides: Partial<Event> = {}): Event {
     capacity: 500,
     status: "PUBLISHED",
     visibility: "PUBLIC",
+    category: null,
     salesStartAt: null,
     salesEndAt: null,
     publishAt: null,
+    salesPausedAt: null,
+    availabilityDisplay: "SHOW_LOW_STOCK_ONLY",
+    lowStockThreshold: 10,
+    soldOutDisplay: "SOLD_OUT",
     allowTransfer: true,
     serviceFee: 2000,
     serviceFeeMode: ServiceFeeMode.ON_TOP,
@@ -97,14 +102,17 @@ describe("pricing & capacity", () => {
       serviceFeeTaxTreatmentId: null,
       serviceFee: null,
       quantityTotal: 350,
+      quantityReleased: 350,
       quantitySold: 50,
       quantityReserved: 0,
       maxPerOrder: 8,
       minPerOrder: 1,
       salesStartAt: null,
       salesEndAt: null,
+      salesPausedAt: null,
       isVisible: true,
       isPubliclyPurchasable: true,
+      releaseMode: "MANUAL",
       sortOrder: 1,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -118,8 +126,9 @@ describe("pricing & capacity", () => {
   });
 
   it("computes available quantity without overselling", () => {
-    expect(getAvailableQuantity({ quantityTotal: 100, quantitySold: 90, quantityReserved: 10 })).toBe(0);
-    expect(getAvailableQuantity({ quantityTotal: 100, quantitySold: 90, quantityReserved: 5 })).toBe(5);
+    expect(getAvailableQuantity({ quantityReleased: 100, quantitySold: 90, quantityReserved: 10 })).toBe(0);
+    expect(getAvailableQuantity({ quantityReleased: 100, quantitySold: 90, quantityReserved: 5 })).toBe(5);
+    expect(getAvailableQuantity({ quantityTotal: 500, quantityReleased: 50, quantitySold: 40, quantityReserved: 5 })).toBe(5);
   });
 
   it("adds service fee on top", () => {
@@ -134,14 +143,17 @@ describe("pricing & capacity", () => {
       serviceFeeTaxTreatmentId: null,
       serviceFee: null,
       quantityTotal: 50,
+      quantityReleased: 50,
       quantitySold: 0,
       quantityReserved: 0,
       maxPerOrder: 4,
       minPerOrder: 1,
       salesStartAt: null,
       salesEndAt: null,
+      salesPausedAt: null,
       isVisible: true,
       isPubliclyPurchasable: true,
+      releaseMode: "MANUAL",
       sortOrder: 0,
       createdAt: new Date(),
       updatedAt: new Date(),

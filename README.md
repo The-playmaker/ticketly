@@ -28,13 +28,18 @@ npm run dev:mobile       # Expo (port 8082)
 
 Docker: `docker compose up --build` (web + Postgres).
 
-## Hardening / ops docs
+## Hardening / launch docs
 
+- [docs/LAUNCH_CHECKLIST.md](docs/LAUNCH_CHECKLIST.md) — **start here for tomorrow**
+- [docs/LAUNCH_GAP_ANALYSIS.md](docs/LAUNCH_GAP_ANALYSIS.md)
+- [docs/VERCEL_DEPLOYMENT.md](docs/VERCEL_DEPLOYMENT.md)
 - [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)
 - [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md)
 - [docs/BACKUP_AND_RECOVERY.md](docs/BACKUP_AND_RECOVERY.md)
 - [docs/TICKET_STATE_MACHINE.md](docs/TICKET_STATE_MACHINE.md)
 - [docs/LOAD_TESTING.md](docs/LOAD_TESTING.md)
+
+Organizer: `/admin` → **Nytt arrangement** → release inventory → publish → share `/events/{slug}`.
 
 ```bash
 npm test                 # unit + integration

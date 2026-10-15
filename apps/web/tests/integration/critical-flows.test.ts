@@ -35,6 +35,7 @@ describe("integration: reservation race & check-in", () => {
         name: `RaceTest-${Date.now()}`,
         price: 10000,
         quantityTotal: 1,
+        quantityReleased: 1,
         quantitySold: 0,
         quantityReserved: 0,
         maxPerOrder: 1,

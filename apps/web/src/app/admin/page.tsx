@@ -76,9 +76,14 @@ export default async function AdminDashboardPage() {
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Arrangementer</h2>
-          <Link href="/admin/events" className="text-sm text-amber-700 hover:underline">
-            Se alle
-          </Link>
+          <div className="flex gap-3 text-sm">
+            <Link href="/admin/events/new" className="font-medium text-zinc-900 hover:underline">
+              Nytt arrangement
+            </Link>
+            <Link href="/admin/events" className="text-amber-700 hover:underline">
+              Se alle
+            </Link>
+          </div>
         </div>
         <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
           <table className="w-full text-left text-sm">

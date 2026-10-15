@@ -7,13 +7,47 @@ import { formatEventDate, formatEventTime } from "@/lib/time";
 import { formatMoney } from "@/lib/utils";
 import { getAvailableQuantity, resolveUnitPrice } from "@/services/reservation-service";
 import { TicketSelector } from "@/components/checkout/ticket-selector";
+import { TrackPageView } from "@/components/analytics/track-page-view";
 
 type Props = { params: Promise<{ slug: string }> };
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
   const event = await EventService.getBySlug(slug);
-  return { title: event?.name ?? "Arrangement" };
+  if (!event) return { title: "Arrangement" };
+  const title = event.name;
+  const description =
+    event.shortDescription ??
+    event.description?.slice(0, 160) ??
+    `${event.name} – billetter via Ticketly`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "http://localhost:3456";
+  const url = `${appUrl.replace(/\/$/, "")}/events/${event.slug}`;
+  const images = event.coverImageUrl ? [{ url: event.coverImageUrl }] : undefined;
+  const robots =
+    event.visibility === "PUBLIC" && event.status === "PUBLISHED"
+      ? { index: true, follow: true }
+      : { index: false, follow: false };
+
+  return {
+    title,
+    description,
+    robots,
+    openGraph: {
+      title,
+      description,
+      url,
+      type: "website",
+      images,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: event.coverImageUrl ? [event.coverImageUrl] : undefined,
+    },
+  };
 }
 
 export default async function EventDetailPage({ params }: Props) {
@@ -21,14 +55,35 @@ export default async function EventDetailPage({ params }: Props) {
   const event = await EventService.getBySlug(slug);
   if (!event) notFound();
 
+  const salesPaused = Boolean(event.salesPausedAt) || event.status === "PAUSED";
+  const soldOutDisplay = event.soldOutDisplay;
+  const availabilityDisplay = event.availabilityDisplay;
+  const lowStockThreshold = event.lowStockThreshold ?? 10;
   const types = event.ticketTypes.map((tt) => ({
     ...tt,
     available: getAvailableQuantity(tt),
     currentPrice: resolveUnitPrice(tt),
+    typePaused: Boolean(tt.salesPausedAt),
   }));
+
+  function availabilityLabel(available: number, soldOut: boolean) {
+    if (salesPaused) return "Salget er midlertidig satt på pause";
+    if (soldOut) {
+      if (soldOutDisplay === "MORE_COMING") return "Flere billetter kommer";
+      if (soldOutDisplay === "PAUSED") return "Salget er midlertidig satt på pause";
+      return "Utsolgt";
+    }
+    if (availabilityDisplay === "HIDE") return null;
+    if (availabilityDisplay === "SHOW_EXACT") return `${available} igjen`;
+    if (available <= lowStockThreshold) {
+      return available <= 5 ? "Få igjen" : `${available} igjen`;
+    }
+    return null;
+  }
 
   return (
     <div>
+      <TrackPageView eventId={event.id} organizationId={event.organizationId} />
       <SiteHeader />
       <main>
         <div className="relative h-[42vh] min-h-[280px] w-full overflow-hidden border-b border-zinc-800">
@@ -72,15 +127,18 @@ export default async function EventDetailPage({ params }: Props) {
               <p>
                 {event.address}, {event.postalCode} {event.city}
               </p>
-              <p>Kapasitet: {event.capacity}</p>
             </div>
           </div>
 
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5">
             <h2 className="font-display text-xl">Billetter</h2>
+            {salesPaused ? (
+              <p className="mt-4 text-sm text-amber-300">Salget er midlertidig satt på pause.</p>
+            ) : null}
             <ul className="mt-4 space-y-3">
               {types.map((tt) => {
-                const soldOut = tt.available <= 0;
+                const soldOut = tt.available <= 0 || tt.typePaused;
+                const label = availabilityLabel(tt.available, soldOut);
                 return (
                   <li
                     key={tt.id}
@@ -91,13 +149,11 @@ export default async function EventDetailPage({ params }: Props) {
                       {tt.description ? (
                         <p className="text-xs text-zinc-500">{tt.description}</p>
                       ) : null}
-                      {!soldOut && tt.available <= 30 ? (
-                        <p className="text-xs text-amber-400">{tt.available} igjen</p>
-                      ) : null}
+                      {label ? <p className="text-xs text-amber-400">{label}</p> : null}
                     </div>
                     <div className="text-right">
                       {soldOut ? (
-                        <Badge variant="danger">Utsolgt</Badge>
+                        <Badge variant="danger">{label ?? "Utsolgt"}</Badge>
                       ) : (
                         <p className="font-semibold text-amber-300">{formatMoney(tt.currentPrice)}</p>
                       )}
@@ -107,18 +163,22 @@ export default async function EventDetailPage({ params }: Props) {
               })}
             </ul>
             <div className="mt-6">
-              <TicketSelector
-                eventId={event.id}
-                eventSlug={event.slug}
-                ticketTypes={types.map((t) => ({
-                  id: t.id,
-                  name: t.name,
-                  price: t.currentPrice,
-                  available: t.available,
-                  minPerOrder: t.minPerOrder,
-                  maxPerOrder: t.maxPerOrder,
-                }))}
-              />
+              {salesPaused ? null : (
+                <TicketSelector
+                  eventId={event.id}
+                  eventSlug={event.slug}
+                  ticketTypes={types
+                    .filter((t) => !t.typePaused)
+                    .map((t) => ({
+                      id: t.id,
+                      name: t.name,
+                      price: t.currentPrice,
+                      available: t.available,
+                      minPerOrder: t.minPerOrder,
+                      maxPerOrder: t.maxPerOrder,
+                    }))}
+                />
+              )}
             </div>
           </div>
         </div>

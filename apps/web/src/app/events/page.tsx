@@ -3,6 +3,7 @@ import { EventCard } from "@/components/events/event-card";
 import { EventService } from "@/services/event-service";
 
 export const metadata = { title: "Arrangementer" };
+export const dynamic = "force-dynamic";
 
 export default async function EventsPage() {
   const events = await EventService.listPublic();

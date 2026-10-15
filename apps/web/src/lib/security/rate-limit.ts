@@ -1,5 +1,7 @@
 /**
- * Rate limit provider abstraction — Memory for single-node; swap for Redis in multi-instance.
+ * Rate limit provider abstraction — Memory for single-node;
+ * Upstash Redis (REST) when UPSTASH_REDIS_REST_URL + TOKEN are set.
+ * Never Vercel KV (sunset).
  */
 
 export type RateLimitResult = {
@@ -42,14 +44,58 @@ export class MemoryRateLimitProvider implements RateLimitProvider {
   }
 }
 
-/** TODO: RedisRateLimitProvider using INCR + PEXPIRE when REDIS_URL is set */
-export class RedisRateLimitProvider implements RateLimitProvider {
-  async limit(_key: string, _limit: number, _windowMs: number): Promise<RateLimitResult> {
-    throw new Error("RedisRateLimitProvider not configured — set REDIS_URL and implement");
+/**
+ * Upstash Redis REST rate limiter (INCR + EXPIRE).
+ * Financial inventory remains in PostgreSQL — Redis is only for counters/limits.
+ */
+export class UpstashRedisRateLimitProvider implements RateLimitProvider {
+  constructor(
+    private url: string,
+    private token: string
+  ) {}
+
+  async limit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
+    const redisKey = `rl:${key}`;
+    const windowSec = Math.max(1, Math.ceil(windowMs / 1000));
+    const pipeline = [
+      ["INCR", redisKey],
+      ["EXPIRE", redisKey, String(windowSec), "NX"],
+      ["PTTL", redisKey],
+    ];
+    const res = await fetch(`${this.url}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(pipeline),
+    });
+    if (!res.ok) {
+      // Fail open to memory-less allow with logging — prefer availability at checkout
+      console.error("[rate-limit] upstash error", res.status);
+      return { success: true, remaining: limit, resetAt: Date.now() + windowMs };
+    }
+    const data = (await res.json()) as { result: number }[];
+    const count = Number(data[0]?.result ?? 1);
+    const pttl = Number(data[2]?.result ?? windowMs);
+    const resetAt = Date.now() + (pttl > 0 ? pttl : windowMs);
+    if (count > limit) {
+      return { success: false, remaining: 0, resetAt };
+    }
+    return { success: true, remaining: Math.max(0, limit - count), resetAt };
   }
 }
 
-let provider: RateLimitProvider = new MemoryRateLimitProvider();
+function createDefaultProvider(): RateLimitProvider {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (url && token) {
+    return new UpstashRedisRateLimitProvider(url, token);
+  }
+  return new MemoryRateLimitProvider();
+}
+
+let provider: RateLimitProvider = createDefaultProvider();
 
 export function getRateLimitProvider(): RateLimitProvider {
   return provider;
@@ -66,7 +112,8 @@ export function rateLimit(
 ): RateLimitResult {
   const result = provider.limit(key, limit, windowMs);
   if (result instanceof Promise) {
-    throw new Error("Async rate limiter requires await rateLimitAsync");
+    // Sync call sites: fall back to memory for unexpected async provider
+    return new MemoryRateLimitProvider().limit(key, limit, windowMs);
   }
   return result;
 }
