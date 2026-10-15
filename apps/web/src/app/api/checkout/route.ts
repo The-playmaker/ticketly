@@ -5,6 +5,7 @@ import { PaymentService } from "@/services/payment-service";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
 import { checkoutContactSchema } from "@/lib/validators";
 import { jsonError, AppError } from "@/lib/api-error";
+import { resolvePaymentProviderType } from "@/lib/payments";
 
 const bodySchema = checkoutContactSchema
   .extend({
@@ -24,6 +25,11 @@ const bodySchema = checkoutContactSchema
   })
   .strict();
 
+/**
+ * POST /api/checkout
+ * Creates pending order from reservation + starts provider checkout.
+ * Returns only client-safe payment session fields (never secret API keys).
+ */
 export async function POST(req: Request) {
   const ip = clientIp(req);
   const rl = rateLimit(`checkout-pay:${ip}`, 20);
@@ -40,7 +46,11 @@ export async function POST(req: Request) {
     // Reject client-supplied pricing fields (attack surface)
     const forbidden = ["price", "unitPrice", "subtotal", "discount", "tax", "serviceFee", "total"];
     for (const key of forbidden) {
-      if (key in (json as object) || (Array.isArray(json?.items) && json.items.some((i: Record<string, unknown>) => key in i))) {
+      if (
+        key in (json as object) ||
+        (Array.isArray(json?.items) &&
+          json.items.some((i: Record<string, unknown>) => key in i))
+      ) {
         throw new AppError("CLIENT_PRICE_REJECTED", "Prisfelter fra klient godtas ikke", 400);
       }
     }
@@ -65,16 +75,23 @@ export async function POST(req: Request) {
       termsVersion: parsed.data.termsVersion,
     });
 
-    const checkout = await PaymentService.startCheckout(order.id);
+    const provider = resolvePaymentProviderType();
+    const checkout = await PaymentService.startCheckout(order.id, provider);
 
+    // Client-safe payload only
     return NextResponse.json({
       orderId: order.id,
       orderNumber: order.orderNumber,
       accessToken: order.accessToken,
       total: order.total,
       currency: order.currency,
-      checkoutUrl: checkout.checkoutUrl,
+      provider,
+      paymentId: checkout.paymentId ?? checkout.sessionId,
       sessionId: checkout.sessionId,
+      integrationType: checkout.integrationType ?? "EmbeddedCheckout",
+      checkoutKey: checkout.checkoutKey,
+      checkoutScriptUrl: checkout.checkoutScriptUrl,
+      checkoutUrl: checkout.checkoutUrl,
     });
   } catch (e) {
     return jsonError(e);

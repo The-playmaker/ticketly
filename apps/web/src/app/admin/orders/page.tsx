@@ -39,7 +39,11 @@ export default async function AdminOrdersPage() {
           <tbody>
             {orders.map((o) => (
               <tr key={o.id} className="border-t border-zinc-100">
-                <td className="px-4 py-3 font-mono text-xs">{o.orderNumber}</td>
+                <td className="px-4 py-3 font-mono text-xs">
+                  <a className="text-amber-700 underline" href={`/admin/orders/${o.orderNumber}`}>
+                    {o.orderNumber}
+                  </a>
+                </td>
                 <td className="px-4 py-3">
                   {o.customerFirstName} {o.customerLastName}
                   <div className="text-xs text-zinc-500">{o.customerEmail}</div>

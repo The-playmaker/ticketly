@@ -28,9 +28,15 @@ npm run dev:mobile       # Expo (port 8082)
 
 Docker: `docker compose up --build` (web + Postgres).
 
+## Payments
+
+Production default: **Nexi Checkout** (`PAYMENT_PROVIDER=nexi`). Stripe is optional/fallback.
+Local demo: `PAYMENT_PROVIDER=mock`. See [docs/PAYMENTS.md](docs/PAYMENTS.md) and [docs/NEXI_CHECKOUT.md](docs/NEXI_CHECKOUT.md).
+
 ## Hardening / launch docs
 
 - [docs/LAUNCH_CHECKLIST.md](docs/LAUNCH_CHECKLIST.md) — **start here for tomorrow**
+- [docs/PAYMENTS.md](docs/PAYMENTS.md) · [docs/NEXI_CHECKOUT.md](docs/NEXI_CHECKOUT.md)
 - [docs/LAUNCH_GAP_ANALYSIS.md](docs/LAUNCH_GAP_ANALYSIS.md)
 - [docs/VERCEL_DEPLOYMENT.md](docs/VERCEL_DEPLOYMENT.md)
 - [docs/SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md)
@@ -38,6 +44,7 @@ Docker: `docker compose up --build` (web + Postgres).
 - [docs/BACKUP_AND_RECOVERY.md](docs/BACKUP_AND_RECOVERY.md)
 - [docs/TICKET_STATE_MACHINE.md](docs/TICKET_STATE_MACHINE.md)
 - [docs/LOAD_TESTING.md](docs/LOAD_TESTING.md)
+- [docs/MOBILE_PAYMENTS.md](docs/MOBILE_PAYMENTS.md)
 
 Organizer: `/admin` → **Nytt arrangement** → release inventory → publish → share `/events/{slug}`.
 

@@ -27,7 +27,7 @@ export class VippsPaymentProvider implements PaymentProvider {
   async createCheckout(_input: CreateCheckoutInput): Promise<CreateCheckoutResult> {
     // TODO: Call Vipps MobilePay ePayment API create payment
     throw new Error(
-      "Vipps MobilePay is not implemented yet. Use Stripe. See VippsPaymentProvider TODO."
+      "Standalone Vipps ePayment is not implemented. Enable Vipps on Nexi Checkout (PAYMENT_PROVIDER=nexi)."
     );
   }
 

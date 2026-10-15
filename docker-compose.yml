@@ -28,10 +28,15 @@ services:
       APP_URL: http://localhost:3456
       NEXT_PUBLIC_APP_URL: http://localhost:3456
       AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production-use-openssl-rand}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-nexi}
+      NEXI_ENVIRONMENT: ${NEXI_ENVIRONMENT:-test}
+      NEXI_SECRET_API_KEY: ${NEXI_SECRET_API_KEY:-}
+      NEXI_CHECKOUT_KEY: ${NEXI_CHECKOUT_KEY:-}
+      NEXI_WEBHOOK_SECRET: ${NEXI_WEBHOOK_SECRET:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_placeholder}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_placeholder}
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-pk_test_placeholder}
-      STRIPE_MOCK_MODE: ${STRIPE_MOCK_MODE:-true}
+      STRIPE_MOCK_MODE: ${STRIPE_MOCK_MODE:-false}
       EMAIL_PROVIDER: ${EMAIL_PROVIDER:-console}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@ticketly.local}
       RESERVATION_TTL_MINUTES: "10"

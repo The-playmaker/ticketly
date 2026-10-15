@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +34,7 @@ export function CheckoutForm({
   items: { ticketTypeId: string; quantity: number }[];
   estimatedTotal: number;
 }) {
+  const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,8 +84,37 @@ export function CheckoutForm({
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Checkout feilet");
-      window.location.assign(data.checkoutUrl);
+      if (!res.ok) {
+        const msg =
+          data?.error?.message ??
+          (typeof data.error === "string" ? data.error : null) ??
+          "Checkout feilet";
+        throw new Error(msg);
+      }
+
+      // Free / hosted redirect
+      if (data.integrationType === "HostedPaymentPage" && data.checkoutUrl && !data.checkoutKey) {
+        window.location.assign(data.checkoutUrl);
+        return;
+      }
+
+      // Nexi EmbeddedCheckout — stay in Ticketly payment layout
+      if (data.paymentId && data.checkoutKey) {
+        const params = new URLSearchParams({
+          paymentId: data.paymentId,
+          orderNumber: data.orderNumber,
+          t: data.accessToken,
+        });
+        router.push(`/checkout/payment?${params.toString()}`);
+        return;
+      }
+
+      if (data.checkoutUrl) {
+        window.location.assign(data.checkoutUrl);
+        return;
+      }
+
+      throw new Error("Mangler betalingsøkt fra server");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Noe gikk galt");
       setLoading(false);
@@ -125,7 +156,13 @@ export function CheckoutForm({
       ) : null}
 
       {step >= 2 ? (
-        <form className="space-y-4" onSubmit={form.handleSubmit((v) => { setStep(3); void pay(v); })}>
+        <form
+          className="space-y-4"
+          onSubmit={form.handleSubmit((v) => {
+            setStep(3);
+            void pay(v);
+          })}
+        >
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="firstName">Fornavn</Label>
@@ -157,10 +194,11 @@ export function CheckoutForm({
           {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
           <Button className="w-full" size="lg" type="submit" disabled={loading}>
-            {loading ? "Sender til betaling…" : "Betal nå"}
+            {loading ? "Forbereder betaling…" : "Gå til betaling"}
           </Button>
           <p className="text-center text-xs text-zinc-500">
-            Guest checkout — konto er ikke påkrevd. Betaling bekreftes via sikker webhook.
+            Guest checkout — konto er ikke påkrevd. Betaling bekreftes via sikker webhook, ikke
+            success-URL alene.
           </p>
         </form>
       ) : null}

@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
 import { PaymentProviderType, PaymentStatus } from "@prisma/client";
 import { PaymentService } from "@/services/payment-service";
-import { isStripeMockMode } from "@/lib/payments";
+import { isMockPaymentMode, resolvePaymentProviderType } from "@/lib/payments";
 import { prisma } from "@/lib/db";
 import { jsonError } from "@/lib/api-error";
 
 /**
- * Completes a mock Stripe checkout session (local/demo only).
+ * Completes a mock checkout session (local/demo only).
  * Simulates webhook confirmation — frontend redirect alone never marks paid.
- * Forbidden when NODE_ENV=production or STRIPE_MOCK_MODE is off.
+ * Forbidden when NODE_ENV=production or mock mode is off.
  */
 export async function GET(req: Request) {
   try {
-    if (!isStripeMockMode()) {
+    if (!isMockPaymentMode()) {
       return NextResponse.json(
         { error: { code: "MOCK_PAYMENTS_DISABLED", message: "Mock payments disabled" } },
         { status: 403 }
@@ -40,12 +40,23 @@ export async function GET(req: Request) {
       );
     }
 
+    let provider: PaymentProviderType;
+    try {
+      provider = resolvePaymentProviderType();
+    } catch {
+      provider = PaymentProviderType.MOCK;
+    }
+    if (provider !== PaymentProviderType.MOCK && provider !== PaymentProviderType.STRIPE) {
+      provider = PaymentProviderType.MOCK;
+    }
+
     const eventId = `mock_evt_${sessionId}`;
     await PaymentService.handleProviderWebhook({
-      provider: PaymentProviderType.STRIPE,
+      provider,
       rawBody: JSON.stringify({
         id: eventId,
         type: "checkout.session.completed",
+        event: "mock.payment.completed",
         orderId,
         sessionId,
         paymentId: `mock_pi_${sessionId}`,

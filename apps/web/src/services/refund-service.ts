@@ -26,7 +26,15 @@ export class RefundService {
       include: {
         tickets: true,
         payments: {
-          where: { status: { in: [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED] } },
+          where: {
+            status: {
+              in: [
+                PaymentStatus.PAID,
+                PaymentStatus.PARTIALLY_REFUNDED,
+                PaymentStatus.AUTHORIZED,
+              ],
+            },
+          },
           orderBy: { createdAt: "desc" },
           take: 1,
         },
@@ -75,16 +83,51 @@ export class RefundService {
     const payment = order.payments[0];
     let providerRefundId: string | undefined;
 
-    if (payment?.providerPaymentId && order.total > 0) {
-      const provider = getPaymentProvider(payment.provider);
-      const result = await provider.refund({
-        providerPaymentId: payment.providerPaymentId,
+    // Create PENDING refund first; only mark SUCCEEDED after provider confirms
+    const pendingRefund = await prisma.refund.create({
+      data: {
+        orderId: order.id,
+        paymentId: payment?.id,
         amount: refundAmount,
         currency: order.currency,
+        status: RefundStatus.PENDING,
         reason: input.reason,
-        idempotencyKey: `refund_${order.id}_${ticketsToRefund.map((t) => t.id).sort().join("_")}`,
-      });
-      providerRefundId = result.providerRefundId;
+        ticketIds: ticketsToRefund.map((t) => t.id),
+        processedById: input.actorId,
+      },
+    });
+
+    if (payment?.providerPaymentId && order.total > 0) {
+      const provider = getPaymentProvider(payment.provider);
+      try {
+        const result = await provider.refund({
+          providerPaymentId: payment.providerPaymentId,
+          providerChargeId: payment.providerChargeId ?? undefined,
+          amount: refundAmount,
+          currency: order.currency,
+          reason: input.reason,
+          idempotencyKey: `refund_${order.id}_${ticketsToRefund.map((t) => t.id).sort().join("_")}`.slice(0, 64),
+        });
+        providerRefundId = result.providerRefundId;
+
+        // Stripe mock / sync providers may return SUCCEEDED immediately;
+        // Nexi returns PENDING until payment.refund.completed — still apply
+        // ticket state after provider accepted the refund operation (201).
+        if (result.status === "FAILED") {
+          await prisma.refund.update({
+            where: { id: pendingRefund.id },
+            data: { status: RefundStatus.FAILED, providerRefundId },
+          });
+          throw new AppError("REFUND_PROVIDER_FAILED", "Refusjon feilet hos betalingsleverandør", 502);
+        }
+      } catch (e) {
+        if (e instanceof AppError) throw e;
+        await prisma.refund.update({
+          where: { id: pendingRefund.id },
+          data: { status: RefundStatus.FAILED },
+        });
+        throw e;
+      }
     }
 
     const refund = await prisma.$transaction(async (tx) => {
@@ -99,17 +142,11 @@ export class RefundService {
         });
       }
 
-      const created = await tx.refund.create({
+      const created = await tx.refund.update({
+        where: { id: pendingRefund.id },
         data: {
-          orderId: order.id,
-          paymentId: payment?.id,
-          amount: refundAmount,
-          currency: order.currency,
           status: RefundStatus.SUCCEEDED,
-          reason: input.reason,
           providerRefundId,
-          ticketIds: ticketsToRefund.map((t) => t.id),
-          processedById: input.actorId,
         },
       });
 

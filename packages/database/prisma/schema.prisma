@@ -65,10 +65,13 @@ enum ServiceFeeMode {
 
 enum PaymentStatus {
   PENDING
+  AUTHORIZED
   PAID
   FAILED
+  CANCELLED
   REFUNDED
   PARTIALLY_REFUNDED
+  REVIEW_REQUIRED
 }
 
 enum OrderStatus {
@@ -103,11 +106,13 @@ enum CheckInResult {
 }
 
 enum PaymentProviderType {
+  NEXI
   STRIPE
   VIPPS
   NETS
   ADYEN
   KLARNA
+  MOCK
 }
 
 enum RefundStatus {
@@ -314,10 +319,34 @@ model Organization {
   taxTreatments      TaxTreatment[]
   retentionPolicies  RetentionPolicy[]
   offlineBundles     OfflineValidationBundle[]
+  paymentConfigs     OrganizationPaymentConfiguration[]
 
   @@index([slug])
   @@index([isActive])
   @@index([organizationNumber])
+}
+
+/// Per-organization payment account reference for future multi-merchant Nexi setups.
+/// NEVER store private/secret API keys as plaintext here — use secretRef to an env/vault alias.
+model OrganizationPaymentConfiguration {
+  id                 String              @id @default(cuid())
+  organizationId     String
+  provider           PaymentProviderType
+  /// Vault/env alias only (e.g. "env:NEXI_SECRET_API_KEY") — not the secret itself
+  secretRef          String?
+  /// Checkout key is client-safe (Nexi "checkout key")
+  checkoutKeyPublic  String?
+  merchantId         String?
+  environment        String? // test | production
+  isActive           Boolean             @default(true)
+  metadata           Json?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, provider])
+  @@index([organizationId, isActive])
 }
 
 model OrganizationMember {
@@ -729,9 +758,18 @@ model Payment {
   provider              PaymentProviderType
   providerPaymentId     String?
   providerSessionId     String?
+  /// Nexi charge id required for refunds after capture
+  providerChargeId      String?
+  /// Normalized method from provider (VIPPS, VISA, MASTERCARD, APPLEPAY, …)
+  paymentMethod         String?
+  /// CARD | WALLET | INVOICE | OTHER
+  paymentType           String?
+  /// Raw provider status string (not Ticketly domain state)
+  providerStatus        String?
   amount                Int
   currency              String              @default("NOK")
   status                PaymentStatus       @default(PENDING)
+  providerMetadata      Json?
   rawPayload            Json?
   idempotencyKey        String?             @unique
   createdAt             DateTime            @default(now())
@@ -743,6 +781,7 @@ model Payment {
   @@index([orderId])
   @@index([providerPaymentId])
   @@index([providerSessionId])
+  @@index([providerChargeId])
   @@index([status])
 }
 
@@ -768,17 +807,33 @@ model Refund {
   @@index([status])
 }
 
+enum WebhookProcessStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  SKIPPED
+  DUPLICATE
+}
+
 model WebhookEvent {
-  id          String   @id @default(cuid())
+  id          String               @id @default(cuid())
   provider    PaymentProviderType
   eventId     String // external event id for idempotency
   eventType   String
+  paymentId   String? // provider payment id when present
+  orderId     String?
   payload     Json
+  status      WebhookProcessStatus @default(RECEIVED)
+  error       String?
+  receivedAt  DateTime             @default(now())
   processedAt DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime             @default(now())
 
   @@unique([provider, eventId])
   @@index([eventType])
+  @@index([paymentId])
+  @@index([status])
+  @@index([receivedAt])
   @@index([createdAt])
 }
 

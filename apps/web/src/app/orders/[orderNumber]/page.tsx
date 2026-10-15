@@ -7,6 +7,7 @@ import { OrderService } from "@/services/order-service";
 import { formatMoney } from "@/lib/utils";
 import { formatEventDateTime } from "@/lib/time";
 import { TicketQrCard } from "@/components/tickets/ticket-qr-card";
+import { PaymentStatusPoller } from "@/components/orders/payment-status-poller";
 import { getOptionalSession } from "@/lib/auth/session";
 import { TicketService } from "@/services/ticket-service";
 import { timingSafeEqual } from "crypto";
@@ -48,19 +49,26 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
         {isPaid ? (
           <>
             <Badge variant="success">Betalt</Badge>
-            <h1 className="mt-3 font-display text-4xl text-white">Takk for kjøpet</h1>
+            <h1 className="mt-3 font-display text-4xl text-white">Billettene dine er klare</h1>
             <p className="mt-2 text-zinc-400">
               Ordrenummer <span className="font-mono text-zinc-200">{order.orderNumber}</span>
             </p>
           </>
         ) : pending ? (
           <>
-            <Badge variant="warning">Venter på betaling</Badge>
-            <h1 className="mt-3 font-display text-3xl">Behandler betaling…</h1>
+            <Badge variant="warning">Venter på bekreftelse</Badge>
+            <h1 className="mt-3 font-display text-3xl">Vi bekrefter betalingen…</h1>
             <p className="mt-2 text-zinc-400">
-              Vi venter på bekreftelse fra betalingsleverandør. Oppdater siden om noen sekunder.
-              {sp.checkout === "success" ? " (redirect er ikke nok — webhook bekrefter)" : null}
+              Success-siden er ikke betalingsbevis. Vi venter på bekreftet status fra
+              betalingsleverandør via webhook.
             </p>
+            {hasAccessToken ? (
+              <PaymentStatusPoller
+                orderNumber={order.orderNumber}
+                accessToken={order.accessToken}
+                initialStatus={order.paymentStatus}
+              />
+            ) : null}
           </>
         ) : (
           <>
