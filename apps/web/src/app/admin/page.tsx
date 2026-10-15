@@ -46,6 +46,17 @@ export default async function AdminDashboardPage() {
     { label: "Omsetning i dag", value: formatMoney(stats.revenueToday) },
     { label: "Omsetning totalt", value: formatMoney(stats.revenueTotal) },
     { label: "Solgte billetter", value: String(stats.ticketsSold) },
+    { label: "Ordrer (betalt)", value: String(stats.orderCount) },
+    {
+      label: "Konvertering",
+      value:
+        stats.conversionPercent == null
+          ? "Ikke tilgjengelig"
+          : `${stats.conversionPercent}%`,
+    },
+    { label: "Aktive reservasjoner", value: String(stats.activeReservations) },
+    { label: "Refundert", value: formatMoney(stats.refundedAmount) },
+    { label: "Feilede betalinger", value: String(stats.failedPayments) },
     { label: "Innsjekket", value: String(stats.checkedIn) },
     { label: "Kapasitet", value: `${stats.percentSold}% av ${stats.capacity}` },
     { label: "Snitt ordre", value: formatMoney(stats.averageOrderValue) },

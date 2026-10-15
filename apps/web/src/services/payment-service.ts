@@ -691,6 +691,18 @@ export class PaymentService {
     } catch (e) {
       console.error("OrderSnapshot failed", e);
     }
+    try {
+      await prisma.analyticsEvent.create({
+        data: {
+          type: "PAYMENT_SUCCESS",
+          eventId: order.eventId,
+          orderId: order.id,
+          organizationId: order.organizationId,
+        },
+      });
+    } catch {
+      /* non-blocking — email/analytics must not roll back paid order */
+    }
     return prisma.order.findUniqueOrThrow({ where: { id: order.id } });
   }
 }

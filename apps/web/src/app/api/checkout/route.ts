@@ -6,6 +6,7 @@ import { clientIp, rateLimit } from "@/lib/security/rate-limit";
 import { checkoutContactSchema } from "@/lib/validators";
 import { jsonError, AppError } from "@/lib/api-error";
 import { resolvePaymentProviderType } from "@/lib/payments";
+import { prisma } from "@/lib/db";
 
 const bodySchema = checkoutContactSchema
   .extend({
@@ -22,6 +23,11 @@ const bodySchema = checkoutContactSchema
       .max(20),
     termsAccepted: z.boolean().optional(),
     termsVersion: z.string().max(64).optional(),
+    utmSource: z.string().max(100).optional(),
+    utmMedium: z.string().max(100).optional(),
+    utmCampaign: z.string().max(100).optional(),
+    utmContent: z.string().max(100).optional(),
+    utmTerm: z.string().max(100).optional(),
   })
   .strict();
 
@@ -73,10 +79,47 @@ export async function POST(req: Request) {
       promoCode: parsed.data.promoCode,
       termsAccepted: parsed.data.termsAccepted,
       termsVersion: parsed.data.termsVersion,
+      attribution: {
+        utmSource: parsed.data.utmSource,
+        utmMedium: parsed.data.utmMedium,
+        utmCampaign: parsed.data.utmCampaign,
+        utmContent: parsed.data.utmContent,
+        utmTerm: parsed.data.utmTerm,
+      },
     });
+
+    // Funnel: checkout started (real analytics — not mocked)
+    try {
+      await prisma.analyticsEvent.create({
+        data: {
+          type: "CHECKOUT_STARTED",
+          eventId: order.eventId,
+          sessionId: parsed.data.sessionId,
+          utmSource: parsed.data.utmSource,
+          utmMedium: parsed.data.utmMedium,
+          utmCampaign: parsed.data.utmCampaign,
+        },
+      });
+    } catch {
+      /* non-blocking */
+    }
 
     const provider = resolvePaymentProviderType();
     const checkout = await PaymentService.startCheckout(order.id, provider);
+
+    try {
+      await prisma.analyticsEvent.create({
+        data: {
+          type: "PAYMENT_INITIATED",
+          eventId: order.eventId,
+          sessionId: parsed.data.sessionId,
+          orderId: order.id,
+          meta: { provider },
+        },
+      });
+    } catch {
+      /* non-blocking */
+    }
 
     // Client-safe payload only
     return NextResponse.json({

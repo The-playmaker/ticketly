@@ -212,12 +212,24 @@ export class EventService {
     const orders = await prisma.order.findMany({
       where: {
         organizationId,
-        paymentStatus: { in: [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED, PaymentStatus.REFUNDED] },
+        paymentStatus: {
+          in: [
+            PaymentStatus.PAID,
+            PaymentStatus.PARTIALLY_REFUNDED,
+            PaymentStatus.REFUNDED,
+            PaymentStatus.FAILED,
+            PaymentStatus.PENDING,
+          ],
+        },
       },
       select: { total: true, createdAt: true, paidAt: true, paymentStatus: true },
     });
 
-    const paid = orders.filter((o) => o.paymentStatus === PaymentStatus.PAID || o.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED);
+    const paid = orders.filter(
+      (o) =>
+        o.paymentStatus === PaymentStatus.PAID ||
+        o.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED
+    );
     const revenueTotal = paid.reduce((s, o) => s + o.total, 0);
     const revenueToday = paid
       .filter((o) => (o.paidAt ?? o.createdAt) >= startOfDay)
@@ -232,6 +244,31 @@ export class EventService {
     const checkedIn = await prisma.ticket.count({
       where: { event: { organizationId }, status: "CHECKED_IN" },
     });
+
+    const activeReservations = await prisma.ticketReservation.count({
+      where: {
+        status: "ACTIVE",
+        expiresAt: { gt: new Date() },
+        event: { organizationId },
+      },
+    });
+
+    const refundsAgg = await prisma.refund.aggregate({
+      where: { order: { organizationId }, status: "SUCCEEDED" },
+      _sum: { amount: true },
+      _count: true,
+    });
+
+    const failedPayments = orders.filter((o) => o.paymentStatus === PaymentStatus.FAILED).length;
+
+    const pageViews = await prisma.analyticsEvent.count({
+      where: { type: "PAGE_VIEW", event: { organizationId } },
+    });
+    const checkoutStarts = await prisma.analyticsEvent.count({
+      where: { type: "CHECKOUT_STARTED", event: { organizationId } },
+    });
+    const conversion =
+      pageViews > 0 ? Math.round((paid.length / pageViews) * 1000) / 10 : null;
 
     const events = await prisma.event.findMany({
       where: { organizationId },
@@ -252,6 +289,13 @@ export class EventService {
       percentSold: capacity > 0 ? Math.round((sold / capacity) * 100) : 0,
       averageOrderValue: paid.length ? Math.round(revenueTotal / paid.length) : 0,
       orderCount: paid.length,
+      activeReservations,
+      refundedAmount: refundsAgg._sum.amount ?? 0,
+      refundCount: refundsAgg._count,
+      failedPayments,
+      pageViews,
+      checkoutStarts,
+      conversionPercent: conversion,
     };
   }
 }

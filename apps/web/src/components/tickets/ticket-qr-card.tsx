@@ -42,7 +42,14 @@ export function TicketQrCard({ ticket, event, orderNumber }: Props) {
       ? "success"
       : ticket.status === "CHECKED_IN"
         ? "muted"
-        : "danger";
+        : ticket.status === "TRANSFERRED"
+          ? "warning"
+          : "danger";
+
+  const qrDisabled =
+    ticket.status === "REFUNDED" ||
+    ticket.status === "CANCELLED" ||
+    ticket.status === "TRANSFERRED";
 
   return (
     <article className="overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950">
@@ -60,7 +67,11 @@ export function TicketQrCard({ ticket, event, orderNumber }: Props) {
       </div>
       <div className="grid gap-4 p-5 sm:grid-cols-[auto_1fr] sm:items-center">
         <div className="mx-auto rounded-xl bg-white p-3">
-          {dataUrl ? (
+          {qrDisabled ? (
+            <div className="flex h-40 w-40 items-center justify-center p-2 text-center text-xs text-zinc-600">
+              QR ugyldig ({ticket.status})
+            </div>
+          ) : dataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={dataUrl} alt={`QR for ${ticket.publicId}`} className="h-40 w-40" />
           ) : (

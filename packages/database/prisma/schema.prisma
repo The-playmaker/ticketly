@@ -710,6 +710,12 @@ model Order {
   paymentAnomalyReason String?
   paidAt               DateTime?
   cancelledAt          DateTime?
+  /// Privacy-conscious traffic attribution (optional; from landing/checkout)
+  utmSource            String?
+  utmMedium            String?
+  utmCampaign          String?
+  utmContent           String?
+  utmTerm              String?
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 

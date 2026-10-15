@@ -53,6 +53,22 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             <p className="mt-2 text-zinc-400">
               Ordrenummer <span className="font-mono text-zinc-200">{order.orderNumber}</span>
             </p>
+            {order.payments[0]?.paymentMethod ? (
+              <p className="mt-1 text-sm text-zinc-500">
+                Betalt med {order.payments[0].paymentMethod}
+                {order.payments[0].provider === "NEXI" || order.payments[0].provider === "NETS"
+                  ? " via Nexi Checkout"
+                  : ""}
+              </p>
+            ) : null}
+          </>
+        ) : order.paymentAnomaly || order.paymentStatus === "REVIEW_REQUIRED" ? (
+          <>
+            <Badge variant="warning">Under gjennomgang</Badge>
+            <h1 className="mt-3 font-display text-3xl">Betaling under manuell gjennomgang</h1>
+            <p className="mt-2 text-zinc-400">
+              Ordren er midlertidig sperret. Kontakt support hvis du ble belastet.
+            </p>
           </>
         ) : pending ? (
           <>

@@ -73,6 +73,9 @@ export function CheckoutForm({
     setLoading(true);
     setError(null);
     try {
+      const params = new URLSearchParams(
+        typeof window !== "undefined" ? window.location.search : ""
+      );
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,6 +84,11 @@ export function CheckoutForm({
           sessionId,
           items,
           ...values,
+          utmSource: params.get("utm_source") ?? undefined,
+          utmMedium: params.get("utm_medium") ?? undefined,
+          utmCampaign: params.get("utm_campaign") ?? undefined,
+          utmContent: params.get("utm_content") ?? undefined,
+          utmTerm: params.get("utm_term") ?? undefined,
         }),
       });
       const data = await res.json();

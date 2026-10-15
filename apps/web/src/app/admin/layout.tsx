@@ -48,6 +48,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link href="/admin/reports" className="hover:text-zinc-900">
                 Rapporter
               </Link>
+              <Link href="/admin/settings" className="hover:text-zinc-900">
+                Innstillinger
+              </Link>
               <Link href="/scan" className="hover:text-zinc-900">
                 Scanner
               </Link>

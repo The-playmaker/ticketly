@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/layout/site-header";
-import { NexiEmbeddedCheckout } from "@/components/checkout/nexi-embedded-checkout";
+import { NexiCheckoutContainer } from "@/components/checkout/nexi-checkout-container";
 import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/utils";
 import { getNexiCheckoutKey, getNexiCheckoutScriptUrl } from "@/lib/payments/nexi-config";
@@ -49,7 +49,11 @@ export default async function CheckoutPaymentPage({ searchParams }: Props) {
         include: {
           event: { include: { organization: true } },
           items: true,
-          reservations: { where: { status: "ACTIVE" }, take: 1 },
+          reservations: {
+            where: { status: { in: ["ACTIVE", "EXPIRED", "CONVERTED"] } },
+            orderBy: { expiresAt: "desc" },
+            take: 1,
+          },
         },
       },
     },
@@ -85,7 +89,7 @@ export default async function CheckoutPaymentPage({ searchParams }: Props) {
   }
 
   const seller = order.event.organization;
-  const expiresAt = order.reservations[0]?.expiresAt;
+  const reservation = order.reservations[0];
 
   return (
     <div>
@@ -110,13 +114,16 @@ export default async function CheckoutPaymentPage({ searchParams }: Props) {
             </div>
 
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
-              <h2 className="mb-3 text-sm font-medium text-zinc-300">Betalingsmetode</h2>
-              <NexiEmbeddedCheckout
+              <NexiCheckoutContainer
                 paymentId={sp.paymentId}
                 checkoutKey={checkoutKey}
                 checkoutScriptUrl={checkoutScriptUrl}
                 orderNumber={order.orderNumber}
                 accessToken={order.accessToken}
+                paymentStatus={order.paymentStatus}
+                paymentAnomaly={order.paymentAnomaly}
+                reservationExpiresAt={reservation?.expiresAt?.toISOString() ?? null}
+                reservationStatus={reservation?.status ?? null}
               />
             </div>
           </section>
@@ -145,7 +152,9 @@ export default async function CheckoutPaymentPage({ searchParams }: Props) {
                 <span>Totalt</span>
                 <span>{formatMoney(order.total, order.currency)}</span>
               </div>
-              {expiresAt ? <ReservationCountdown expiresAt={expiresAt.toISOString()} /> : null}
+              {reservation?.expiresAt ? (
+                <ReservationCountdown expiresAt={reservation.expiresAt.toISOString()} />
+              ) : null}
             </div>
 
             <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 text-xs text-zinc-500">

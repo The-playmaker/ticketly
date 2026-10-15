@@ -22,6 +22,55 @@ export function minAllowedReleased(tt: {
   return tt.quantitySold + tt.quantityReserved;
 }
 
+/**
+ * Canonical inventory breakdown — single source of truth for admin/customer UI.
+ * available = released − sold − reserved
+ * unreleased = allocation − released
+ */
+export function inventorySnapshot(tt: {
+  quantityTotal: number;
+  quantityReleased: number;
+  quantitySold: number;
+  quantityReserved: number;
+}) {
+  return {
+    allocation: tt.quantityTotal,
+    released: tt.quantityReleased,
+    sold: tt.quantitySold,
+    reserved: tt.quantityReserved,
+    available: getReleasedAvailable(tt),
+    unreleased: getUnreleased(tt),
+    committed: minAllowedReleased(tt),
+  };
+}
+
+export function eventInventorySnapshot(
+  capacity: number,
+  types: Array<{
+    quantityTotal: number;
+    quantityReleased: number;
+    quantitySold: number;
+    quantityReserved: number;
+  }>
+) {
+  const allocation = types.reduce((s, t) => s + t.quantityTotal, 0);
+  const released = types.reduce((s, t) => s + t.quantityReleased, 0);
+  const sold = types.reduce((s, t) => s + t.quantitySold, 0);
+  const reserved = types.reduce((s, t) => s + t.quantityReserved, 0);
+  return {
+    capacity,
+    allocation,
+    released,
+    sold,
+    reserved,
+    available: Math.max(0, released - sold - reserved),
+    unreleased: Math.max(0, allocation - released),
+  };
+}
+
+/** Domain error when reducing release below sold + active reservations */
+export const INVENTORY_BELOW_COMMITTED = "INVENTORY_BELOW_COMMITTED";
+
 export class InventoryService {
   /** Release additional tickets for sale (+N). Caps at quantityTotal. */
   static async releaseMore(input: {
@@ -98,7 +147,7 @@ export class InventoryService {
       const min = minAllowedReleased(tt);
       if (input.newReleased < min) {
         throw new AppError(
-          "RELEASE_BELOW_COMMITTED",
+          INVENTORY_BELOW_COMMITTED,
           `Kan ikke redusere under ${min} (solgt ${tt.quantitySold} + reservert ${tt.quantityReserved})`,
           409
         );

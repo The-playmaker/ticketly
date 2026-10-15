@@ -158,6 +158,13 @@ export class OrderService {
     promoCode?: string;
     termsAccepted?: boolean;
     termsVersion?: string;
+    attribution?: {
+      utmSource?: string;
+      utmMedium?: string;
+      utmCampaign?: string;
+      utmContent?: string;
+      utmTerm?: string;
+    };
   }) {
     // Strip any client-supplied pricing if somehow present on items
     const safeItems = input.items.map((i) => ({
@@ -296,6 +303,11 @@ export class OrderService {
           reservationSessionId: input.sessionId,
           termsVersion,
           termsAcceptedAt: new Date(),
+          utmSource: input.attribution?.utmSource?.slice(0, 100),
+          utmMedium: input.attribution?.utmMedium?.slice(0, 100),
+          utmCampaign: input.attribution?.utmCampaign?.slice(0, 100),
+          utmContent: input.attribution?.utmContent?.slice(0, 100),
+          utmTerm: input.attribution?.utmTerm?.slice(0, 100),
           items: {
             create: pricing.lines.map((line) => ({
               ticketTypeId: line.ticketTypeId,

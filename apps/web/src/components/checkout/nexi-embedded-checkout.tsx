@@ -25,6 +25,8 @@ type Props = {
   orderNumber: string;
   accessToken: string;
   successPath?: string;
+  /** When set, stay on page and let container poll — do not treat as paid */
+  onPaymentCompleted?: () => void;
 };
 
 /**
@@ -38,6 +40,7 @@ export function NexiEmbeddedCheckout({
   orderNumber,
   accessToken,
   successPath,
+  onPaymentCompleted,
 }: Props) {
   const router = useRouter();
   const mounted = useRef(false);
@@ -65,10 +68,18 @@ export function NexiEmbeddedCheckout({
           language: "nb-NO",
         });
         checkout.on("payment-completed", () => {
-          const path =
-            successPath ??
-            `/orders/${orderNumber}?t=${encodeURIComponent(accessToken)}&checkout=success`;
-          router.push(path);
+          // Browser event is NOT payment proof — notify parent / navigate to waiting page
+          onPaymentCompleted?.();
+          if (!onPaymentCompleted) {
+            const path =
+              successPath ??
+              `/orders/${orderNumber}?t=${encodeURIComponent(accessToken)}&checkout=success`;
+            router.push(path);
+          } else {
+            router.push(
+              `/orders/${orderNumber}?t=${encodeURIComponent(accessToken)}&checkout=success`
+            );
+          }
         });
         checkout.on("pay-initialized", () => setLoading(false));
         setLoading(false);
@@ -86,7 +97,16 @@ export function NexiEmbeddedCheckout({
     return () => {
       // Keep script for SPA navigation; container is remounted per page
     };
-  }, [paymentId, checkoutKey, checkoutScriptUrl, orderNumber, accessToken, router, successPath]);
+  }, [
+    paymentId,
+    checkoutKey,
+    checkoutScriptUrl,
+    orderNumber,
+    accessToken,
+    router,
+    successPath,
+    onPaymentCompleted,
+  ]);
 
   return (
     <div className="space-y-3">
