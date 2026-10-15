@@ -287,6 +287,71 @@ async function main() {
   }
   void vip;
 
+  // Isolated Nexi sandbox event — never use production inventory
+  let paymentTestEvent = await prisma.event.findFirst({
+    where: { organizationId: titan.id, slug: "ticketly-payment-test" },
+  });
+  if (!paymentTestEvent) {
+    const testStarts = new Date();
+    testStarts.setDate(testStarts.getDate() + 30);
+    testStarts.setHours(20, 0, 0, 0);
+    const testEnds = new Date(testStarts);
+    testEnds.setHours(testEnds.getHours() + 3);
+    paymentTestEvent = await prisma.event.create({
+      data: {
+        organizationId: titan.id,
+        sellerOrganizationId: titan.id,
+        venueId: venue.id,
+        name: "TEST EVENT — Ticketly Payment Test",
+        slug: "ticketly-payment-test",
+        shortDescription: "Isolated Nexi sandbox payment verification event",
+        description:
+          "TEST EVENT. Capacity 10. Use only with NEXI_ENVIRONMENT=test. Do not sell real tickets.",
+        address: "Storgata 10",
+        postalCode: "0155",
+        city: "Oslo",
+        country: "NO",
+        timezone: "Europe/Oslo",
+        startsAt: testStarts,
+        endsAt: testEnds,
+        ageLimit: 18,
+        capacity: 10,
+        status: EventStatus.PUBLISHED,
+        visibility: Visibility.PUBLIC,
+        allowTransfer: false,
+        serviceFee: 0,
+        serviceFeeMode: ServiceFeeMode.ON_TOP,
+        currency: "NOK",
+      },
+    });
+  }
+  const existingSandboxType = await prisma.ticketType.findFirst({
+    where: { eventId: paymentTestEvent.id, name: "Sandbox Ticket" },
+  });
+  if (!existingSandboxType) {
+    await prisma.ticketType.create({
+      data: {
+        eventId: paymentTestEvent.id,
+        name: "Sandbox Ticket",
+        description: "TEST EVENT — 10 NOK Nexi sandbox ticket",
+        price: 1000, // 10.00 NOK
+        vatRate: 2500,
+        quantityTotal: 10,
+        quantityReleased: 10,
+        quantitySold: 0,
+        quantityReserved: 0,
+        maxPerOrder: 1,
+        minPerOrder: 1,
+        isVisible: true,
+        isPubliclyPurchasable: true,
+        sortOrder: 0,
+      },
+    });
+  }
+  console.log(
+    `Sandbox TEST EVENT ready: /events/${paymentTestEvent.slug} (10 NOK × 10 released)`
+  );
+
   // Promo
   await prisma.promoCode.upsert({
     where: {

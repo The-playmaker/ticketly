@@ -98,6 +98,8 @@ Page: `/checkout/payment?paymentId=…`
 - Admin → Webhooks: event, payment ID, order, received, processed, status, error
 - Safe replay re-runs **our** processing only (idempotent)
 - Payment health: `GET /api/admin/payments/health` (config status, no heavy API calls)
+- Platform diagnostics (SUPER_ADMIN): `/admin/platform/payments/diagnostics` — Configured/Missing only, never secrets
+- Sandbox evidence template: [NEXI_SANDBOX_VALIDATION.md](./NEXI_SANDBOX_VALIDATION.md)
 - Never log secret keys, full card data, or full QR tokens
 
 ## Sandbox test flow (required before production)

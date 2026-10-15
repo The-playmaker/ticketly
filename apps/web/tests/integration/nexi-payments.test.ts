@@ -28,8 +28,8 @@ describe("Nexi payment integration", () => {
     }
 
     process.env.NEXI_WEBHOOK_SECRET = "webhooksecret123456";
-    process.env.NEXI_SECRET_API_KEY = "test-secret-api-key-12345";
-    process.env.NEXI_CHECKOUT_KEY = "test-checkout-key-12345";
+    process.env.NEXI_SECRET_API_KEY = "nexi_unit_secret_abcdefghijklmnop";
+    process.env.NEXI_CHECKOUT_KEY = "nexi_unit_checkout_abcdefghijklmnop";
     process.env.NEXI_ENVIRONMENT = "test";
     process.env.APP_URL = "http://localhost:3456";
     process.env.PAYMENT_PROVIDER = "nexi";
@@ -413,6 +413,8 @@ describe("Nexi payment integration", () => {
         },
       },
     });
-    expect(row?.status).toBe(WebhookProcessStatus.SKIPPED);
+    // payment.created is acknowledged (PROCESSED) without side effects
+    expect(row?.status).toBe(WebhookProcessStatus.PROCESSED);
+    expect(await prisma.ticket.count({ where: { orderId: order.id } })).toBe(0);
   });
 });

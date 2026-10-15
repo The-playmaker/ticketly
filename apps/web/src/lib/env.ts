@@ -1,8 +1,11 @@
 import { z } from "zod";
+import { isPlaceholderCredential } from "@/lib/payments/nexi-config";
 
 /**
- * Environment validation for production / Vercel.
- * Call from instrumentation or startup — does not throw in development unless FORCE_ENV_VALIDATE=true.
+ * Environment validation for production / Vercel / PAYMENT_PROVIDER=nexi.
+ * Call from instrumentation or startup — does not throw in development unless
+ * FORCE_ENV_VALIDATE=true OR PAYMENT_PROVIDER=nexi with incomplete config.
+ * Never auto-falls back to mock, Stripe, or fake success.
  */
 const serverSchema = z.object({
   DATABASE_URL: z.string().min(1),
@@ -35,6 +38,38 @@ function paymentProviderName(env: NodeJS.ProcessEnv): string {
   return (env.PAYMENT_PROVIDER ?? "nexi").toLowerCase().trim();
 }
 
+function assertNexiEnv(env: NodeJS.ProcessEnv, data: ServerEnv): void {
+  if (!data.NEXI_SECRET_API_KEY || isPlaceholderCredential(data.NEXI_SECRET_API_KEY)) {
+    throw new Error(
+      "NEXI_SECRET_API_KEY required when PAYMENT_PROVIDER=nexi (no mock/Stripe/fake fallback)"
+    );
+  }
+  const checkoutKey = data.NEXI_CHECKOUT_KEY || data.NEXT_PUBLIC_NEXI_CHECKOUT_KEY;
+  if (!checkoutKey || isPlaceholderCredential(checkoutKey)) {
+    throw new Error("NEXI_CHECKOUT_KEY required when PAYMENT_PROVIDER=nexi");
+  }
+  if (
+    !data.NEXI_WEBHOOK_SECRET ||
+    data.NEXI_WEBHOOK_SECRET.length < 8 ||
+    data.NEXI_WEBHOOK_SECRET.length > 64 ||
+    isPlaceholderCredential(data.NEXI_WEBHOOK_SECRET)
+  ) {
+    throw new Error("NEXI_WEBHOOK_SECRET (8–64 chars, non-placeholder) required when PAYMENT_PROVIDER=nexi");
+  }
+  if (!data.APP_URL) {
+    throw new Error("APP_URL required when PAYMENT_PROVIDER=nexi (webhook + checkout return URLs)");
+  }
+  if (!data.DATABASE_URL) {
+    throw new Error("DATABASE_URL required when PAYMENT_PROVIDER=nexi");
+  }
+  const nexiEnv = (data.NEXI_ENVIRONMENT ?? "test").toLowerCase();
+  if (data.NODE_ENV === "production" && nexiEnv === "test" && env.ALLOW_NEXI_TEST_IN_PROD !== "true") {
+    console.warn(
+      "[env] NEXI_ENVIRONMENT=test in production — set production keys for real sales"
+    );
+  }
+}
+
 export function validateServerEnv(env: NodeJS.ProcessEnv = process.env): ServerEnv {
   const parsed = serverSchema.safeParse(env);
   if (!parsed.success) {
@@ -50,31 +85,34 @@ export function validateServerEnv(env: NodeJS.ProcessEnv = process.env): ServerE
 
   const data = parsed.data;
   const provider = paymentProviderName(env);
+  const isNexi = provider === "nexi" || provider === "nets" || provider === "nexi-checkout" || provider === "nets-easy";
+  const isProd = data.NODE_ENV === "production";
+  const force = env.FORCE_ENV_VALIDATE === "true";
 
-  if (data.NODE_ENV === "production") {
+  // When Nexi is selected, fail clearly — never silently fall back to mock/Stripe.
+  if (isNexi && (isProd || force || env.PAYMENT_PROVIDER)) {
+    // Skip strict throw only for Vitest unit suites that inject keys themselves mid-test.
+    if (env.VITEST !== "true" || force || isProd) {
+      try {
+        assertNexiEnv(env, data);
+      } catch (e) {
+        if (isProd || force || (env.PAYMENT_PROVIDER && env.VITEST !== "true")) {
+          throw e;
+        }
+        console.warn("[env]", e instanceof Error ? e.message : e);
+      }
+    }
+  }
+
+  if (isProd) {
     if (provider === "mock" || data.STRIPE_MOCK_MODE === "true") {
       throw new Error(
         "Mock payments are forbidden in production. Set PAYMENT_PROVIDER=nexi (or stripe) and STRIPE_MOCK_MODE=false"
       );
     }
 
-    if (provider === "nexi" || provider === "nets" || provider === "nexi-checkout") {
-      if (!data.NEXI_SECRET_API_KEY || data.NEXI_SECRET_API_KEY.includes("placeholder")) {
-        throw new Error("NEXI_SECRET_API_KEY required when PAYMENT_PROVIDER=nexi in production");
-      }
-      const checkoutKey = data.NEXI_CHECKOUT_KEY || data.NEXT_PUBLIC_NEXI_CHECKOUT_KEY;
-      if (!checkoutKey || checkoutKey.includes("placeholder")) {
-        throw new Error("NEXI_CHECKOUT_KEY required when PAYMENT_PROVIDER=nexi in production");
-      }
-      if (!data.NEXI_WEBHOOK_SECRET || data.NEXI_WEBHOOK_SECRET.length < 8) {
-        throw new Error("NEXI_WEBHOOK_SECRET (8–64 chars) required when PAYMENT_PROVIDER=nexi");
-      }
-      const nexiEnv = (data.NEXI_ENVIRONMENT ?? "production").toLowerCase();
-      if (nexiEnv === "test" && env.ALLOW_NEXI_TEST_IN_PROD !== "true") {
-        console.warn(
-          "[env] NEXI_ENVIRONMENT=test in production — set production keys for real sales"
-        );
-      }
+    if (isNexi) {
+      assertNexiEnv(env, data);
     } else if (provider === "stripe") {
       if (!data.STRIPE_SECRET_KEY?.startsWith("sk_")) {
         throw new Error("STRIPE_SECRET_KEY required when PAYMENT_PROVIDER=stripe in production");

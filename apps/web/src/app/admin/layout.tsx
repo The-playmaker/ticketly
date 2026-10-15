@@ -45,6 +45,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link href="/admin/webhooks" className="hover:text-zinc-900">
                 Webhooks
               </Link>
+              <Link
+                href="/admin/platform/payments/diagnostics"
+                className="hover:text-zinc-900"
+              >
+                Diagnostics
+              </Link>
               <Link href="/admin/reports" className="hover:text-zinc-900">
                 Rapporter
               </Link>

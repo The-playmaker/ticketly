@@ -4,8 +4,8 @@ import { PaymentStatus } from "@prisma/client";
 describe("NexiCheckoutProvider", () => {
   beforeEach(() => {
     process.env.NEXI_ENVIRONMENT = "test";
-    process.env.NEXI_SECRET_API_KEY = "test-secret-api-key-12345";
-    process.env.NEXI_CHECKOUT_KEY = "test-checkout-key-12345";
+    process.env.NEXI_SECRET_API_KEY = "nexi_unit_secret_abcdefghijklmnop";
+    process.env.NEXI_CHECKOUT_KEY = "nexi_unit_checkout_abcdefghijklmnop";
     process.env.NEXI_WEBHOOK_SECRET = "webhooksecret123456";
     process.env.APP_URL = "https://ticketly.test";
     process.env.PAYMENT_PROVIDER = "nexi";
@@ -64,7 +64,7 @@ describe("NexiCheckoutProvider", () => {
     });
 
     expect(result.paymentId).toBe("pay_abc123");
-    expect(result.checkoutKey).toBe("test-checkout-key-12345");
+    expect(result.checkoutKey).toBe("nexi_unit_checkout_abcdefghijklmnop");
     expect(result.integrationType).toBe("EmbeddedCheckout");
     expect(fetchMock).toHaveBeenCalledOnce();
     const body = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
