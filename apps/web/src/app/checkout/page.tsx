@@ -51,7 +51,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
       <main className="mx-auto max-w-lg px-4 py-10">
         <h1 className="font-display text-3xl">Checkout</h1>
         {params.cancelled ? (
-          <p className="mt-2 text-sm text-amber-400">Betaling avbrutt — billetter er fortsatt reservert en kort stund.</p>
+          <p className="mt-2 text-sm text-[color:var(--accent)]">Betaling avbrutt — billetter er fortsatt reservert en kort stund.</p>
         ) : null}
         <div className="mt-8">
           <CheckoutForm

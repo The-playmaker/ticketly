@@ -12,7 +12,7 @@ export function ReservationCountdown({ expiresAt }: { expiresAt: string }) {
 
   if (remaining <= 0) {
     return (
-      <p className="mt-3 text-xs text-amber-400">
+      <p className="mt-3 text-xs text-[color:var(--accent)]">
         Reservasjonen kan være utløpt — fullfør betaling snarest. Betalt ordre beholdes.
       </p>
     );
@@ -24,7 +24,7 @@ export function ReservationCountdown({ expiresAt }: { expiresAt: string }) {
   return (
     <p className="mt-3 text-xs text-zinc-400">
       Reservert{" "}
-      <span className="font-mono text-amber-300">
+      <span className="font-mono text-[color:var(--accent-soft)]">
         {mins}:{secs.toString().padStart(2, "0")}
       </span>
     </p>

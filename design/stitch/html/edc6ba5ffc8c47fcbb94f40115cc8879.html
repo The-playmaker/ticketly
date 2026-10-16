@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "secondary": "#c7c5d0", "tertiary-fixed-dim": "#ffb693", "error-container": "#93000a", "on-secondary-fixed-variant": "#46464e", "outline": "#ab897f", "on-surface-variant": "#e4beb3", "surface-bright": "#39393c", "primary": "#ffb59e", "surface-container-high": "#2a2a2d", "surface-container-low": "#1b1b1e", "background": "#131316", "on-secondary-container": "#b9b7c1", "secondary-fixed-dim": "#c7c5d0", "surface-variant": "#353438", "secondary-container": "#494851", "on-tertiary-container": "#4e1b00", "surface": "#131316", "on-error-container": "#ffdad6", "on-surface": "#e4e1e6", "on-error": "#690005", "on-primary": "#5e1700", "on-tertiary": "#561f00", "on-tertiary-fixed": "#351000", "surface-container-lowest": "#0e0e11", "surface-container-highest": "#353438", "secondary-fixed": "#e4e1ec", "on-background": "#e4e1e6", "on-primary-fixed": "#3a0b00", "surface-dim": "#131316", "primary-container": "#ff5a1f", "primary-fixed": "#ffdbd0", "on-secondary": "#303038", "inverse-surface": "#e4e1e6", "on-tertiary-fixed-variant": "#7a3000", "tertiary-container": "#f46600", "outline-variant": "#5b4038", "surface-container": "#1f1f22", "on-secondary-fixed": "#1b1b22", "on-primary-fixed-variant": "#852400", "tertiary": "#ffb693", "primary-fixed-dim": "#ffb59e", "tertiary-fixed": "#ffdbcc", "on-primary-container": "#541400", "surface-tint": "#ffb59e", "inverse-primary": "#ae3200", "error": "#ffb4ab", "inverse-on-surface": "#303033" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-sm": "0.5rem", "gutter": "1.5rem", "gutter-mobile": "1rem", "space-xs": "0.25rem", "space-md": "1rem", "margin-mobile": "1rem", "space-xl": "2.5rem", "space-lg": "1.5rem", "margin": "2.5rem" }, "fontFamily": { "headline-sm": [ "Space Grotesk" ], "label-lg": [ "Space Grotesk" ], "headline-lg": [ "Space Grotesk" ], "headline-xl-mobile": [ "Space Grotesk" ], "headline-lg-mobile": [ "Space Grotesk" ], "label-mono-sm": [ "Space Grotesk" ], "label-md": [ "Space Grotesk" ], "headline-xl": [ "Space Grotesk" ], "body-sm": [ "Inter" ], "headline-md": [ "Space Grotesk" ], "body-md": [ "Inter" ], "title-md": [ "Space Grotesk" ], "body-lg": [ "Inter" ] }, "fontSize": { "headline-sm": [ "20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "label-lg": [ "14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" } ], "headline-lg": [ "40px", { "lineHeight": "48px", "letterSpacing": "-0.025em", "fontWeight": "600" } ], "headline-xl-mobile": [ "36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "headline-lg-mobile": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "label-mono-sm": [ "11px", { "lineHeight": "14px", "letterSpacing": "0.08em", "fontWeight": "500" } ], "label-md": [ "12px", { "lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "600" } ], "headline-xl": [ "56px", { "lineHeight": "64px", "letterSpacing": "-0.03em", "fontWeight": "700" } ], "body-sm": [ "13px", { "lineHeight": "18px", "letterSpacing": "0em", "fontWeight": "400" } ], "headline-md": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "body-md": [ "15px", { "lineHeight": "22px", "letterSpacing": "-0.005em", "fontWeight": "400" } ], "title-md": [ "16px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "body-lg": [ "18px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "400" } ] } } } };</script></head><body class="bg-surface font-body-md text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container"><aside class="fixed left-0 top-0 h-screen w-72 bg-surface-container-lowest flex flex-col z-50 border-r border-surface-container-highest"><div class="h-16 px-gutter flex items-center justify-between border-b border-surface-container-highest"><div class="flex items-center gap-space-sm"><span class="font-headline-sm text-headline-sm uppercase tracking-wider text-on-surface">Ticketly</span><span class="px-space-xs py-0.5 rounded bg-primary-container text-on-primary-container font-label-mono-sm text-label-mono-sm uppercase tracking-wider font-semibold">Admin</span></div><span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span></div><div class="p-space-sm"><button class="w-full flex items-center justify-between px-space-md py-space-sm rounded bg-surface-container hover:bg-surface-container-high transition-colors text-left"><div class="flex items-center gap-space-sm overflow-hidden"><span class="material-symbols-outlined text-primary-container text-[18px]">domain</span><div class="truncate"><p class="font-label-md text-label-md text-on-surface truncate">Titan Events AS</p><p class="font-label-mono-sm text-label-mono-sm text-secondary truncate">Enterprise Tier</p></div></div><span class="material-symbols-outlined text-secondary text-[18px]">unfold_more</span></button></div><nav class="flex-1 px-space-sm py-space-xs space-y-0.5 overflow-y-auto" data-active-classes="bg-surface-container-high text-primary border-l-2 border-primary-container font-semibold"><a class="flex items-center px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="overview" href="#">Overview</a><a class="flex items-center px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="events" href="#">Events</a><a aria-current="page" class="flex items-center px-space-md py-space-sm rounded-lg transition-all bg-surface-container-high text-primary border-l-2 border-primary-container font-semibold" data-path="orders" href="#">Orders</a><a class="flex items-center px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="attendees" href="#">Attendees</a><a class="flex items-center px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="analytics" href="#">Analytics</a><a class="flex items-center px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="team" href="#">Team</a><a class="flex items-center px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="organization" href="#">Organization</a><a class="flex items-center px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="settings" href="#">Settings</a></nav><div class="p-space-sm border-t border-surface-container-highest flex flex-col gap-space-sm"><a class="flex items-center justify-between px-space-md py-space-sm rounded bg-surface-container-high hover:bg-surface-container-highest transition-colors" data-path="door-scanner" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-primary-container text-[20px]">qr_code_scanner</span><span class="font-label-lg text-label-lg text-on-surface">Åpne Dørskanner</span></div><span class="material-symbols-outlined text-secondary text-[16px]">north_east</span></a><div class="flex items-center justify-between px-space-md py-space-sm rounded bg-surface-container-lowest"><div class="flex items-center gap-space-sm overflow-hidden"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="truncate"><p class="font-label-md text-label-md text-on-surface truncate">Daniel</p><p class="font-label-mono-sm text-label-mono-sm text-secondary truncate">Organisator</p></div></div><button aria-label="Log out" class="text-secondary hover:text-primary-container transition-colors"><span class="material-symbols-outlined text-[18px]">logout</span></button></div></div></aside><div class="pl-72 flex flex-col min-h-screen"><header class="fixed top-0 left-72 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-md z-40 border-b border-surface-container-highest flex items-center justify-between px-gutter"><div class="flex items-center gap-space-sm"><span class="font-label-md text-label-md text-secondary">Titan Events AS</span><span class="material-symbols-outlined text-secondary text-[16px]">chevron_right</span><span class="font-label-md text-label-md text-on-surface font-semibold">Friday Night</span><span class="flex items-center gap-1 px-space-xs py-0.5 rounded bg-primary-container/20 text-primary-container font-label-mono-sm text-label-mono-sm font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-ping"></span>LIVE</span></div><div class="flex items-center gap-gutter"><div class="hidden xl:flex items-center gap-space-xs text-secondary font-label-mono-sm text-label-mono-sm"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>Nexi Checkout: Normal drift</span></div><div class="h-4 w-px bg-surface-container-highest hidden xl:block"></div><div class="hidden lg:flex items-center gap-space-xs text-secondary font-label-mono-sm text-label-mono-sm"><span class="material-symbols-outlined text-[16px]">schedule</span><span>22:42 CET</span></div><div class="flex items-center gap-space-sm"><a class="hidden sm:inline-flex items-center gap-1.5 px-space-md py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md transition-colors" data-path="door-scanner" href="#"><span class="material-symbols-outlined text-[16px]">qr_code_scanner</span>Dørskanner</a><button class="inline-flex items-center gap-1.5 px-space-md py-1.5 rounded bg-primary-container hover:bg-tertiary-container text-on-primary-container font-label-md text-label-md transition-colors shadow-sm font-semibold"><span class="material-symbols-outlined text-[16px]">add</span>Opprett arrangement</button><div class="relative ml-space-xs"><button aria-label="Notifications" class="p-2 text-secondary hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors relative"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-primary-container text-on-primary-container font-label-mono-sm text-[10px] font-bold flex items-center justify-center">2</span></button></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-space-xs"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-surface flex-1"><div class="flex flex-col w-full">
+<!-- Top Operativ Context Bar -->
+<div class="px-gutter py-space-md bg-surface-container-low flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+<div class="flex flex-wrap items-center gap-space-md">
+<div class="flex items-center gap-space-xs">
+<span class="w-2.5 h-2.5 rounded-full bg-primary-container animate-ping"></span>
+<span class="font-headline-sm text-headline-sm text-on-surface tracking-tight">Ordrehåndtering</span>
+</div>
+<span class="text-secondary font-label-mono-sm text-label-mono-sm tracking-wider uppercase">Live Transaksjonssenter • Titan Events AS</span>
+<div class="flex items-center gap-1.5 px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[14px] text-primary">sync</span>
+<span>Polling: Hvert 5. sek</span>
+</div>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="px-space-md py-1.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors flex items-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-[16px]">file_download</span>
+        Eksportér CSV
+      </button>
+<button class="px-space-md py-1.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors flex items-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-[16px]">receipt_long</span>
+        Månedsavstemming
+      </button>
+</div>
+</div>
+<!-- KPI Ticker / Grid -->
+<section class="p-gutter">
+<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-space-sm">
+<!-- Netto Omsetning -->
+<div class="p-space-md rounded-xl bg-surface-container-high relative overflow-hidden flex flex-col justify-between shadow-md">
+<div class="absolute -right-4 -bottom-4 w-20 h-20 bg-primary-container/10 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-primary tracking-widest uppercase">Netto Omsetning</span>
+<span class="material-symbols-outlined text-primary text-[18px]">account_balance_wallet</span>
+</div>
+<div class="mt-space-md">
+<p class="font-headline-md text-headline-md text-on-surface tracking-tight">91 395 <span class="text-body-sm font-body-sm text-secondary">kr</span></p>
+<div class="flex items-center gap-1 mt-1 text-primary text-label-mono-sm font-label-mono-sm">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
+<span>+14.2% siden igår</span>
+</div>
+</div>
+</div>
+<!-- Betalte Ordre -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary tracking-widest uppercase">Betalte Ordre</span>
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+</div>
+<div class="mt-space-md">
+<p class="font-headline-md text-headline-md text-on-surface tracking-tight">241</p>
+<p class="font-label-md text-label-md text-secondary">92 640 kr brutto</p>
+</div>
+</div>
+<!-- Ventende -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary tracking-widest uppercase">Ventende</span>
+<span class="w-2 h-2 rounded-full bg-amber-400"></span>
+</div>
+<div class="mt-space-md">
+<p class="font-headline-md text-headline-md text-on-surface tracking-tight">2</p>
+<p class="font-label-md text-label-md text-secondary">498 kr i kasseflyt</p>
+</div>
+</div>
+<!-- Refunderte -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary tracking-widest uppercase">Refunderte</span>
+<span class="material-symbols-outlined text-secondary text-[18px]">currency_exchange</span>
+</div>
+<div class="mt-space-md">
+<p class="font-headline-md text-headline-md text-on-surface tracking-tight">4</p>
+<p class="font-label-md text-label-md text-secondary">1 245 kr returnert</p>
+</div>
+</div>
+<!-- Delvis Refundert -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary tracking-widest uppercase">Delvis Refundert</span>
+<span class="w-2 h-2 rounded-full bg-orange-400"></span>
+</div>
+<div class="mt-space-md">
+<p class="font-headline-md text-headline-md text-on-surface tracking-tight">1</p>
+<p class="font-label-md text-label-md text-secondary">199 kr kreditert</p>
+</div>
+</div>
+<!-- Feilede / Nexi Avvist -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-error tracking-widest uppercase">Nexi Avvist</span>
+<span class="w-2 h-2 rounded-full bg-error animate-pulse"></span>
+</div>
+<div class="mt-space-md">
+<p class="font-headline-md text-headline-md text-error tracking-tight">3</p>
+<p class="font-label-md text-label-md text-secondary">Kortavvisninger</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Filter & Tab Toolbar -->
+<section class="px-gutter pb-space-md flex flex-col gap-space-md">
+<!-- Quick Filter Tabs -->
+<div class="flex flex-wrap items-center justify-between gap-space-md">
+<div class="flex flex-wrap items-center gap-1.5 p-1 rounded-lg bg-surface-container-lowest shadow-inner" id="statusFilterBar">
+<button class="px-space-md py-1.5 rounded text-on-primary-container bg-primary-container font-label-md text-label-md font-semibold transition-all shadow-sm">
+          Alle <span class="ml-1 opacity-80 font-label-mono-sm text-[11px]">248</span>
+</button>
+<button class="px-space-md py-1.5 rounded text-secondary hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all">
+          Betalt <span class="ml-1 opacity-70 font-label-mono-sm text-[11px]">241</span>
+</button>
+<button class="px-space-md py-1.5 rounded text-secondary hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all">
+          Ventende <span class="ml-1 opacity-70 font-label-mono-sm text-[11px]">2</span>
+</button>
+<button class="px-space-md py-1.5 rounded text-secondary hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all">
+          Feilet <span class="ml-1 opacity-70 font-label-mono-sm text-[11px]">3</span>
+</button>
+<button class="px-space-md py-1.5 rounded text-secondary hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all">
+          Refundert <span class="ml-1 opacity-70 font-label-mono-sm text-[11px]">4</span>
+</button>
+<button class="px-space-md py-1.5 rounded text-secondary hover:text-on-surface hover:bg-surface-container font-label-md text-label-md transition-all">
+          Delvis refundert <span class="ml-1 opacity-70 font-label-mono-sm text-[11px]">1</span>
+</button>
+</div>
+<div class="flex items-center gap-space-sm text-secondary font-label-mono-sm text-label-mono-sm">
+<span class="material-symbols-outlined text-[16px] text-emerald-400">check_circle</span>
+<span>Nexi Webhook: Aktiv (0 feil)</span>
+</div>
+</div>
+<!-- Search and Select Dropdowns -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-space-sm">
+<div class="md:col-span-6 relative">
+<span class="material-symbols-outlined text-secondary absolute left-space-md top-1/2 -translate-y-1/2 text-[18px]">search</span>
+<input class="w-full bg-surface-container-low text-on-surface placeholder:text-secondary/60 pl-11 pr-space-md py-2.5 rounded-lg font-body-md text-body-md outline-none focus:bg-surface-container transition-colors shadow-inner" placeholder="Søk etter ordrenr (#TKT-...), kundenavn, e-post, tlf eller billett-ID..." type="text"/>
+<div class="absolute right-space-md top-1/2 -translate-y-1/2 flex items-center gap-1">
+<kbd class="px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary font-label-mono-sm text-[10px]">⌘</kbd>
+<kbd class="px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary font-label-mono-sm text-[10px]">K</kbd>
+</div>
+</div>
+<div class="md:col-span-3">
+<div class="relative">
+<select class="w-full bg-surface-container-low text-on-surface px-space-md py-2.5 rounded-lg font-label-md text-label-md appearance-none outline-none focus:bg-surface-container cursor-pointer shadow-inner">
+<option value="all">Arrangement: Friday Night (Aktivt)</option>
+<option value="nordic">Arrangement: Nordic Lights 2026</option>
+<option value="every">Alle arrangementer (6)</option>
+</select>
+<span class="material-symbols-outlined text-secondary absolute right-space-md top-1/2 -translate-y-1/2 text-[18px] pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="md:col-span-3">
+<div class="relative">
+<select class="w-full bg-surface-container-low text-on-surface px-space-md py-2.5 rounded-lg font-label-md text-label-md appearance-none outline-none focus:bg-surface-container cursor-pointer shadow-inner">
+<option value="all">Betalingsmetode: Alle</option>
+<option value="vipps">Vipps (Mobil)</option>
+<option value="nexi">Kort / Nexi (Mastercard / Visa)</option>
+<option value="apple">Apple Pay</option>
+</select>
+<span class="material-symbols-outlined text-secondary absolute right-space-md top-1/2 -translate-y-1/2 text-[18px] pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+</section>
+<!-- High-Voltage Order Table -->
+<section class="px-gutter pb-space-xl flex-1">
+<div class="rounded-xl bg-surface-container-lowest overflow-hidden shadow-2xl">
+<div class="overflow-x-auto">
+<table class="w-full text-left font-body-sm text-body-sm">
+<thead>
+<tr class="bg-surface-container-low/70 text-secondary font-label-mono-sm text-label-mono-sm uppercase tracking-wider select-none">
+<th class="py-space-md pl-gutter pr-space-sm">Ordrenr</th>
+<th class="py-space-md px-space-md">Kunde</th>
+<th class="py-space-md px-space-md">Arrangement</th>
+<th class="py-space-md px-space-md">Billetter</th>
+<th class="py-space-md px-space-md">Betaling</th>
+<th class="py-space-md px-space-md text-right">Beløp</th>
+<th class="py-space-md px-space-md text-center">Status</th>
+<th class="py-space-md px-space-md">Opprettet</th>
+<th class="py-space-md pr-gutter pl-space-md text-right">Handling</th>
+</tr>
+</thead>
+<tbody class="divide-y-0 text-on-surface">
+<!-- Row 1: #TKT-2026-00124 (Active / Selected) -->
+<tr class="bg-surface-container-high/40 hover:bg-surface-container transition-colors group cursor-pointer" onclick="toggleDetailDrawer(true)">
+<td class="py-space-md pl-gutter pr-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+<span class="font-headline-sm text-[15px] font-semibold text-primary tracking-tight">#TKT-2026-00124</span>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface">Ola Nordmann</span>
+<span class="text-secondary font-label-mono-sm text-[11px] truncate">ola.nordmann@example.no</span>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-label-md text-label-md text-on-surface">Friday Night</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="inline-flex items-center gap-1.5 px-space-xs py-0.5 rounded bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm">
+<span class="font-semibold text-primary">2 ×</span> Early Bird
+                </div>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-orange-500"></span>
+<span class="font-label-md text-label-md">Vipps</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-right font-headline-sm text-[16px] text-on-surface font-semibold">
+                438,00 kr
+              </td>
+<td class="py-space-md px-space-md text-center">
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-label-mono-sm text-[11px] font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  PAID
+                </span>
+</td>
+<td class="py-space-md px-space-md font-label-mono-sm text-label-mono-sm text-secondary">
+                22:41:08
+              </td>
+<td class="py-space-md pr-gutter pl-space-md text-right">
+<button class="px-space-md py-1 rounded bg-primary-container hover:bg-tertiary-container text-on-primary-container font-label-md text-label-md font-semibold transition-all">
+                  Åpne
+                </button>
+</td>
+</tr>
+<!-- Row 2: #TKT-2026-00123 -->
+<tr class="hover:bg-surface-container-low transition-colors group cursor-pointer" onclick="toggleDetailDrawer(true)">
+<td class="py-space-md pl-gutter pr-space-sm">
+<span class="font-headline-sm text-[15px] font-semibold text-on-surface tracking-tight">#TKT-2026-00123</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface">Sarah T.</span>
+<span class="text-secondary font-label-mono-sm text-[11px] truncate">s.thorsen@example.no</span>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-label-md text-label-md text-on-surface">Friday Night</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="inline-flex items-center gap-1.5 px-space-xs py-0.5 rounded bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm">
+<span class="font-semibold text-primary">1 ×</span> VIP Mezzanine
+                </div>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-blue-400"></span>
+<span class="font-label-md text-label-md">Nexi Kort (Mastercard)</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-right font-headline-sm text-[16px] text-on-surface font-semibold">
+                499,00 kr
+              </td>
+<td class="py-space-md px-space-md text-center">
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-label-mono-sm text-[11px] font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  PAID
+                </span>
+</td>
+<td class="py-space-md px-space-md font-label-mono-sm text-label-mono-sm text-secondary">
+                22:40:11
+              </td>
+<td class="py-space-md pr-gutter pl-space-md text-right">
+<button class="px-space-md py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-all">
+                  Detaljer
+                </button>
+</td>
+</tr>
+<!-- Row 3: #TKT-2026-00122 -->
+<tr class="hover:bg-surface-container-low transition-colors group cursor-pointer" onclick="toggleDetailDrawer(true)">
+<td class="py-space-md pl-gutter pr-space-sm">
+<span class="font-headline-sm text-[15px] font-semibold text-on-surface tracking-tight">#TKT-2026-00122</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface">Martin K.</span>
+<span class="text-secondary font-label-mono-sm text-[11px] truncate">m.kristiansen@oslo.live</span>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-label-md text-label-md text-on-surface">Nordic Lights</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="inline-flex items-center gap-1.5 px-space-xs py-0.5 rounded bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm">
+<span class="font-semibold text-primary">4 ×</span> Early Bird
+                </div>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-orange-500"></span>
+<span class="font-label-md text-label-md">Vipps</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-right font-headline-sm text-[16px] text-on-surface font-semibold">
+                796,00 kr
+              </td>
+<td class="py-space-md px-space-md text-center">
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-label-mono-sm text-[11px] font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  PAID
+                </span>
+</td>
+<td class="py-space-md px-space-md font-label-mono-sm text-label-mono-sm text-secondary">
+                22:38:44
+              </td>
+<td class="py-space-md pr-gutter pl-space-md text-right">
+<button class="px-space-md py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-all">
+                  Detaljer
+                </button>
+</td>
+</tr>
+<!-- Row 4: #TKT-2026-00121 (REFUNDED) -->
+<tr class="hover:bg-surface-container-low transition-colors group cursor-pointer" onclick="toggleDetailDrawer(true)">
+<td class="py-space-md pl-gutter pr-space-sm">
+<span class="font-headline-sm text-[15px] font-semibold text-secondary tracking-tight">#TKT-2026-00121</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface">Henrik B.</span>
+<span class="text-secondary font-label-mono-sm text-[11px] truncate">h.berg@kongsberg.no</span>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-label-md text-label-md text-on-surface">Friday Night</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="inline-flex items-center gap-1.5 px-space-xs py-0.5 rounded bg-surface-container text-secondary font-label-mono-sm text-label-mono-sm">
+<span>1 ×</span> Ordinær
+                </div>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label-md text-label-md text-secondary">Nexi Kort</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-right font-headline-sm text-[16px] text-secondary font-semibold">
+                249,00 kr
+              </td>
+<td class="py-space-md px-space-md text-center">
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded bg-error-container/40 text-error font-label-mono-sm text-[11px] font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                  REFUNDED
+                </span>
+</td>
+<td class="py-space-md px-space-md font-label-mono-sm text-label-mono-sm text-secondary">
+                21:50:02
+              </td>
+<td class="py-space-md pr-gutter pl-space-md text-right">
+<button class="px-space-md py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-all">
+                  Detaljer
+                </button>
+</td>
+</tr>
+<!-- Row 5: #TKT-2026-00120 (PENDING) -->
+<tr class="hover:bg-surface-container-low transition-colors group cursor-pointer" onclick="toggleDetailDrawer(true)">
+<td class="py-space-md pl-gutter pr-space-sm">
+<span class="font-headline-sm text-[15px] font-semibold text-amber-300 tracking-tight">#TKT-2026-00120</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col">
+<span class="font-title-md text-title-md text-on-surface">Ingrid V.</span>
+<span class="text-secondary font-label-mono-sm text-[11px] truncate">ingrid.v@nordicmail.com</span>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-label-md text-label-md text-on-surface">Friday Night</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="inline-flex items-center gap-1.5 px-space-xs py-0.5 rounded bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm">
+<span>2 ×</span> Ordinær
+                </div>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-orange-500"></span>
+<span class="font-label-md text-label-md">Vipps</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-right font-headline-sm text-[16px] text-on-surface font-semibold">
+                498,00 kr
+              </td>
+<td class="py-space-md px-space-md text-center">
+<span class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded bg-amber-500/10 text-amber-300 font-label-mono-sm text-[11px] font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                  PENDING
+                </span>
+</td>
+<td class="py-space-md px-space-md font-label-mono-sm text-label-mono-sm text-secondary">
+                22:39:19
+              </td>
+<td class="py-space-md pr-gutter pl-space-md text-right">
+<button class="px-space-md py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-all">
+                  Detaljer
+                </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination / Operativ statusbar under tabell -->
+<div class="px-gutter py-space-sm bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-sm text-secondary font-label-mono-sm text-label-mono-sm">
+<div class="flex items-center gap-space-md">
+<span>Viser 1–5 av 248 ordre</span>
+<span>•</span>
+<span>Transaksjonshastighet: 1.4 req/s</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="p-1 rounded bg-surface-container text-secondary hover:text-on-surface disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined text-[16px]">chevron_left</span>
+</button>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface font-semibold">1</span>
+<button class="px-2 py-0.5 rounded hover:bg-surface-container text-secondary">2</button>
+<button class="px-2 py-0.5 rounded hover:bg-surface-container text-secondary">3</button>
+<span>...</span>
+<button class="px-2 py-0.5 rounded hover:bg-surface-container text-secondary">50</button>
+<button class="p-1 rounded bg-surface-container text-secondary hover:text-on-surface">
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- SLIDE-OVER DRAWER: ORDER DETAIL #TKT-2026-00124 -->
+<aside class="fixed top-0 right-0 h-screen w-full max-w-2xl bg-surface-container-lowest shadow-2xl z-50 flex flex-col transform translate-x-0 transition-transform duration-300 ease-out overflow-hidden" id="orderDrawer">
+<!-- Drawer Header -->
+<div class="px-gutter py-space-md bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-md">
+<div>
+<div class="flex items-center gap-space-sm">
+<h2 class="font-headline-sm text-headline-sm text-on-surface tracking-tight">#TKT-2026-00124</h2>
+<span class="inline-flex items-center gap-1 px-space-xs py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-label-mono-sm text-[11px] font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              PAID
+            </span>
+</div>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">Opprettet 24. okt 2026 • 22:39:12 CET</p>
+</div>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="px-space-md py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-error font-label-md text-label-md font-semibold transition-colors flex items-center gap-1.5 shadow-sm" onclick="openRefundModal()">
+<span class="material-symbols-outlined text-[16px]">restart_alt</span>
+          Start Refusjon
+        </button>
+<button class="p-2 text-secondary hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors" onclick="toggleDetailDrawer(false)">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<!-- Drawer Scrollable Body -->
+<div class="flex-1 overflow-y-auto p-gutter space-y-space-lg">
+<!-- Customer Card -->
+<div class="p-space-md rounded-xl bg-surface-container-low shadow-sm">
+<div class="flex items-center justify-between pb-space-sm mb-space-sm">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-wider">Kundeinformasjon</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary">ID: CUST-8812</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-sm">
+<div>
+<p class="font-label-md text-label-md text-secondary">Navn</p>
+<p class="font-title-md text-title-md text-on-surface font-semibold">Ola Nordmann</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-secondary">E-post</p>
+<p class="font-body-md text-body-md text-on-surface">ola.nordmann@example.no</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-secondary">Telefon</p>
+<p class="font-body-md text-body-md text-on-surface">+47 912 34 567</p>
+</div>
+</div>
+</div>
+<!-- Billetter spesifisert (Dual Ticket Compartments) -->
+<div>
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-wider">Utstedte Billetter (2)</span>
+<button class="text-primary font-label-mono-sm text-label-mono-sm hover:underline flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">send</span> Send alle på e-post
+          </button>
+</div>
+<div class="space-y-space-sm">
+<!-- Ticket Item 1 -->
+<div class="rounded-xl bg-surface-container-low p-space-md flex flex-col sm:flex-row sm:items-center justify-between gap-space-md shadow-sm">
+<div class="flex items-start gap-space-md">
+<div class="w-12 h-12 rounded bg-surface-container-highest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary-container text-[24px]">confirmation_number</span>
+</div>
+<div>
+<div class="flex items-center gap-space-xs">
+<p class="font-title-md text-title-md text-on-surface font-semibold">Early Bird Ticket</p>
+<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-label-mono-sm text-[10px] font-bold">VALID</span>
+</div>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">ID: TKT-00124-A • Ordinær inngang før kl. 23:00</p>
+<p class="font-label-md text-label-md text-primary font-semibold mt-1">199,00 kr</p>
+</div>
+</div>
+<div class="flex items-center gap-space-xs shrink-0">
+<button class="p-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors" title="Vis QR Kode">
+<span class="material-symbols-outlined text-[18px]">qr_code</span>
+</button>
+<button class="px-2.5 py-1.5 rounded bg-surface-container hover:bg-surface-container-high text-error font-label-mono-sm text-label-mono-sm transition-colors flex items-center gap-1" onclick="openRefundModal('TKT-00124-A')" title="Refunder billett">
+<span class="material-symbols-outlined text-[14px]">restart_alt</span> Refunder
+              </button>
+<button class="p-2 rounded bg-surface-container hover:bg-surface-container-high text-secondary hover:text-on-surface transition-colors" title="Send billett på nytt">
+<span class="material-symbols-outlined text-[18px]">forward_to_inbox</span>
+</button>
+</div>
+</div>
+<!-- Ticket Item 2 -->
+<div class="rounded-xl bg-surface-container-low p-space-md flex flex-col sm:flex-row sm:items-center justify-between gap-space-md shadow-sm">
+<div class="flex items-start gap-space-md">
+<div class="w-12 h-12 rounded bg-surface-container-highest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary-container text-[24px]">confirmation_number</span>
+</div>
+<div>
+<div class="flex items-center gap-space-xs">
+<p class="font-title-md text-title-md text-on-surface font-semibold">Early Bird Ticket</p>
+<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-label-mono-sm text-[10px] font-bold">VALID</span>
+</div>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">ID: TKT-00124-B • Ordinær inngang før kl. 23:00</p>
+<p class="font-label-md text-label-md text-primary font-semibold mt-1">199,00 kr</p>
+</div>
+</div>
+<div class="flex items-center gap-space-xs shrink-0">
+<button class="p-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors" title="Vis QR Kode">
+<span class="material-symbols-outlined text-[18px]">qr_code</span>
+</button>
+<button class="px-2.5 py-1.5 rounded bg-surface-container hover:bg-surface-container-high text-error font-label-mono-sm text-label-mono-sm transition-colors flex items-center gap-1" onclick="openRefundModal('TKT-00124-B')" title="Refunder billett">
+<span class="material-symbols-outlined text-[14px]">restart_alt</span> Refunder
+              </button>
+<button class="p-2 rounded bg-surface-container hover:bg-surface-container-high text-secondary hover:text-on-surface transition-colors" title="Send billett på nytt">
+<span class="material-symbols-outlined text-[18px]">forward_to_inbox</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Betalingsdetaljer (Nexi Checkout) -->
+<div class="p-space-md rounded-xl bg-surface-container-low shadow-sm">
+<div class="flex items-center justify-between pb-space-sm mb-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">lock</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-wider">Nexi Checkout (Nets Easy)</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-emerald-400 font-semibold">Sikker Transaksjon</span>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-space-sm mb-space-md">
+<div class="p-space-sm rounded bg-surface-container">
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">Betalingsmetode</p>
+<p class="font-label-md text-label-md text-on-surface font-semibold mt-0.5">Vipps</p>
+</div>
+<div class="p-space-sm rounded bg-surface-container">
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">Totalt Betalt</p>
+<p class="font-label-md text-label-md text-on-surface font-semibold mt-0.5">438,00 kr</p>
+</div>
+<div class="p-space-sm rounded bg-surface-container">
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">Formidling</p>
+<p class="font-label-md text-label-md text-on-surface font-semibold mt-0.5">40,00 kr</p>
+</div>
+<div class="p-space-sm rounded bg-surface-container">
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">Refundert hittil</p>
+<p class="font-label-md text-label-md text-on-surface font-semibold mt-0.5">0,00 kr</p>
+</div>
+</div>
+<div class="px-space-md py-space-sm rounded bg-surface-container-lowest flex items-center justify-between">
+<div class="flex items-center gap-space-sm overflow-hidden">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Payment ID:</span>
+<code class="font-label-mono-sm text-label-mono-sm text-primary tracking-wider truncate">nexi_pay_89f02c91823a</code>
+</div>
+<button class="text-secondary hover:text-on-surface transition-colors" title="Kopier referanse">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+</button>
+</div>
+</div>
+<!-- Operativ Revisjonstidslinje -->
+<div class="p-space-md rounded-xl bg-surface-container-low shadow-sm">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-wider block mb-space-md">Operativ Revisjonstidslinje</span>
+<div class="relative pl-6 space-y-space-md">
+<!-- Continuous Vertical Line -->
+<div class="absolute left-2.5 top-2 bottom-2 w-0.5 bg-surface-container-highest"></div>
+<!-- Event 1 -->
+<div class="relative flex items-start gap-space-sm">
+<span class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-secondary"></span>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-semibold">22:39:12 – Reservasjon opprettet</p>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">Handlekurv låst i 10 minutter av kunden (IP: 84.212.xx.xx)</p>
+</div>
+</div>
+<!-- Event 2 -->
+<div class="relative flex items-start gap-space-sm">
+<span class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-secondary"></span>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-semibold">22:40:05 – Nexi betalingssesjon initiert</p>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">Omdirigert til Vipps mobilapp via Nexi Checkout SDK</p>
+</div>
+</div>
+<!-- Event 3 -->
+<div class="relative flex items-start gap-space-sm">
+<span class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-semibold">22:41:08 – Betaling bekreftet</p>
+<p class="font-label-mono-sm text-label-mono-sm text-emerald-400">Webhook mottatt: nexi.checkout.completed (438,00 NOK)</p>
+</div>
+</div>
+<!-- Event 4 -->
+<div class="relative flex items-start gap-space-sm">
+<span class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-primary-container"></span>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-semibold">22:41:09 – 2 billetter utstedt</p>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">Kryptografisk signatur (HMAC-SHA256) generert for QR-koder</p>
+</div>
+</div>
+<!-- Event 5 -->
+<div class="relative flex items-start gap-space-sm">
+<span class="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-primary-container"></span>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-semibold">22:41:10 – Bekreftelses-e-post levert</p>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">Sendt til ola.nordmann@example.no via AWS SES (Message-ID: 010201...)</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Drawer Footer Actions -->
+<div class="p-gutter bg-surface-container-low flex items-center justify-between gap-space-md">
+<button class="px-space-md py-2.5 rounded bg-surface-container hover:bg-surface-container-high text-secondary hover:text-on-surface font-label-md text-label-md transition-colors" onclick="toggleDetailDrawer(false)">
+        Lukk panel
+      </button>
+<div class="flex items-center gap-space-sm">
+<button class="px-space-md py-2.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md transition-colors flex items-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-[16px]">receipt</span> Kvittering (PDF)
+        </button>
+<button class="px-space-lg py-2.5 rounded bg-primary-container hover:bg-tertiary-container text-on-primary-container font-label-md text-label-md font-semibold transition-colors shadow-sm" onclick="openRefundModal()">
+          Behandle Refusjon
+        </button>
+</div>
+</div>
+</aside>
+<!-- REFUND MODAL OVERLAY (State Driven) -->
+<div class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-gutter hidden" id="refundModal">
+<div class="w-full max-w-xl rounded-xl bg-surface-container-lowest shadow-2xl overflow-hidden flex flex-col">
+<!-- Modal Header -->
+<div class="px-gutter py-space-md bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary-container text-[22px]">currency_exchange</span>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface tracking-tight">Refunder Ordre #TKT-2026-00124</h3>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">Oppgjør returneres via Nexi Checkout til Vipps</p>
+</div>
+</div>
+<button class="p-1.5 text-secondary hover:text-on-surface rounded-lg hover:bg-surface-container transition-colors" onclick="closeRefundModal()">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Modal Body -->
+<div class="p-gutter space-y-space-lg">
+<!-- Refusjonsmodus Valg -->
+<div>
+<label class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-wider block mb-space-sm">Velg Refusjonstype</label>
+<div class="grid grid-cols-3 gap-space-sm">
+<label class="flex items-center gap-2 p-space-sm rounded-lg bg-surface-container cursor-pointer hover:bg-surface-container-high transition-colors">
+<input class="accent-primary-container" name="refundScope" onchange="updateRefundCalculation(this.value)" type="radio" value="full"/>
+<span class="font-label-md text-label-md text-on-surface">Hele ordren</span>
+</label>
+<label class="flex items-center gap-2 p-space-sm rounded-lg bg-surface-container-high cursor-pointer transition-colors">
+<input checked="" class="accent-primary-container" name="refundScope" onchange="updateRefundCalculation(this.value)" type="radio" value="single"/>
+<span class="font-label-md text-label-md text-primary font-semibold">Enkeltbilletter</span>
+</label>
+<label class="flex items-center gap-2 p-space-sm rounded-lg bg-surface-container cursor-pointer hover:bg-surface-container-high transition-colors">
+<input class="accent-primary-container" name="refundScope" onchange="updateRefundCalculation(this.value)" type="radio" value="custom"/>
+<span class="font-label-md text-label-md text-on-surface">Egendefinert</span>
+</label>
+</div>
+</div>
+<!-- Spesifikasjon av billetter for refusjon -->
+<div class="space-y-space-sm" id="singleTicketSelection">
+<label class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-wider block">Avhuking av billetter som skal kanselleres</label>
+<label class="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low cursor-pointer hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-space-sm">
+<input checked="" class="w-4 h-4 rounded bg-surface-container-highest accent-primary-container" id="chkTicketA" onchange="recalcTotal()" type="checkbox"/>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-semibold">Billett 1: Early Bird (TKT-00124-A)</p>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">Innehaver: Ola Nordmann</p>
+</div>
+</div>
+<span class="font-headline-sm text-[15px] font-semibold text-primary">199,00 kr</span>
+</label>
+<label class="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low cursor-pointer hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-space-sm">
+<input class="w-4 h-4 rounded bg-surface-container-highest accent-primary-container" id="chkTicketB" onchange="recalcTotal()" type="checkbox"/>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-semibold">Billett 2: Early Bird (TKT-00124-B)</p>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">Innehaver: Ola Nordmann</p>
+</div>
+</div>
+<span class="font-headline-sm text-[15px] font-semibold text-secondary">199,00 kr</span>
+</label>
+</div>
+<!-- Formidlingsgebyr Behandling -->
+<div class="p-space-sm rounded-lg bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<input checked="" class="w-4 h-4 rounded accent-primary-container" id="retainFee" type="checkbox"/>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-semibold">Behold formidlingsgebyr</p>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary">40,00 kr i plattformgebyr holdes tilbake fra kunden</p>
+</div>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-emerald-400 font-semibold">+40,00 kr beholdt</span>
+</div>
+<!-- Sikkerhetsvarsel -->
+<div class="p-space-sm rounded-lg bg-error-container/20 flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-error text-[18px] shrink-0 mt-0.5">warning</span>
+<p class="font-body-sm text-body-sm text-on-error-container">
+            Dette vil gjøre den valgte billetten ugyldig for inngang umiddelbart etter at refusjonen er bekreftet av Nexi. Handling kan ikke angres.
+          </p>
+</div>
+</div>
+<!-- Modal Footer CTA -->
+<div class="p-gutter bg-surface-container-low flex items-center justify-between">
+<button class="px-space-md py-2.5 rounded bg-surface-container hover:bg-surface-container-high text-secondary hover:text-on-surface font-label-md text-label-md transition-colors" onclick="closeRefundModal()">
+          Avbryt
+        </button>
+<button class="px-space-xl py-2.5 rounded bg-primary-container hover:bg-tertiary-container text-on-primary-container font-label-md text-label-md font-semibold transition-all shadow-md" id="btnConfirmRefund" onclick="executeRefund()">
+          Refunder 199,00 kr
+        </button>
+</div>
+</div>
+</div>
+<!-- Micro-interaction JavaScript -->
+<script>
+    function toggleDetailDrawer(open) {
+      const drawer = document.getElementById('orderDrawer');
+      if (open) {
+        drawer.classList.remove('translate-x-full');
+        drawer.classList.add('translate-x-0');
+      } else {
+        drawer.classList.add('translate-x-full');
+        drawer.classList.remove('translate-x-0');
+      }
+    }
+
+    function openRefundModal(ticketId) {
+      const modal = document.getElementById('refundModal');
+      modal.classList.remove('hidden');
+      if (ticketId === 'TKT-00124-B') {
+        document.getElementById('chkTicketA').checked = false;
+        document.getElementById('chkTicketB').checked = true;
+      } else if (ticketId === 'TKT-00124-A') {
+        document.getElementById('chkTicketA').checked = true;
+        document.getElementById('chkTicketB').checked = false;
+      }
+      recalcTotal();
+    }
+
+    function closeRefundModal() {
+      const modal = document.getElementById('refundModal');
+      modal.classList.add('hidden');
+    }
+
+    function updateRefundCalculation(scope) {
+      const btn = document.getElementById('btnConfirmRefund');
+      const ticketSelection = document.getElementById('singleTicketSelection');
+      
+      if (scope === 'full') {
+        ticketSelection.classList.add('opacity-40', 'pointer-events-none');
+        btn.textContent = 'Refunder 438,00 kr';
+      } else if (scope === 'single') {
+        ticketSelection.classList.remove('opacity-40', 'pointer-events-none');
+        recalcTotal();
+      } else {
+        ticketSelection.classList.remove('opacity-40', 'pointer-events-none');
+        btn.textContent = 'Refunder Egendefinert beløp';
+      }
+    }
+
+    function recalcTotal() {
+      const a = document.getElementById('chkTicketA').checked;
+      const b = document.getElementById('chkTicketB').checked;
+      const btn = document.getElementById('btnConfirmRefund');
+
+      let sum = 0;
+      if (a) sum += 199;
+      if (b) sum += 199;
+
+      if (sum === 0) {
+        btn.textContent = 'Velg minst én billett';
+        btn.disabled = true;
+        btn.classList.add('opacity-50');
+      } else {
+        btn.textContent = 'Refunder ' + sum + ',00 kr';
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+      }
+    }
+
+    function executeRefund() {
+      const btn = document.getElementById('btnConfirmRefund');
+      btn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin inline-block">progress_activity</span> Behandler hos Nexi...';
+      setTimeout(() => {
+        btn.textContent = 'Refusjon Fullført!';
+        btn.classList.remove('bg-primary-container');
+        btn.classList.add('bg-emerald-500', 'text-black');
+        setTimeout(() => {
+          closeRefundModal();
+          btn.classList.remove('bg-emerald-500', 'text-black');
+          btn.classList.add('bg-primary-container');
+          btn.textContent = 'Refunder 199,00 kr';
+        }, 1200);
+      }, 1000);
+    }
+  </script>
+</div></main><footer class="w-full border-t border-surface-container-highest bg-surface-container-lowest py-space-md px-gutter text-secondary font-label-mono-sm text-label-mono-sm flex items-center justify-between"><p>© 2024 Ticketly Platform. All rights reserved.</p><div class="flex items-center gap-space-md"><span>Cluster: EU-NORTH-1</span><span>Latency: 18ms</span></div></footer></div></body></html>

@@ -64,19 +64,39 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-zinc-500">Live salg og innsjekking for organisasjonen</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--accent)]">
+            Live transaksjonsmonitor
+          </p>
+          <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+            Oversikt &amp; salgsytelse
+          </h1>
+          <p className="mt-1 text-sm text-[color:var(--muted)]">
+            Live salg og innsjekking for organisasjonen
+          </p>
+        </div>
+        <Link
+          href="/admin/events/new"
+          className="rounded-md bg-[color:var(--accent)] px-3 py-2 text-sm font-semibold text-[color:var(--accent-foreground)]"
+        >
+          + Opprett arrangement
+        </Link>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {cards.map((c) => (
-          <Card key={c.label} className="border-zinc-200 bg-white text-zinc-900">
+          <Card
+            key={c.label}
+            className="border-[color:var(--outline)]/35 bg-[color:var(--surface-container)]"
+          >
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-zinc-500">{c.label}</CardTitle>
+              <CardTitle className="text-xs font-medium uppercase tracking-wide text-[color:var(--muted)]">
+                {c.label}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold">{c.value}</p>
+              <p className="font-display text-2xl font-semibold">{c.value}</p>
             </CardContent>
           </Card>
         ))}
@@ -86,37 +106,38 @@ export default async function AdminDashboardPage() {
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Arrangementer</h2>
-          <div className="flex gap-3 text-sm">
-            <Link href="/admin/events/new" className="font-medium text-zinc-900 hover:underline">
-              Nytt arrangement
-            </Link>
-            <Link href="/admin/events" className="text-amber-700 hover:underline">
-              Se alle
-            </Link>
-          </div>
+          <h2 className="font-display text-lg font-semibold">Operativ arrangementsstatus</h2>
+          <Link
+            href="/admin/events"
+            className="text-sm text-[color:var(--accent)] hover:brightness-110"
+          >
+            Se alle
+          </Link>
         </div>
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+        <div className="overflow-hidden rounded-lg border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)]">
           <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 text-zinc-500">
+            <thead className="bg-[color:var(--surface-high)] text-[color:var(--muted)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Navn</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Start</th>
-                <th className="px-4 py-3 font-medium"></th>
+                <th className="px-4 py-3 font-medium" />
               </tr>
             </thead>
             <tbody>
               {events.map((e) => (
-                <tr key={e.id} className="border-t border-zinc-100">
+                <tr key={e.id} className="border-t border-[color:var(--outline)]/20">
                   <td className="px-4 py-3 font-medium">{e.name}</td>
-                  <td className="px-4 py-3">{e.status}</td>
-                  <td className="px-4 py-3 text-zinc-500">
+                  <td className="px-4 py-3 text-[color:var(--muted)]">{e.status}</td>
+                  <td className="px-4 py-3 text-[color:var(--muted)]">
                     {e.startsAt.toLocaleString("nb-NO")}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link href={`/admin/events/${e.id}`} className="text-amber-700 hover:underline">
-                      Åpne
+                    <Link
+                      href={`/admin/events/${e.id}`}
+                      className="font-medium text-[color:var(--accent)] hover:brightness-110"
+                    >
+                      Åpne Event Control
                     </Link>
                   </td>
                 </tr>

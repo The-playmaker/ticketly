@@ -131,15 +131,15 @@ export function CheckoutForm({
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <div className="flex gap-2 text-xs uppercase tracking-wide text-zinc-500">
-        <span className={step >= 1 ? "text-amber-400" : ""}>1. Billetter</span>
+      <div className="flex gap-2 text-xs uppercase tracking-wide text-[color:var(--muted)]">
+        <span className={step >= 1 ? "text-[color:var(--accent)]" : ""}>1. Billetter</span>
         <span>·</span>
-        <span className={step >= 2 ? "text-amber-400" : ""}>2. Kontakt</span>
+        <span className={step >= 2 ? "text-[color:var(--accent)]" : ""}>2. Kontakt</span>
         <span>·</span>
-        <span className={step >= 3 ? "text-amber-400" : ""}>3. Betaling</span>
+        <span className={step >= 3 ? "text-[color:var(--accent)]" : ""}>3. Betaling</span>
       </div>
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+      <div className="rounded-xl border border-[color:var(--outline)]/30 bg-zinc-900/50 p-4">
         <p className="text-sm text-zinc-400">{eventName}</p>
         <p className="mt-1 text-lg font-semibold">
           {formatMoney(Math.max(0, estimatedTotal - promoDiscount))}
@@ -149,7 +149,7 @@ export function CheckoutForm({
             </span>
           ) : null}
         </p>
-        <p className="text-xs text-zinc-500">Serviceavgift beregnes i neste steg</p>
+        <p className="text-xs text-[color:var(--muted)]">Serviceavgift beregnes i neste steg</p>
       </div>
 
       {step === 1 ? (
@@ -204,7 +204,7 @@ export function CheckoutForm({
           <Button className="w-full" size="lg" type="submit" disabled={loading}>
             {loading ? "Forbereder betaling…" : "Gå til betaling"}
           </Button>
-          <p className="text-center text-xs text-zinc-500">
+          <p className="text-center text-xs text-[color:var(--muted)]">
             Guest checkout — konto er ikke påkrevd. Betaling bekreftes via sikker webhook, ikke
             success-URL alene.
           </p>

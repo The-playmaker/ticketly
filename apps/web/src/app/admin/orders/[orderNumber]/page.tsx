@@ -56,33 +56,33 @@ export default async function AdminOrderDetailPage({ params }: Props) {
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/admin/orders" className="text-sm text-zinc-500 hover:text-zinc-800">
+        <Link href="/admin/orders" className="text-sm text-[color:var(--muted)] hover:text-zinc-800">
           ← Ordrer
         </Link>
         <h1 className="mt-2 text-2xl font-semibold">Ordre {order.orderNumber}</h1>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-[color:var(--muted)]">
           {order.customerFirstName} {order.customerLastName} · {order.customerEmail}
         </p>
       </div>
 
       <section className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-zinc-200 bg-white p-5">
-          <h2 className="text-sm font-medium text-zinc-500">Betaling</h2>
+        <div className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5">
+          <h2 className="text-sm font-medium text-[color:var(--muted)]">Betaling</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Payment provider</dt>
+              <dt className="text-[color:var(--muted)]">Payment provider</dt>
               <dd>{payment ? providerLabel(payment.provider) : "—"}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Payment method</dt>
+              <dt className="text-[color:var(--muted)]">Payment method</dt>
               <dd>{payment?.paymentMethod ?? "—"}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Provider payment ID</dt>
+              <dt className="text-[color:var(--muted)]">Provider payment ID</dt>
               <dd className="font-mono text-xs">{payment?.providerPaymentId ?? "—"}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Status</dt>
+              <dt className="text-[color:var(--muted)]">Status</dt>
               <dd>
                 {order.paymentStatus}
                 {payment?.providerStatus ? (
@@ -91,18 +91,18 @@ export default async function AdminOrderDetailPage({ params }: Props) {
               </dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Paid amount</dt>
+              <dt className="text-[color:var(--muted)]">Paid amount</dt>
               <dd>{formatMoney(order.total, order.currency)}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Refunded amount</dt>
+              <dt className="text-[color:var(--muted)]">Refunded amount</dt>
               <dd>{formatMoney(refundedAmount, order.currency)}</dd>
             </div>
           </dl>
         </div>
 
-        <div className="rounded-xl border border-zinc-200 bg-white p-5">
-          <h2 className="text-sm font-medium text-zinc-500">Timeline</h2>
+        <div className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5">
+          <h2 className="text-sm font-medium text-[color:var(--muted)]">Timeline</h2>
           <ol className="mt-3 space-y-2 text-sm text-zinc-700">
             <li>Opprettet {order.createdAt.toISOString()}</li>
             {order.paidAt ? <li>Betalt {order.paidAt.toISOString()}</li> : null}
@@ -120,8 +120,8 @@ export default async function AdminOrderDetailPage({ params }: Props) {
         </div>
       </section>
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-5">
-        <h2 className="text-sm font-medium text-zinc-500">Billetter</h2>
+      <section className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5">
+        <h2 className="text-sm font-medium text-[color:var(--muted)]">Billetter</h2>
         <ul className="mt-3 divide-y divide-zinc-100 text-sm">
           {order.tickets.map((t) => (
             <li key={t.id} className="flex justify-between py-2">

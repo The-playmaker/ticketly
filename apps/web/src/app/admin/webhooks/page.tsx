@@ -24,13 +24,13 @@ export default async function AdminWebhooksPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Webhook-monitor</h1>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-[color:var(--muted)]">
           Nexi / Stripe events. Replay kjører kun vår egen idempotente prosessering.
         </p>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">
+      <div className="overflow-x-auto rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)]">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-50 text-zinc-500">
+          <thead className="bg-[color:var(--surface-high)] text-[color:var(--muted)]">
             <tr>
               <th className="px-3 py-2">Provider</th>
               <th className="px-3 py-2">Event</th>
@@ -45,7 +45,7 @@ export default async function AdminWebhooksPage() {
           </thead>
           <tbody>
             {events.map((e) => (
-              <tr key={e.id} className="border-t border-zinc-100">
+              <tr key={e.id} className="border-t border-[color:var(--outline)]/20">
                 <td className="px-3 py-2 font-mono text-xs">{e.provider}</td>
                 <td className="px-3 py-2 text-xs">{e.eventType}</td>
                 <td className="px-3 py-2 font-mono text-xs">{e.paymentId ?? "—"}</td>

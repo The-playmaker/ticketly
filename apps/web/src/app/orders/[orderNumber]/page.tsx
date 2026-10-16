@@ -54,7 +54,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
               Ordrenummer <span className="font-mono text-zinc-200">{order.orderNumber}</span>
             </p>
             {order.payments[0]?.paymentMethod ? (
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-[color:var(--muted)]">
                 Betalt med {order.payments[0].paymentMethod}
                 {order.payments[0].provider === "NEXI" || order.payments[0].provider === "NETS"
                   ? " via Nexi Checkout"
@@ -93,15 +93,15 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           </>
         )}
 
-        <div className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5">
-          <p className="text-sm text-zinc-500">Arrangement</p>
+        <div className="mt-8 rounded-2xl border border-[color:var(--outline)]/30 bg-zinc-900/50 p-5">
+          <p className="text-sm text-[color:var(--muted)]">Arrangement</p>
           <p className="text-lg font-medium">{order.event.name}</p>
           <p className="text-sm text-zinc-400">
             {formatEventDateTime(order.event.startsAt, order.event.timezone)} ·{" "}
             {order.event.venue?.name ?? order.event.city}
           </p>
-          <p className="mt-4 text-sm text-zinc-500">Totalt</p>
-          <p className="text-xl font-semibold text-amber-300">
+          <p className="mt-4 text-sm text-[color:var(--muted)]">Totalt</p>
+          <p className="text-xl font-semibold text-[color:var(--accent-soft)]">
             {formatMoney(order.total, order.currency)}
           </p>
         </div>

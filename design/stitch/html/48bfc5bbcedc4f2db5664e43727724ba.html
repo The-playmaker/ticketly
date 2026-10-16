@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "secondary": "#c7c5d0", "tertiary-fixed-dim": "#ffb693", "error-container": "#93000a", "on-secondary-fixed-variant": "#46464e", "outline": "#ab897f", "on-surface-variant": "#e4beb3", "surface-bright": "#39393c", "primary": "#ffb59e", "surface-container-high": "#2a2a2d", "surface-container-low": "#1b1b1e", "background": "#131316", "on-secondary-container": "#b9b7c1", "secondary-fixed-dim": "#c7c5d0", "surface-variant": "#353438", "secondary-container": "#494851", "on-tertiary-container": "#4e1b00", "surface": "#131316", "on-error-container": "#ffdad6", "on-surface": "#e4e1e6", "on-error": "#690005", "on-primary": "#5e1700", "on-tertiary": "#561f00", "on-tertiary-fixed": "#351000", "surface-container-lowest": "#0e0e11", "surface-container-highest": "#353438", "secondary-fixed": "#e4e1ec", "on-background": "#e4e1e6", "on-primary-fixed": "#3a0b00", "surface-dim": "#131316", "primary-container": "#ff5a1f", "primary-fixed": "#ffdbd0", "on-secondary": "#303038", "inverse-surface": "#e4e1e6", "on-tertiary-fixed-variant": "#7a3000", "tertiary-container": "#f46600", "outline-variant": "#5b4038", "surface-container": "#1f1f22", "on-secondary-fixed": "#1b1b22", "on-primary-fixed-variant": "#852400", "tertiary": "#ffb693", "primary-fixed-dim": "#ffb59e", "tertiary-fixed": "#ffdbcc", "on-primary-container": "#541400", "surface-tint": "#ffb59e", "inverse-primary": "#ae3200", "error": "#ffb4ab", "inverse-on-surface": "#303033" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-sm": "0.5rem", "gutter": "1.5rem", "gutter-mobile": "1rem", "space-xs": "0.25rem", "space-md": "1rem", "margin-mobile": "1rem", "space-xl": "2.5rem", "space-lg": "1.5rem", "margin": "2.5rem" }, "fontFamily": { "headline-sm": [ "Space Grotesk" ], "label-lg": [ "Space Grotesk" ], "headline-lg": [ "Space Grotesk" ], "headline-xl-mobile": [ "Space Grotesk" ], "headline-lg-mobile": [ "Space Grotesk" ], "label-mono-sm": [ "Space Grotesk" ], "label-md": [ "Space Grotesk" ], "headline-xl": [ "Space Grotesk" ], "body-sm": [ "Inter" ], "headline-md": [ "Space Grotesk" ], "body-md": [ "Inter" ], "title-md": [ "Space Grotesk" ], "body-lg": [ "Inter" ] }, "fontSize": { "headline-sm": [ "20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "label-lg": [ "14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" } ], "headline-lg": [ "40px", { "lineHeight": "48px", "letterSpacing": "-0.025em", "fontWeight": "600" } ], "headline-xl-mobile": [ "36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "headline-lg-mobile": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "label-mono-sm": [ "11px", { "lineHeight": "14px", "letterSpacing": "0.08em", "fontWeight": "500" } ], "label-md": [ "12px", { "lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "600" } ], "headline-xl": [ "56px", { "lineHeight": "64px", "letterSpacing": "-0.03em", "fontWeight": "700" } ], "body-sm": [ "13px", { "lineHeight": "18px", "letterSpacing": "0em", "fontWeight": "400" } ], "headline-md": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "body-md": [ "15px", { "lineHeight": "22px", "letterSpacing": "-0.005em", "fontWeight": "400" } ], "title-md": [ "16px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "body-lg": [ "18px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "400" } ] } } } };</script></head><body class="bg-surface font-body-md text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container"><aside class="fixed left-0 top-0 h-screen w-72 bg-surface-container-lowest flex flex-col z-50 border-r border-surface-container-highest"><div class="h-16 px-gutter flex items-center justify-between border-b border-surface-container-highest"><div class="flex items-center gap-space-sm"><span class="font-headline-sm text-headline-sm uppercase tracking-wider text-on-surface">Ticketly</span><span class="px-space-xs py-0.5 rounded bg-primary-container text-on-primary-container font-label-mono-sm text-label-mono-sm uppercase tracking-wider font-semibold">Admin</span></div><span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span></div><div class="p-space-sm"><button class="w-full flex items-center justify-between px-space-md py-space-sm rounded bg-surface-container hover:bg-surface-container-high transition-colors text-left"><div class="flex items-center gap-space-sm overflow-hidden"><span class="material-symbols-outlined text-primary-container text-[18px]">domain</span><div class="truncate"><p class="font-label-md text-label-md text-on-surface truncate">Titan Events AS</p><p class="font-label-mono-sm text-label-mono-sm text-secondary truncate">Enterprise Tier</p></div></div><span class="material-symbols-outlined text-secondary text-[18px]">unfold_more</span></button></div><nav class="flex-1 px-space-sm py-space-xs space-y-0.5 overflow-y-auto" data-active-classes="bg-surface-container-high text-primary border-l-2 border-primary-container font-semibold"><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="overview" href="#"><span class="material-symbols-outlined text-[20px]">dashboard</span>Overview</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="events" href="#"><span class="material-symbols-outlined text-[20px]">calendar_today</span>Events</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="orders" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span>Orders</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="attendees" href="#"><span class="material-symbols-outlined text-[20px]">group</span>Attendees</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="analytics" href="#"><span class="material-symbols-outlined text-[20px]">bar_chart</span>Analytics</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="team" href="#"><span class="material-symbols-outlined text-[20px]">badge</span>Team</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="organization" href="#"><span class="material-symbols-outlined text-[20px]">apartment</span>Organization</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span>Settings</a></nav><div class="p-space-sm border-t border-surface-container-highest flex flex-col gap-space-sm"><a class="flex items-center justify-between px-space-md py-space-sm rounded bg-surface-container-high hover:bg-surface-container-highest transition-colors" data-path="door-scanner" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-primary-container text-[20px]">qr_code_scanner</span><span class="font-label-lg text-label-lg text-on-surface">Åpne Dørskanner</span></div><span class="material-symbols-outlined text-secondary text-[16px]">north_east</span></a><div class="flex items-center justify-between px-space-md py-space-sm rounded bg-surface-container-lowest"><div class="flex items-center gap-space-sm overflow-hidden"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="truncate"><p class="font-label-md text-label-md text-on-surface truncate">Daniel</p><p class="font-label-mono-sm text-label-mono-sm text-secondary truncate">Organisator</p></div></div><button aria-label="Log out" class="text-secondary hover:text-primary-container transition-colors"><span class="material-symbols-outlined text-[18px]">logout</span></button></div></div></aside><div class="pl-72 flex flex-col min-h-screen"><header class="fixed top-0 left-72 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-md z-40 border-b border-surface-container-highest flex items-center justify-between px-gutter"><div class="flex items-center gap-space-sm"><span class="font-label-md text-label-md text-secondary">Titan Events AS</span><span class="material-symbols-outlined text-secondary text-[16px]">chevron_right</span><span class="font-label-md text-label-md text-on-surface font-semibold">Friday Night</span><span class="flex items-center gap-1 px-space-xs py-0.5 rounded bg-primary-container/20 text-primary-container font-label-mono-sm text-label-mono-sm font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-ping"></span>LIVE</span></div><div class="flex items-center gap-gutter"><div class="hidden xl:flex items-center gap-space-xs text-secondary font-label-mono-sm text-label-mono-sm"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>Nexi Checkout: Normal drift</span></div><div class="h-4 w-px bg-surface-container-highest hidden xl:block"></div><div class="hidden lg:flex items-center gap-space-xs text-secondary font-label-mono-sm text-label-mono-sm"><span class="material-symbols-outlined text-[16px]">schedule</span><span>22:42 CET</span></div><div class="flex items-center gap-space-sm"><a class="hidden sm:inline-flex items-center gap-1.5 px-space-md py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md transition-colors" data-path="door-scanner" href="#"><span class="material-symbols-outlined text-[16px]">qr_code_scanner</span>Dørskanner</a><button class="inline-flex items-center gap-1.5 px-space-md py-1.5 rounded bg-primary-container hover:bg-tertiary-container text-on-primary-container font-label-md text-label-md transition-colors shadow-sm font-semibold"><span class="material-symbols-outlined text-[16px]">add</span>Opprett arrangement</button><div class="relative ml-space-xs"><button aria-label="Notifications" class="p-2 text-secondary hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors relative"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-primary-container text-on-primary-container font-label-mono-sm text-[10px] font-bold flex items-center justify-center">2</span></button></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-space-xs"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-surface flex-1"><div class="flex flex-col w-full">
+<!-- Top Viewport Clearance & Atmospheric Gradient Header -->
+<div class="relative px-margin py-space-xl overflow-hidden bg-gradient-to-b from-surface-container-low to-surface">
+<!-- Subtle glow badge indicator and vertical accent decoration -->
+<div class="absolute right-margin top-space-xl hidden 2xl:flex flex-col items-end opacity-40 select-none pointer-events-none">
+<span class="font-label-mono-sm text-label-mono-sm uppercase text-secondary tracking-widest [writing-mode:vertical-rl]">SETTLEMENT ENGINE · NEXI CORE</span>
+<span class="mt-space-sm font-label-mono-sm text-[10px] text-primary-container">TLS 1.3 · HMAC SHA256</span>
+</div>
+<!-- Page Title & Operational Context -->
+<div class="max-w-6xl flex flex-col gap-space-xs">
+<div class="flex flex-wrap items-center gap-space-sm mb-space-xs">
+<span class="px-space-sm py-1 rounded bg-surface-container-high text-secondary font-label-mono-sm text-label-mono-sm uppercase tracking-wider flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          DIREKTE OPPGJØR
+        </span>
+<span class="text-secondary font-label-mono-sm text-label-mono-sm">/</span>
+<span class="text-secondary font-label-mono-sm text-label-mono-sm uppercase tracking-wider">Klient: Titan Events AS</span>
+<span class="text-secondary font-label-mono-sm text-label-mono-sm">/</span>
+<span class="text-primary font-label-mono-sm text-label-mono-sm">Org.nr: 928 341 812 MVA</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">
+        Betalinger &amp; Oppgjør <span class="text-primary-container font-light">(Nexi Checkout)</span>
+</h1>
+<p class="font-body-md text-body-md text-secondary max-w-3xl leading-relaxed">
+        Oversikt over transaksjonsflyt, utbetalinger fra betalingsinnløser og gebyrstruktur for Titan Events AS. Ticketly opererer utelukkende som teknisk formidler—alle billettmidler gjøres opp direkte via innløser til din bedriftskonto.
+      </p>
+</div>
+<!-- Regulatory Trust Banner (Non-Custodial Guarantee) -->
+<div class="mt-space-lg p-space-md rounded-xl bg-surface-container-low shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-space-md">
+<div class="flex items-start gap-space-md">
+<div class="p-2.5 rounded bg-surface-container-highest text-primary-container shrink-0">
+<span class="material-symbols-outlined text-[24px]">verified_user</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-space-sm">
+<span class="font-title-md text-title-md text-on-surface">Ikke-depoterende oppgjørsarkitektur</span>
+<span class="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-label-mono-sm text-[10px] uppercase font-semibold">Regulatorisk verifisert</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary mt-0.5 max-w-2xl">
+            Ticketly oppbevarer aldri arrangementsmidler eller opptrer som betalingsforetak. Alle transaksjoner håndteres av lisensiert betalingsinnløser (Nexi / Nets Easy), og nettooppgjør overføres uavkortet til organisasjonens egen klientkonto.
+          </p>
+</div>
+</div>
+<a class="inline-flex items-center gap-1.5 px-space-md py-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors shrink-0" href="https://nets.eu" rel="noopener noreferrer" target="_blank">
+<span>Nexi avtalevilkår</span>
+<span class="material-symbols-outlined text-[16px] text-secondary">north_east</span>
+</a>
+</div>
+</div>
+<!-- Primary Dashboard Surface -->
+<div class="px-margin pb-space-xl flex flex-col gap-space-xl">
+<!-- Grid Row 1: Connection & Settlement Cards (Asymmetrical) -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-gutter items-stretch">
+<!-- Card: Nexi Checkout Status & Telemetry (5 cols) -->
+<div class="xl:col-span-5 rounded-xl bg-surface-container-low p-space-lg flex flex-col justify-between shadow-sm relative overflow-hidden">
+<div class="flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 rounded bg-surface-container-highest flex items-center justify-center text-primary-container font-headline-sm">
+<span class="material-symbols-outlined text-[22px]">contactless</span>
+</div>
+<div>
+<span class="font-title-md text-title-md text-on-surface block">Nexi Checkout</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary block">Nets Easy API v2 · EU-Nord Gateway</span>
+</div>
+</div>
+<span class="inline-flex items-center gap-1.5 px-space-sm py-1 rounded bg-emerald-500/10 text-emerald-400 font-label-mono-sm text-label-mono-sm font-semibold">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              CONNECTED
+            </span>
+</div>
+<!-- Merchant Identification -->
+<div class="p-space-md rounded bg-surface-container flex flex-col gap-space-xs mt-space-xs">
+<div class="flex items-center justify-between text-secondary font-label-mono-sm text-label-mono-sm">
+<span>MERCHANT ACCOUNT ID</span>
+<span class="flex items-center gap-1 text-on-surface">
+<span class="material-symbols-outlined text-[14px] text-emerald-400">lock</span>
+                PCI-DSS Level 1
+              </span>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm text-on-surface font-mono tracking-wider">mid_89214_••••••••_no</span>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-secondary hover:text-on-surface transition-colors" onclick="navigator.clipboard.writeText('mid_89214_titan_no')" title="Kopier ID">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+</button>
+</div>
+</div>
+<!-- Active Payment Methods -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-label-mono-sm text-label-mono-sm uppercase text-secondary">Aktive innløseravtaler (Automatisert ruting):</span>
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+<div class="px-space-sm py-2 rounded bg-surface-container flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="font-label-md text-label-md text-on-surface">Vipps Mobile</span>
+</div>
+<div class="px-space-sm py-2 rounded bg-surface-container flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="font-label-md text-label-md text-on-surface">Visa Direct</span>
+</div>
+<div class="px-space-sm py-2 rounded bg-surface-container flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="font-label-md text-label-md text-on-surface">Mastercard</span>
+</div>
+<div class="px-space-sm py-2 rounded bg-surface-container flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="font-label-md text-label-md text-on-surface">Apple Pay</span>
+</div>
+<div class="px-space-sm py-2 rounded bg-surface-container flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="font-label-md text-label-md text-on-surface">Google Pay</span>
+</div>
+<div class="px-space-sm py-2 rounded bg-surface-container flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+<span class="font-label-md text-label-md text-on-surface">BankAxess</span>
+</div>
+</div>
+</div>
+<!-- Micro Metric Inline -->
+<div class="flex items-center justify-between pt-space-xs text-secondary font-label-mono-sm text-label-mono-sm">
+<span>Siste webhook-puls:</span>
+<span class="text-on-surface font-mono">1.2 sek siden (HTTP 200)</span>
+</div>
+</div>
+<!-- Provider Actions Toolbar -->
+<div class="flex flex-wrap items-center gap-space-sm pt-space-md mt-space-md bg-surface-container-low">
+<button class="flex-1 inline-flex items-center justify-center gap-1.5 px-space-md py-2.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md transition-all active:scale-95" id="test-connection-btn">
+<span class="material-symbols-outlined text-[18px]">sync_alt</span>
+            Test tilkobling
+          </button>
+<button class="inline-flex items-center justify-center gap-1.5 px-space-md py-2.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md transition-colors">
+<span class="material-symbols-outlined text-[18px]">query_stats</span>
+            Telemetri
+          </button>
+<a class="inline-flex items-center justify-center gap-1.5 px-space-md py-2.5 rounded bg-surface-container hover:bg-surface-container-high text-primary font-label-md text-label-md transition-colors" href="https://portal.nexigroup.com" rel="noopener noreferrer" target="_blank">
+<span>Åpne Nexi Portal</span>
+<span class="material-symbols-outlined text-[16px]">open_in_new</span>
+</a>
+</div>
+</div>
+<!-- Card: Provider Settlements (7 cols) -->
+<div class="xl:col-span-7 rounded-xl bg-surface-container-low p-space-lg flex flex-col justify-between shadow-sm">
+<div class="flex flex-col gap-space-lg">
+<div class="flex items-center justify-between">
+<div>
+<span class="font-title-md text-title-md text-on-surface block">Utbetalingsoversikt fra Innløser</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Bankklarering via Nets Batch Clearing System (T+2 / T+3)</span>
+</div>
+<span class="material-symbols-outlined text-secondary text-[24px]">account_balance</span>
+</div>
+<!-- Dual Payout Pulse Metrics -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Next Estimated Payout -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col justify-between relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm uppercase text-primary tracking-wider">NESTE BEREGNEDE OPPGJØR</span>
+<span class="px-2 py-0.5 rounded bg-primary-container/20 text-primary font-label-mono-sm text-[10px] font-semibold">KLARGJØRES</span>
+</div>
+<div class="my-space-md">
+<div class="font-headline-lg text-headline-lg text-on-surface tracking-tight font-semibold">
+                  42 840 <span class="text-headline-sm font-normal text-secondary">kr</span>
+</div>
+<div class="flex items-center gap-1 text-primary text-body-sm font-label-md mt-1">
+<span class="material-symbols-outlined text-[16px]">event_repeat</span>
+                  Beregnet utbetalingsdato: 24. okt 2026
+                </div>
+</div>
+<div class="pt-space-xs text-secondary font-label-mono-sm text-label-mono-sm">
+                * Estimert beløp basert på clearing-syklus minus transaksjonsgebyrer.
+              </div>
+</div>
+<!-- Last Disbursed Settlement -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col justify-between relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm uppercase text-emerald-400 tracking-wider">SISTE OVERFØRTE OPPGJØR</span>
+<span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-label-mono-sm text-[10px] font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">check_circle</span>
+                  FULLFØRT
+                </span>
+</div>
+<div class="my-space-md">
+<div class="font-headline-lg text-headline-lg text-on-surface tracking-tight font-semibold">
+                  38 491 <span class="text-headline-sm font-normal text-secondary">kr</span>
+</div>
+<div class="flex items-center gap-1 text-secondary text-body-sm mt-1">
+<span class="material-symbols-outlined text-[16px]">account_balance_wallet</span>
+                  Overført 21. okt 2026 kl. 06:14
+                </div>
+</div>
+<div class="pt-space-xs text-secondary font-label-mono-sm text-label-mono-sm flex items-center justify-between">
+<span>DNB Bedriftskonto:</span>
+<span class="font-mono text-on-surface">NO89 1200 4589 123</span>
+</div>
+</div>
+</div>
+<!-- Inline Clearing Timeline Visualizer (Compact SVG Progress) -->
+<div class="p-space-md rounded bg-surface-container flex flex-col gap-space-sm">
+<div class="flex items-center justify-between text-secondary font-label-mono-sm text-label-mono-sm">
+<span>CLEARRING-STATUS FOR INNEVÆRENDE UKE (UKE 43)</span>
+<span class="text-on-surface">3 transaksjonsbunter avstemt</span>
+</div>
+<!-- Progress Line Bar -->
+<div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden flex">
+<div class="bg-emerald-500 h-full w-[65%]" title="Gjennomført: 65%"></div>
+<div class="bg-primary-container h-full w-[25%]" title="Til godkjenning: 25%"></div>
+<div class="bg-surface-variant h-full w-[10%]" title="Uavstemt / Pågående salg: 10%"></div>
+</div>
+<div class="flex items-center justify-between font-label-mono-sm text-[10px] text-secondary">
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>Utbetalt (81 331 kr)</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-primary-container"></span>I kø for remittering (42 840 kr)</span>
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-surface-variant"></span>Innestående salg</span>
+</div>
+</div>
+</div>
+<div class="pt-space-md flex items-center justify-between text-secondary font-label-mono-sm text-label-mono-sm">
+<span>Automatisk overføring: Hver virkedag</span>
+<a class="text-primary hover:underline flex items-center gap-1" href="#">
+            Endre bankkonto eller utbetalingsfrekvens
+            <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Section 2: Detailed Financial Reconciliation Breakdown (Friday Night) -->
+<div class="rounded-xl bg-surface-container-low p-space-lg shadow-sm flex flex-col gap-space-lg">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
+<div>
+<div class="flex items-center gap-space-sm">
+<span class="font-headline-sm text-headline-sm text-on-surface">Økonomisk Sammenstilling &amp; Gebyrfordeling</span>
+<span class="px-2 py-0.5 rounded bg-primary-container text-on-primary-container font-label-mono-sm text-label-mono-sm font-semibold">LIVE EVENT: FRIDAY NIGHT</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary mt-1">
+            Transparens og nøyaktig matematisk spesifikasjon av alle transaksjons- og plattformavgifter i henhold til arrangøravtale.
+          </p>
+</div>
+<!-- Quick Stats Chips -->
+<div class="flex items-center gap-space-sm self-start lg:self-auto">
+<div class="px-space-md py-1.5 rounded bg-surface-container flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[18px] text-secondary">confirmation_number</span>
+<span class="font-label-md text-label-md text-on-surface">368 gyldige billetter</span>
+</div>
+<div class="px-space-md py-1.5 rounded bg-surface-container flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[18px] text-error">replay</span>
+<span class="font-label-md text-label-md text-error">4 refusjoner</span>
+</div>
+</div>
+</div>
+<!-- Financial Calculation Flow (Bento Cascade) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-center">
+<!-- Left 8 cols: Waterfall Itemization -->
+<div class="lg:col-span-8 flex flex-col gap-2">
+<!-- Brutto billettsalg -->
+<div class="p-space-md rounded bg-surface-container flex items-center justify-between transition-colors hover:bg-surface-container-high">
+<div class="flex items-center gap-space-md">
+<span class="w-8 h-8 rounded bg-surface-container-highest flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[18px]">local_activity</span>
+</span>
+<div>
+<span class="font-title-md text-title-md text-on-surface block">Brutto billettsalg</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">372 ordinære &amp; VIP-billetter utstedt</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-title-md text-title-md text-on-surface font-mono font-semibold">92 640,00 kr</span>
+<span class="block font-label-mono-sm text-label-mono-sm text-secondary">Inkl. kulturmoms</span>
+</div>
+</div>
+<!-- Refunderte billetter -->
+<div class="p-space-md rounded bg-surface-container flex items-center justify-between transition-colors hover:bg-surface-container-high">
+<div class="flex items-center gap-space-md">
+<span class="w-8 h-8 rounded bg-error/10 text-error flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">undo</span>
+</span>
+<div>
+<span class="font-title-md text-title-md text-on-surface block">Refunderte billetter</span>
+<span class="font-label-mono-sm text-label-mono-sm text-error">4 kansellerte billetter kreditert via Nexi</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-title-md text-title-md text-error font-mono font-semibold">- 996,00 kr</span>
+<span class="block font-label-mono-sm text-label-mono-sm text-secondary">Avregnet</span>
+</div>
+</div>
+<!-- Netto billettsalg Subtotal Line -->
+<div class="px-space-md py-2.5 rounded bg-surface-container-highest flex items-center justify-between">
+<span class="font-label-md text-label-md text-secondary uppercase tracking-wider">Subtotal: Netto billettvolum</span>
+<span class="font-title-md text-title-md text-on-surface font-mono font-semibold">91 644,00 kr</span>
+</div>
+<!-- Formidlingsgebyr (Customer Covered Service Fee) -->
+<div class="p-space-md rounded bg-surface-container flex items-center justify-between transition-colors hover:bg-surface-container-high">
+<div class="flex items-center gap-space-md">
+<span class="w-8 h-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">toll</span>
+</span>
+<div>
+<span class="font-title-md text-title-md text-on-surface block">Formidlingsgebyr (Service Fee)</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">40 kr per billett fakturert sluttkunde i checkout (372 billetter)</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-title-md text-title-md text-secondary font-mono font-semibold">14 880,00 kr</span>
+<span class="block font-label-mono-sm text-label-mono-sm text-secondary">Inkl. 25% MVA (kundeandel)</span>
+</div>
+</div>
+<!-- Transaksjonskostnad Nexi -->
+<div class="p-space-md rounded bg-surface-container flex items-center justify-between transition-colors hover:bg-surface-container-high">
+<div class="flex items-center gap-space-md">
+<span class="w-8 h-8 rounded bg-surface-container-highest text-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">credit_card</span>
+</span>
+<div>
+<span class="font-title-md text-title-md text-on-surface block">Transaksjonskostnad (Nexi / Nets Easy)</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Beregnet innløsergebyr (1.4% variabelt + 1,20 kr fast per transaksjon)</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-title-md text-title-md text-on-surface-variant font-mono font-semibold">- 1 428,00 kr</span>
+<span class="block font-label-mono-sm text-label-mono-sm text-secondary">Trukket ved kilde av Nexi</span>
+</div>
+</div>
+<!-- Ticketly Plattformgebyr -->
+<div class="p-space-md rounded bg-surface-container flex items-center justify-between transition-colors hover:bg-surface-container-high">
+<div class="flex items-center gap-space-md">
+<span class="w-8 h-8 rounded bg-primary-container/20 text-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">dns</span>
+</span>
+<div>
+<span class="font-title-md text-title-md text-on-surface block">Ticketly Plattformhonorar</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Standard Enterprise-avtale (1.5% av billettpris + 5 kr per utstedt billett)</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-title-md text-title-md text-on-surface-variant font-mono font-semibold">- 3 234,00 kr</span>
+<span class="block font-label-mono-sm text-label-mono-sm text-secondary">Spesifiseres med MVA-faktura</span>
+</div>
+</div>
+</div>
+<!-- Right 4 cols: Final Settlement Spotlight Card -->
+<div class="lg:col-span-4 rounded-xl bg-surface-container p-space-lg flex flex-col justify-between gap-space-lg shadow-md relative overflow-hidden">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-primary-container"></span>
+<span class="font-label-mono-sm text-label-mono-sm uppercase tracking-wider text-primary">SLUTTBELØP TIL ARRANGØR</span>
+</div>
+<p class="font-label-md text-label-md text-secondary mt-1">
+              Beregnet netto utbetaling fra Nexi til Titan Events AS etter alle fradrag:
+            </p>
+</div>
+<!-- Highlight Amount Display -->
+<div class="p-space-md rounded-xl bg-surface-container-high flex flex-col gap-1">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">ESTIMERT NETTO OPPGJØR</span>
+<div class="font-headline-xl text-headline-xl text-on-surface tracking-tighter font-bold">
+              86 982<span class="text-headline-sm font-normal text-primary-container">,00 kr</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-emerald-400 flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px]">check</span>
+              94.9% av brutto billettverdi utbetales
+            </span>
+</div>
+<!-- Mini Tax Breakdown Card inside Spotlight -->
+<div class="flex flex-col gap-space-xs pt-space-xs text-body-sm text-secondary">
+<div class="flex justify-between font-label-mono-sm text-label-mono-sm">
+<span>MVA-grunnlag billetter (12% kulturmoms):</span>
+<span class="text-on-surface font-mono">9 819 kr MVA</span>
+</div>
+<div class="flex justify-between font-label-mono-sm text-label-mono-sm">
+<span>MVA-grunnlag gebyrer (25% drift):</span>
+<span class="text-on-surface font-mono">2 976 kr MVA</span>
+</div>
+<div class="flex justify-between font-label-mono-sm text-label-mono-sm">
+<span>Nexi avregningsintervall:</span>
+<span class="text-on-surface font-mono">Daglige samlebunter</span>
+</div>
+</div>
+<button class="w-full inline-flex items-center justify-center gap-2 px-space-md py-3 rounded bg-primary-container hover:bg-tertiary-container text-on-primary-container font-label-md text-label-md font-semibold transition-all shadow-sm">
+<span class="material-symbols-outlined text-[18px]">receipt</span>
+            Last ned komplett oppgjørsavstemming
+          </button>
+</div>
+</div>
+</div>
+<!-- Section 3: Tax Treatment / MVA Preview Matrix -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Tax Card 1: Ticket Sales MVA rules -->
+<div class="rounded-xl bg-surface-container-low p-space-lg flex flex-col justify-between shadow-sm">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[22px]">theater_comedy</span>
+<span class="font-title-md text-title-md text-on-surface">MVA-behandling: Billettsalg</span>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container font-label-mono-sm text-label-mono-sm text-on-surface font-mono">MVA-KODE 33</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary">
+            Billettomsetning til konserter, scenekunst og festivaler reguleres etter gjeldende satser for kulturmoms i Merverdiavgiftsloven § 5-10.
+          </p>
+<div class="p-space-md rounded bg-surface-container flex flex-col gap-space-xs mt-space-xs">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<span class="text-on-surface">Lav sats (Kultur- &amp; scenekunst):</span>
+<span class="text-primary font-mono font-semibold">12% MVA</span>
+</div>
+<div class="flex items-center justify-between font-label-md text-label-md pt-1">
+<span class="text-on-surface">Unntatt omsetning (Idrett/veldedig):</span>
+<span class="text-secondary font-mono font-semibold">0% MVA</span>
+</div>
+<div class="flex items-center justify-between font-label-md text-label-md pt-1">
+<span class="text-on-surface">Gjeldende sats for Friday Night:</span>
+<span class="text-emerald-400 font-mono font-semibold">12% spesifisert på kvittering</span>
+</div>
+</div>
+</div>
+<div class="pt-space-md text-secondary font-label-mono-sm text-label-mono-sm flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary-container">info</span>
+          Arrangør er selv ansvarlig for innrapportering av skattekoder i Skattemeldingen.
+        </div>
+</div>
+<!-- Tax Card 2: Service Fee MVA rules -->
+<div class="rounded-xl bg-surface-container-low p-space-lg flex flex-col justify-between shadow-sm">
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary-container text-[22px]">percent</span>
+<span class="font-title-md text-title-md text-on-surface">MVA-behandling: Tjeneste- &amp; Servicegebyr</span>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container font-label-mono-sm text-label-mono-sm text-on-surface font-mono">MVA-KODE 01</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary">
+            Elektroniske formidlingstjenester, billettteknologi og administrasjonsgebyrer overfor billettkjøper ilegges ordinær generell merverdiavgiftssats.
+          </p>
+<div class="p-space-md rounded bg-surface-container flex flex-col gap-space-xs mt-space-xs">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<span class="text-on-surface">Generell momssats på gebyr:</span>
+<span class="text-primary-container font-mono font-semibold">25% MVA</span>
+</div>
+<div class="flex items-center justify-between font-label-md text-label-md pt-1">
+<span class="text-on-surface">Fakturering av plattformkostnad:</span>
+<span class="text-secondary font-mono font-semibold">Spesifiseres månedlig i EHF</span>
+</div>
+<div class="flex items-center justify-between font-label-md text-label-md pt-1">
+<span class="text-on-surface">MVA på gebyr i Friday Night:</span>
+<span class="text-on-surface font-mono font-semibold">2 976,00 kr (inkludert)</span>
+</div>
+</div>
+</div>
+<div class="pt-space-md text-secondary font-label-mono-sm text-label-mono-sm flex items-center justify-between">
+<span>EHF Fakturamottaker:</span>
+<span class="text-on-surface font-mono">NO928341812</span>
+</div>
+</div>
+</div>
+<!-- Section 4: Settlement Log & Export Table -->
+<div class="rounded-xl bg-surface-container-low shadow-sm flex flex-col overflow-hidden">
+<!-- Table Header & Controls Toolbar -->
+<div class="p-space-lg flex flex-col md:flex-row md:items-center justify-between gap-space-md bg-surface-container-low">
+<div>
+<div class="flex items-center gap-space-sm">
+<span class="font-headline-sm text-headline-sm text-on-surface">Historisk Oppgjørslogg</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high font-label-mono-sm text-label-mono-sm text-secondary">NEXI BATCH DISBURSEMENTS</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary mt-1">
+            Gjennomførte og planlagte utbetalinger fra betalingsinnløser med direkte kobling til bankens arkivreferanser.
+          </p>
+</div>
+<!-- Export Buttons (CSV / XLSX / PDF) -->
+<div class="flex items-center gap-2 shrink-0">
+<button class="inline-flex items-center gap-1.5 px-space-md py-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-secondary">table_view</span>
+            Eksporter CSV
+          </button>
+<button class="inline-flex items-center gap-1.5 px-space-md py-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-emerald-400">description</span>
+            Excel (.xlsx)
+          </button>
+<button class="inline-flex items-center gap-1.5 px-space-md py-2 rounded bg-primary-container hover:bg-tertiary-container text-on-primary-container font-label-md text-label-md transition-colors shadow-sm font-semibold">
+<span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+            Regnskapsbilag (PDF)
+          </button>
+</div>
+</div>
+<!-- Settlement Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left font-body-sm text-body-sm">
+<thead>
+<tr class="bg-surface-container text-secondary font-label-mono-sm text-label-mono-sm uppercase tracking-wider">
+<th class="py-space-md px-space-lg">Avregningsperiode</th>
+<th class="py-space-md px-space-md">Arrangement / Kilde</th>
+<th class="py-space-md px-space-md text-right">Brutto salg</th>
+<th class="py-space-md px-space-md text-right">Gebyrer &amp; Innløser</th>
+<th class="py-space-md px-space-md text-right">Netto Utbetalt</th>
+<th class="py-space-md px-space-md">Referansekode (Nexi / Nets)</th>
+<th class="py-space-md px-space-md">Status</th>
+<th class="py-space-md px-space-lg text-right">Handling</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<!-- Row 1: Estimated/Pending -->
+<tr class="hover:bg-surface-container/60 transition-colors bg-surface-container-low">
+<td class="py-space-md px-space-lg font-label-md text-label-md text-on-surface">
+                21. okt - 23. okt 2026
+                <span class="block font-label-mono-sm text-[11px] text-secondary">Clearinguke 43-2</span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-title-md text-title-md text-on-surface">Friday Night</span>
+<span class="block font-label-mono-sm text-[11px] text-secondary">372 billetter</span>
+</td>
+<td class="py-space-md px-space-md text-right font-mono text-on-surface font-semibold">
+                45 600 kr
+              </td>
+<td class="py-space-md px-space-md text-right font-mono text-on-surface-variant">
+                - 2 760 kr
+              </td>
+<td class="py-space-md px-space-md text-right font-mono text-primary font-bold">
+                42 840 kr
+              </td>
+<td class="py-space-md px-space-md font-mono text-secondary text-[12px]">
+                NEXI-EST-2026-9921
+              </td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-primary-container/20 text-primary font-label-mono-sm text-[10px] font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span>
+                  ESTIMERT
+                </span>
+</td>
+<td class="py-space-md px-space-lg text-right">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-secondary hover:text-on-surface transition-colors" title="Vis foreløpig bilag">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Row 2: Completed Batch -->
+<tr class="hover:bg-surface-container/60 transition-colors bg-surface-container-low">
+<td class="py-space-md px-space-lg font-label-md text-label-md text-on-surface">
+                18. okt - 20. okt 2026
+                <span class="block font-label-mono-sm text-[11px] text-secondary">Clearinguke 43-1</span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-title-md text-title-md text-on-surface">Friday Night + Early Birds</span>
+<span class="block font-label-mono-sm text-[11px] text-secondary">158 billetter</span>
+</td>
+<td class="py-space-md px-space-md text-right font-mono text-on-surface font-semibold">
+                41 000 kr
+              </td>
+<td class="py-space-md px-space-md text-right font-mono text-on-surface-variant">
+                - 2 509 kr
+              </td>
+<td class="py-space-md px-space-md text-right font-mono text-emerald-400 font-bold">
+                38 491 kr
+              </td>
+<td class="py-space-md px-space-md font-mono text-secondary text-[12px]">
+                NEXI-BAT-882319-NO
+              </td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-label-mono-sm text-[10px] font-semibold">
+<span class="material-symbols-outlined text-[12px]">check</span>
+                  FULLFØRT
+                </span>
+</td>
+<td class="py-space-md px-space-lg text-right">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-secondary hover:text-on-surface transition-colors" title="Last ned bilag">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+</td>
+</tr>
+<!-- Row 3: Completed Batch -->
+<tr class="hover:bg-surface-container/60 transition-colors bg-surface-container-low">
+<td class="py-space-md px-space-lg font-label-md text-label-md text-on-surface">
+                11. okt - 17. okt 2026
+                <span class="block font-label-mono-sm text-[11px] text-secondary">Clearinguke 42</span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-title-md text-title-md text-on-surface">Underground Showcase</span>
+<span class="block font-label-mono-sm text-[11px] text-secondary">210 billetter</span>
+</td>
+<td class="py-space-md px-space-md text-right font-mono text-on-surface font-semibold">
+                52 500 kr
+              </td>
+<td class="py-space-md px-space-md text-right font-mono text-on-surface-variant">
+                - 3 240 kr
+              </td>
+<td class="py-space-md px-space-md text-right font-mono text-emerald-400 font-bold">
+                49 260 kr
+              </td>
+<td class="py-space-md px-space-md font-mono text-secondary text-[12px]">
+                NEXI-BAT-880194-NO
+              </td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-label-mono-sm text-[10px] font-semibold">
+<span class="material-symbols-outlined text-[12px]">check</span>
+                  FULLFØRT
+                </span>
+</td>
+<td class="py-space-md px-space-lg text-right">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-secondary hover:text-on-surface transition-colors" title="Last ned bilag">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+</td>
+</tr>
+<!-- Row 4: Historical Batch -->
+<tr class="hover:bg-surface-container/60 transition-colors bg-surface-container-low">
+<td class="py-space-md px-space-lg font-label-md text-label-md text-on-surface">
+                04. okt - 10. okt 2026
+                <span class="block font-label-mono-sm text-[11px] text-secondary">Clearinguke 41</span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-title-md text-title-md text-on-surface">Techno Nightfall Part II</span>
+<span class="block font-label-mono-sm text-[11px] text-secondary">480 billetter</span>
+</td>
+<td class="py-space-md px-space-md text-right font-mono text-on-surface font-semibold">
+                120 000 kr
+              </td>
+<td class="py-space-md px-space-md text-right font-mono text-on-surface-variant">
+                - 7 420 kr
+              </td>
+<td class="py-space-md px-space-md text-right font-mono text-emerald-400 font-bold">
+                112 580 kr
+              </td>
+<td class="py-space-md px-space-md font-mono text-secondary text-[12px]">
+                NEXI-BAT-876612-NO
+              </td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-label-mono-sm text-[10px] font-semibold">
+<span class="material-symbols-outlined text-[12px]">check</span>
+                  FULLFØRT
+                </span>
+</td>
+<td class="py-space-md px-space-lg text-right">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-secondary hover:text-on-surface transition-colors" title="Last ned bilag">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination / Filter Subtext -->
+<div class="p-space-md bg-surface-container flex flex-col sm:flex-row sm:items-center justify-between text-secondary font-label-mono-sm text-label-mono-sm gap-2">
+<span>Viser 4 av 28 avstemte utbetalingsbunter for 2026</span>
+<div class="flex items-center gap-2">
+<button class="px-2.5 py-1 rounded bg-surface-container-high text-secondary hover:text-on-surface disabled:opacity-30" disabled="">Forrige</button>
+<span class="px-2 text-on-surface">Side 1 av 7</span>
+<button class="px-2.5 py-1 rounded bg-surface-container-high text-secondary hover:text-on-surface">Neste</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Simple interactive feedback for 'Test tilkobling' button
+  document.getElementById('test-connection-btn')?.addEventListener('click', function() {
+    const btn = this;
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = `
+      <span class="material-symbols-outlined text-[18px] animate-spin">refresh</span>
+      Kontakter Nexi API...
+    `;
+    btn.disabled = true;
+
+    setTimeout(() => {
+      btn.innerHTML = `
+        <span class="material-symbols-outlined text-[18px] text-emerald-400">check_circle</span>
+        200 OK · 22ms
+      `;
+      btn.classList.add('text-emerald-400');
+
+      setTimeout(() => {
+        btn.innerHTML = originalContent;
+        btn.classList.remove('text-emerald-400');
+        btn.disabled = false;
+      }, 2500);
+    }, 900);
+  });
+</script></main><footer class="w-full border-t border-surface-container-highest bg-surface-container-lowest py-space-md px-gutter text-secondary font-label-mono-sm text-label-mono-sm flex items-center justify-between"><p>© 2024 Ticketly Platform. All rights reserved.</p><div class="flex items-center gap-space-md"><span>Cluster: EU-NORTH-1</span><span>Latency: 18ms</span></div></footer></div></body></html>

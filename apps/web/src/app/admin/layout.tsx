@@ -1,13 +1,22 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { canAccessAdmin } from "@/lib/auth/rbac";
+import { canAccessAdmin, isSuperAdmin } from "@/lib/auth/rbac";
 import { formatMoney } from "@/lib/utils";
 import { EventService } from "@/services/event-service";
 import { prisma } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
+
+const nav = [
+  { href: "/admin", label: "Oversikt" },
+  { href: "/admin/events", label: "Arrangementer" },
+  { href: "/admin/orders", label: "Ordrer" },
+  { href: "/admin/reports", label: "Analyse" },
+  { href: "/admin/webhooks", label: "Webhooks" },
+  { href: "/admin/settings", label: "Innstillinger" },
+];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -24,53 +33,103 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!canAccessAdmin(user)) redirect("/");
 
+  const platform = isSuperAdmin(user);
+
   return (
-    <div className="min-h-dvh bg-zinc-100 text-zinc-900">
-      <header className="border-b border-zinc-200 bg-white">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-          <div className="flex items-center gap-6">
-            <Link href="/admin" className="font-semibold tracking-tight">
+    <div className="min-h-dvh bg-[color:var(--background)] text-foreground">
+      <div className="mx-auto flex min-h-dvh max-w-[1440px]">
+        <aside className="hidden w-60 shrink-0 flex-col border-r border-[color:var(--outline)]/30 bg-[color:var(--surface-low)] md:flex">
+          <div className="border-b border-[color:var(--outline)]/25 px-4 py-5">
+            <Link
+              href="/admin"
+              className="font-display text-sm font-semibold uppercase tracking-[0.16em] text-foreground"
+            >
               Ticketly Admin
             </Link>
-            <nav className="hidden gap-4 text-sm text-zinc-600 md:flex">
-              <Link href="/admin" className="hover:text-zinc-900">
-                Oversikt
+            <p className="mt-1 truncate text-xs text-[color:var(--muted)]">{session.user.email}</p>
+          </div>
+          <nav className="flex flex-1 flex-col gap-1 p-3 text-sm">
+            {nav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-md px-3 py-2 text-[color:var(--muted)] transition hover:bg-[color:var(--surface-high)] hover:text-foreground"
+              >
+                {item.label}
               </Link>
-              <Link href="/admin/events" className="hover:text-zinc-900">
-                Arrangementer
-              </Link>
-              <Link href="/admin/orders" className="hover:text-zinc-900">
-                Ordrer
-              </Link>
-              <Link href="/admin/webhooks" className="hover:text-zinc-900">
-                Webhooks
-              </Link>
+            ))}
+            {platform ? (
               <Link
                 href="/admin/platform/payments/diagnostics"
-                className="hover:text-zinc-900"
+                className="rounded-md px-3 py-2 text-[color:var(--accent-soft)] transition hover:bg-[color:var(--surface-high)]"
               >
-                Diagnostics
+                Platform
               </Link>
-              <Link href="/admin/reports" className="hover:text-zinc-900">
-                Rapporter
+            ) : null}
+            <div className="mt-auto space-y-2 pt-6">
+              <Link
+                href="/scan"
+                className="flex items-center justify-center rounded-md bg-[color:var(--accent)] px-3 py-2.5 text-sm font-semibold text-[color:var(--accent-foreground)]"
+              >
+                Åpne dørskanner
               </Link>
-              <Link href="/admin/settings" className="hover:text-zinc-900">
-                Innstillinger
+              <Link
+                href="/"
+                className="block px-3 py-2 text-xs text-[color:var(--muted)] hover:text-foreground"
+              >
+                ← Butikk
               </Link>
-              <Link href="/scan" className="hover:text-zinc-900">
-                Scanner
+            </div>
+          </nav>
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="flex h-14 items-center justify-between gap-3 border-b border-[color:var(--outline)]/30 bg-[color:var(--surface-container)] px-4 md:px-6">
+            <div className="flex items-center gap-3 md:hidden">
+              <Link href="/admin" className="font-display text-sm font-semibold uppercase tracking-wider">
+                Ticketly
               </Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <Badge variant="muted">{session.user.email}</Badge>
-            <Link href="/" className="text-zinc-500 hover:text-zinc-800">
-              Butikk
+            </div>
+            <div className="hidden items-center gap-2 text-xs text-[color:var(--muted)] sm:flex">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-300">
+                <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-emerald-400" />
+                LIVE
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="muted" className="hidden sm:inline-flex">
+                {session.user.email}
+              </Badge>
+              <Link
+                href="/admin/events/new"
+                className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-semibold text-[color:var(--accent-foreground)]"
+              >
+                + Opprett
+              </Link>
+            </div>
+          </header>
+
+          <nav className="flex gap-1 overflow-x-auto border-b border-[color:var(--outline)]/25 px-3 py-2 text-xs md:hidden">
+            {nav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="whitespace-nowrap rounded-md px-2.5 py-1.5 text-[color:var(--muted)] hover:bg-[color:var(--surface-high)] hover:text-foreground"
+              >
+                {item.label}
+              </Link>
+            ))}
+            <Link
+              href="/scan"
+              className="whitespace-nowrap rounded-md bg-[color:var(--accent)] px-2.5 py-1.5 font-semibold text-[color:var(--accent-foreground)]"
+            >
+              Scanner
             </Link>
-          </div>
+          </nav>
+
+          <main className="flex-1 px-4 py-6 md:px-6 md:py-8">{children}</main>
         </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+      </div>
     </div>
   );
 }

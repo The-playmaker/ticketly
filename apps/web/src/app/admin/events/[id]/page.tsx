@@ -16,7 +16,7 @@ export default async function EventAdminDashboard({ params }: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-zinc-500">Live oppdatering hvert 8. sekund</p>
+      <p className="text-sm text-[color:var(--muted)]">Live oppdatering hvert 8. sekund</p>
       <EventOpsPanel eventId={event.id} slug={event.slug} publicUrl={publicUrl} />
     </div>
   );

@@ -141,16 +141,35 @@ export function ScannerClient({
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-zinc-950 text-white">
-      <header className="border-b border-zinc-800 px-4 py-3">
-        <p className="text-xs uppercase tracking-wider text-zinc-500">Scanner</p>
-        <h1 className="truncate font-display text-xl">{eventName}</h1>
-        <div className="mt-3 flex gap-2">
-          <Button size="sm" variant={mode === "scan" ? "default" : "secondary"} onClick={() => setMode("scan")}>
+    <div className="mx-auto flex min-h-dvh max-w-[390px] flex-col bg-[color:var(--background)] text-foreground">
+      <header className="border-b border-[color:var(--outline)]/30 px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--accent)]">
+            ● Station armed
+          </p>
+          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+            Online
+          </span>
+        </div>
+        <h1 className="mt-1 truncate font-display text-xl font-semibold">
+          <span className="text-[color:var(--accent)]">●</span> {eventName}
+        </h1>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Button
+            size="lg"
+            className="h-12"
+            variant={mode === "scan" ? "default" : "secondary"}
+            onClick={() => setMode("scan")}
+          >
             Scan QR
           </Button>
-          <Button size="sm" variant={mode === "search" ? "default" : "secondary"} onClick={() => setMode("search")}>
-            Gjesteliste
+          <Button
+            size="lg"
+            className="h-12"
+            variant={mode === "search" ? "default" : "secondary"}
+            onClick={() => setMode("search")}
+          >
+            Manuelt søk
           </Button>
         </div>
       </header>
@@ -158,8 +177,22 @@ export function ScannerClient({
       <div className="flex-1 p-4">
         {mode === "scan" ? (
           <div>
-            <div id="qr-reader" className="overflow-hidden rounded-xl bg-black" />
-            {cameraError ? <p className="mt-3 text-sm text-amber-400">{cameraError}</p> : null}
+            <div className="relative overflow-hidden rounded-lg border border-[color:var(--accent)]/40 bg-black">
+              <div id="qr-reader" className="min-h-[280px]" />
+              <div className="pointer-events-none absolute inset-0">
+                <div className="absolute left-6 top-6 h-8 w-8 border-l-2 border-t-2 border-[color:var(--accent)]" />
+                <div className="absolute right-6 top-6 h-8 w-8 border-r-2 border-t-2 border-[color:var(--accent)]" />
+                <div className="absolute bottom-6 left-6 h-8 w-8 border-b-2 border-l-2 border-[color:var(--accent)]" />
+                <div className="absolute bottom-6 right-6 h-8 w-8 border-b-2 border-r-2 border-[color:var(--accent)]" />
+                <div className="absolute inset-x-10 top-1/2 h-px -translate-y-1/2 bg-[color:var(--accent)]/80" />
+              </div>
+              <p className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--accent-soft)]">
+                ● Sentrer QR-kode
+              </p>
+            </div>
+            {cameraError ? (
+              <p className="mt-3 text-sm text-[color:var(--warning)]">{cameraError}</p>
+            ) : null}
             <div className="mt-4">
               <Input
                 placeholder="Lim inn token / URL"
@@ -178,16 +211,19 @@ export function ScannerClient({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Navn, e-post, telefon, billettnr, ordre…"
             />
-            <Button className="w-full" onClick={search}>
-              Søk
+            <Button className="h-12 w-full" size="lg" onClick={search}>
+              Søk gjest
             </Button>
             <ul className="space-y-2">
               {searchResults.map((r) => (
-                <li key={r.id} className="rounded-lg border border-zinc-800 p-3">
+                <li
+                  key={r.id}
+                  className="rounded-lg border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-3"
+                >
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <p className="font-medium">{r.holderName}</p>
-                      <p className="text-xs text-zinc-500">
+                      <p className="text-xs text-[color:var(--muted)]">
                         {r.ticketType} · {r.publicId} · {r.status}
                       </p>
                     </div>
@@ -208,7 +244,7 @@ export function ScannerClient({
 
       {result ? (
         <div
-          className={`px-4 py-8 text-center ${resultStyles[result.result] ?? "bg-zinc-800"}`}
+          className={`px-4 py-8 text-center ${resultStyles[result.result] ?? "bg-[color:var(--surface-high)]"}`}
           onClick={() => setResult(null)}
         >
           <p className="font-display text-3xl tracking-wide">{result.message}</p>

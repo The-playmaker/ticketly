@@ -86,7 +86,7 @@ export default async function EventDetailPage({ params }: Props) {
       <TrackPageView eventId={event.id} organizationId={event.organizationId} />
       <SiteHeader />
       <main>
-        <div className="relative h-[42vh] min-h-[280px] w-full overflow-hidden border-b border-zinc-800">
+        <div className="relative h-[42vh] min-h-[280px] w-full overflow-hidden border-b border-[color:var(--outline)]/30">
           {event.coverImageUrl ? (
             <Image src={event.coverImageUrl} alt={event.name} fill className="object-cover" priority />
           ) : (
@@ -94,7 +94,7 @@ export default async function EventDetailPage({ params }: Props) {
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/50 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 mx-auto max-w-6xl px-4 pb-8">
-            <p className="text-sm uppercase tracking-wider text-amber-300">{event.organization.name}</p>
+            <p className="text-sm uppercase tracking-wider text-[color:var(--accent-soft)]">{event.organization.name}</p>
             <h1 className="font-display text-4xl text-white sm:text-5xl">{event.name}</h1>
             <div className="mt-3 flex flex-wrap gap-2 text-sm text-zinc-300">
               <span>{formatEventDate(event.startsAt, event.timezone)}</span>
@@ -130,10 +130,10 @@ export default async function EventDetailPage({ params }: Props) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5">
+          <div className="rounded-2xl border border-[color:var(--outline)]/30 bg-zinc-900/50 p-5">
             <h2 className="font-display text-xl">Billetter</h2>
             {salesPaused ? (
-              <p className="mt-4 text-sm text-amber-300">Salget er midlertidig satt på pause.</p>
+              <p className="mt-4 text-sm text-[color:var(--accent-soft)]">Salget er midlertidig satt på pause.</p>
             ) : null}
             <ul className="mt-4 space-y-3">
               {types.map((tt) => {
@@ -142,20 +142,20 @@ export default async function EventDetailPage({ params }: Props) {
                 return (
                   <li
                     key={tt.id}
-                    className="flex items-center justify-between border-b border-zinc-800/80 pb-3 last:border-0"
+                    className="flex items-center justify-between border-b border-[color:var(--outline)]/30/80 pb-3 last:border-0"
                   >
                     <div>
                       <p className="font-medium text-zinc-100">{tt.name}</p>
                       {tt.description ? (
-                        <p className="text-xs text-zinc-500">{tt.description}</p>
+                        <p className="text-xs text-[color:var(--muted)]">{tt.description}</p>
                       ) : null}
-                      {label ? <p className="text-xs text-amber-400">{label}</p> : null}
+                      {label ? <p className="text-xs text-[color:var(--accent)]">{label}</p> : null}
                     </div>
                     <div className="text-right">
                       {soldOut ? (
                         <Badge variant="danger">{label ?? "Utsolgt"}</Badge>
                       ) : (
-                        <p className="font-semibold text-amber-300">{formatMoney(tt.currentPrice)}</p>
+                        <p className="font-semibold text-[color:var(--accent-soft)]">{formatMoney(tt.currentPrice)}</p>
                       )}
                     </div>
                   </li>

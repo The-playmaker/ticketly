@@ -23,25 +23,25 @@ export default async function AdminSettingsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Innstillinger</h1>
-        <p className="text-sm text-zinc-500">Organisasjon og betalingskonfigurasjon</p>
+        <p className="text-sm text-[color:var(--muted)]">Organisasjon og betalingskonfigurasjon</p>
       </div>
 
       {!org ? (
-        <p className="text-sm text-zinc-500">Ingen organisasjon tilknyttet.</p>
+        <p className="text-sm text-[color:var(--muted)]">Ingen organisasjon tilknyttet.</p>
       ) : (
-        <section className="rounded-xl border border-zinc-200 bg-white p-5 text-sm">
+        <section className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5 text-sm">
           <h2 className="font-medium">Seller of record</h2>
           <dl className="mt-3 space-y-2">
             <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Juridisk navn</dt>
+              <dt className="text-[color:var(--muted)]">Juridisk navn</dt>
               <dd>{org.legalName ?? org.name}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Org.nr</dt>
+              <dt className="text-[color:var(--muted)]">Org.nr</dt>
               <dd>{org.organizationNumber ?? "—"}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Adresse</dt>
+              <dt className="text-[color:var(--muted)]">Adresse</dt>
               <dd className="text-right">
                 {[org.legalAddress, org.legalPostalCode, org.legalCity]
                   .filter(Boolean)
@@ -49,33 +49,33 @@ export default async function AdminSettingsPage() {
               </dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Kundeservice</dt>
+              <dt className="text-[color:var(--muted)]">Kundeservice</dt>
               <dd>{org.customerServiceEmail ?? org.contactEmail ?? "—"}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-zinc-500">Vilkårsversjon</dt>
+              <dt className="text-[color:var(--muted)]">Vilkårsversjon</dt>
               <dd>{org.termsVersion}</dd>
             </div>
           </dl>
         </section>
       )}
 
-      <section className="rounded-xl border border-zinc-200 bg-white p-5 text-sm">
+      <section className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5 text-sm">
         <h2 className="font-medium">Betaling</h2>
         <dl className="mt-3 space-y-2">
           <div className="flex justify-between gap-4">
-            <dt className="text-zinc-500">PAYMENT_PROVIDER</dt>
+            <dt className="text-[color:var(--muted)]">PAYMENT_PROVIDER</dt>
             <dd className="font-mono text-xs">{String(provider)}</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-zinc-500">Nexi Checkout</dt>
+            <dt className="text-[color:var(--muted)]">Nexi Checkout</dt>
             <dd>
               {nexi.status === "operational" ? "Operational" : "Configuration Error"}
               <span className="ml-2 text-xs text-zinc-400">({nexi.environment})</span>
             </dd>
           </div>
         </dl>
-        {nexi.message ? <p className="mt-2 text-xs text-amber-700">{nexi.message}</p> : null}
+        {nexi.message ? <p className="mt-2 text-xs text-[color:var(--accent)]">{nexi.message}</p> : null}
       </section>
     </div>
   );

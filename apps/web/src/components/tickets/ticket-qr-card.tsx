@@ -52,15 +52,15 @@ export function TicketQrCard({ ticket, event, orderNumber }: Props) {
     ticket.status === "TRANSFERRED";
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950">
-      <div className="border-b border-zinc-800 bg-zinc-900/80 px-5 py-4">
+    <article className="overflow-hidden rounded-2xl border border-[color:var(--outline)]/30 bg-gradient-to-b from-zinc-900 to-zinc-950">
+      <div className="border-b border-[color:var(--outline)]/30 bg-zinc-900/80 px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="font-display text-xl text-white">{event.name}</p>
             <p className="text-sm text-zinc-400">
               {formatEventDateTime(event.startsAt, event.timezone)}
             </p>
-            <p className="text-sm text-zinc-500">{event.venue}</p>
+            <p className="text-sm text-[color:var(--muted)]">{event.venue}</p>
           </div>
           <Badge variant={statusVariant}>{ticket.status}</Badge>
         </div>
@@ -75,29 +75,29 @@ export function TicketQrCard({ ticket, event, orderNumber }: Props) {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={dataUrl} alt={`QR for ${ticket.publicId}`} className="h-40 w-40" />
           ) : (
-            <div className="flex h-40 w-40 items-center justify-center text-xs text-zinc-500">
+            <div className="flex h-40 w-40 items-center justify-center text-xs text-[color:var(--muted)]">
               Laster QR…
             </div>
           )}
         </div>
         <div className="space-y-2 text-sm">
           <p>
-            <span className="text-zinc-500">Billettype</span>
+            <span className="text-[color:var(--muted)]">Billettype</span>
             <br />
             <span className="font-medium">{ticket.ticketTypeName}</span>
           </p>
           <p>
-            <span className="text-zinc-500">Navn</span>
+            <span className="text-[color:var(--muted)]">Navn</span>
             <br />
             <span className="font-medium">{ticket.holderName}</span>
           </p>
           <p>
-            <span className="text-zinc-500">Ordre</span>
+            <span className="text-[color:var(--muted)]">Ordre</span>
             <br />
             <span className="font-mono text-xs">{orderNumber}</span>
           </p>
           <p>
-            <span className="text-zinc-500">Billettnummer</span>
+            <span className="text-[color:var(--muted)]">Billettnummer</span>
             <br />
             <span className="font-mono text-xs">{ticket.publicId}</span>
           </p>

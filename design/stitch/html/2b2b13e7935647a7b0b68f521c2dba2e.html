@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="no"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface-container":"#1f1f22","outline-variant":"#5b4038","primary-container":"#ff5a1f","secondary-fixed":"#e4e1ec","surface-dim":"#131316","inverse-primary":"#ae3200","secondary-fixed-dim":"#c7c5d0","primary":"#ffb59e","error":"#ffb4ab","surface-bright":"#39393c","on-tertiary":"#561f00","on-tertiary-container":"#4e1b00","tertiary-container":"#f46600","on-secondary":"#303038","surface-tint":"#ffb59e","secondary":"#c7c5d0","inverse-on-surface":"#303033","surface-container-lowest":"#0e0e11","outline":"#ab897f","on-primary-container":"#541400","tertiary":"#ffb693","on-primary-fixed-variant":"#852400","tertiary-fixed-dim":"#ffb693","on-error":"#690005","on-error-container":"#ffdad6","surface":"#131316","secondary-container":"#494851","on-surface-variant":"#e4beb3","surface-variant":"#353438","surface-container-high":"#2a2a2d","inverse-surface":"#e4e1e6","on-secondary-container":"#b9b7c1","on-primary":"#5e1700","on-secondary-fixed":"#1b1b22","background":"#131316","surface-container-highest":"#353438","on-tertiary-fixed-variant":"#7a3000","surface-container-low":"#1b1b1e","on-background":"#e4e1e6","on-secondary-fixed-variant":"#46464e","primary-fixed":"#ffdbd0","on-primary-fixed":"#3a0b00","on-surface":"#e4e1e6","tertiary-fixed":"#ffdbcc","error-container":"#93000a","on-tertiary-fixed":"#351000","primary-fixed-dim":"#ffb59e"},borderRadius:{DEFAULT:"0.125rem",lg:"0.25rem",xl:"0.5rem",full:"0.75rem"},spacing:{"space-lg":"1.5rem","space-xl":"2.5rem","margin-mobile":"1rem","space-sm":"0.5rem","space-xs":"0.25rem","gutter-mobile":"1rem",gutter:"1.5rem",margin:"2.5rem","space-md":"1rem"},fontFamily:{"label-mono-sm":["Space Grotesk"],"label-lg":["Space Grotesk"],"headline-lg-mobile":["Space Grotesk"],"body-sm":["Inter"],"headline-xl-mobile":["Space Grotesk"],"headline-md":["Space Grotesk"],"body-md":["Inter"],"title-md":["Space Grotesk"],"body-lg":["Inter"],"headline-sm":["Space Grotesk"],"headline-xl":["Space Grotesk"],"headline-lg":["Space Grotesk"],"label-md":["Space Grotesk"]},fontSize:{"label-mono-sm":["11px",{lineHeight:"14px",letterSpacing:"0.08em",fontWeight:"500"}],"label-lg":["14px",{lineHeight:"20px",letterSpacing:"0.02em",fontWeight:"600"}],"headline-lg-mobile":["28px",{lineHeight:"36px",letterSpacing:"-0.02em",fontWeight:"600"}],"body-sm":["13px",{lineHeight:"18px",letterSpacing:"0em",fontWeight:"400"}],"headline-xl-mobile":["36px",{lineHeight:"44px",letterSpacing:"-0.02em",fontWeight:"700"}],"headline-md":["28px",{lineHeight:"36px",letterSpacing:"-0.02em",fontWeight:"600"}],"body-md":["15px",{lineHeight:"22px",letterSpacing:"-0.005em",fontWeight:"400"}],"title-md":["16px",{lineHeight:"24px",letterSpacing:"-0.01em",fontWeight:"600"}],"body-lg":["18px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"400"}],"headline-sm":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],"headline-xl":["56px",{lineHeight:"64px",letterSpacing:"-0.03em",fontWeight:"700"}],"headline-lg":["40px",{lineHeight:"48px",letterSpacing:"-0.025em",fontWeight:"600"}],"label-md":["12px",{lineHeight:"16px",letterSpacing:"0.04em",fontWeight:"600"}]}}}}</script></head><body class="bg-surface-container-lowest font-body-md text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container min-h-screen flex flex-col justify-between"><header class="fixed top-0 left-0 w-full z-50 bg-surface-container-lowest/90 backdrop-blur-md shadow-[0_1px_8px_rgba(0,0,0,0.6)]"><div class="h-20 max-w-7xl mx-auto px-margin flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-lg"><a class="flex items-center gap-space-sm" data-path="arrangementer" href="#"><img alt="Ticketly Brand Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1VPv0AJPMp9JEL9KArCzqbSj-EUmpe8OjJlzexlVPmtxwflfEDfzE8GlrToo5VCgKpqXu0pHos-Vo7V-Ru2qqSufeEIYpQ8OPU9IaIzzOZ7TGd88ewjOnjhLKHy_EENQvi69Ussa_CMM1-3NzjYYSvxan8qCna6mMWn3Q0qtOcFayzHKiOj0_NJD3dBhT8l6XqpyRL9NvBkJr6YT8945tW2hYD12a175omgKXf7xNmftEGwurruwkB08Gw"/><span class="font-title-md text-title-md tracking-tight uppercase text-on-surface">Ticketly</span></a><div class="hidden xl:flex items-center bg-surface-container-low px-space-md py-space-xs rounded gap-space-sm"><span class="material-symbols-outlined text-secondary text-[18px]">search</span><input class="bg-transparent border-0 text-on-surface placeholder:text-secondary font-body-sm text-body-sm focus:outline-none w-56" placeholder="Søk artister, scener, festivaler..." type="text"/><div class="h-4 w-px bg-surface-container-highest"></div><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-secondary text-[16px]">location_on</span><span class="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase tracking-wider">Oslo / Drammen / Bergen</span></div></div></div><nav class="flex items-center gap-space-md" data-active-classes="bg-surface-container text-on-surface font-semibold rounded"><a class="font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface transition-colors px-space-sm py-space-xs" data-path="arrangementer" href="#">Arrangementer</a><a class="font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface transition-colors px-space-sm py-space-xs" data-path="utforsk" href="#">Utforsk</a><a class="font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface transition-colors px-space-sm py-space-xs" data-path="for-arrangorer" href="#">For arrangører</a><a class="font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface transition-colors px-space-sm py-space-xs" data-path="logg-inn" href="#">Logg inn</a></nav><div class="flex items-center gap-space-md"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-20 bg-surface-container-lowest flex-1"><div class="flex flex-col w-full">
+<!-- Immersive Event Hero Section -->
+<section class="relative w-full -mt-20 overflow-hidden bg-surface-container-lowest">
+<!-- Hero Background Visual Canvas with Noir Atmospheric Lighting -->
+<div class="relative w-full min-h-[560px] md:h-[620px] bg-cover bg-center flex flex-col justify-end" data-alt="Dark dramatic electronic music nightclub with silhouette crowd hands raised under sharp amber orange lasers and moody volumetric fog. Highly atmospheric cinematic shot with obsidian graphite tones, sharp rim lighting, stage strobe reflections, and a headline DJ silhouette behind modular gear. 8k quality, low key lighting, editorial aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAifaVAnN7Zrn23Q-8gNIcV2I3z7CstY9HTAJkVFVUv1Zq938b6PIpo5SuHWuhVg3h59v4ZRDRL2hWhsJWmFsvQeDsNifmGDrfL_rh3dBKHWOqKvgzdbzmqzUHYKZ1aJW3aEFj2lokho_vR_vXt6qvYtZTfdbU8xzvxw028pOYEUBbb0DFtLH7pu0F-4bfq8D8MOxL7tHrFMDXf3ykyytMzzS7rChUY0Rm0f-00VIK1yK3IqwrE1s3ecw')">
+<!-- Gradient Scrim for Flawless Typographic Legibility -->
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest/80 to-transparent"></div>
+<div class="absolute inset-0 bg-gradient-to-r from-surface-container-lowest/90 via-surface-container-lowest/40 to-transparent"></div>
+<!-- Top Clearance Spacer for Transparent Navigation Header -->
+<div class="relative z-10 w-full max-w-7xl mx-auto px-margin pt-28 pb-10 flex flex-col justify-end">
+<!-- Live Badges & Presenter Metadata Line -->
+<div class="flex flex-wrap items-center gap-space-sm mb-space-sm">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-primary-container text-on-primary font-label-mono-sm text-label-mono-sm tracking-wider uppercase shadow-md">
+<span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+            Siste billetter
+          </span>
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-mono-sm text-label-mono-sm tracking-widest uppercase">
+            18+ Aldersgrense
+          </span>
+<span class="text-secondary font-label-mono-sm text-label-mono-sm uppercase tracking-widest pl-space-xs">
+            TITAN EVENTS PRESENTERER
+          </span>
+</div>
+<!-- Headline Display & Subtitle -->
+<div class="max-w-4xl">
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight uppercase leading-none mb-space-sm">
+            Friday Night
+          </h1>
+<p class="font-headline-sm text-headline-sm text-secondary font-normal tracking-wide max-w-2xl">
+            En natt dedikert til kompromissløs klubblyd, drivende rytmer og tung industribass i hjertet av Drammen.
+          </p>
+</div>
+<!-- Horizontal Quick-Facts Bar (Bento Ribbon) -->
+<div class="mt-space-lg pt-space-md bg-surface-container-low/80 backdrop-blur-md p-space-md rounded-lg grid grid-cols-2 md:grid-cols-4 gap-space-md shadow-xl">
+<div class="flex items-start gap-space-sm">
+<div class="p-2 rounded bg-surface-container text-primary-container">
+<span class="material-symbols-outlined text-[20px]">calendar_today</span>
+</div>
+<div>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-widest">Dato &amp; Tid</p>
+<p class="font-title-md text-title-md text-on-surface">16. oktober 2026</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">22:00 – 03:30 (Dørlukking 01:30)</p>
+</div>
+</div>
+<div class="flex items-start gap-space-sm">
+<div class="p-2 rounded bg-surface-container text-primary-container">
+<span class="material-symbols-outlined text-[20px]">location_on</span>
+</div>
+<div>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-widest">Lokasjon</p>
+<p class="font-title-md text-title-md text-on-surface">Shot Spot</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Strømsø Torg 4, 3044 Drammen</p>
+</div>
+</div>
+<div class="flex items-start gap-space-sm">
+<div class="p-2 rounded bg-surface-container text-primary-container">
+<span class="material-symbols-outlined text-[20px]">verified_user</span>
+</div>
+<div>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-widest">Adgang</p>
+<p class="font-title-md text-title-md text-on-surface">18+ Legitimasjon</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Fysisk ID / BankID kreves</p>
+</div>
+</div>
+<div class="flex items-start gap-space-sm">
+<div class="p-2 rounded bg-surface-container text-primary-container">
+<span class="material-symbols-outlined text-[20px]">graphic_eq</span>
+</div>
+<div>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-widest">Sjanger</p>
+<p class="font-title-md text-title-md text-on-surface">Electronic / Club</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Tech House &amp; Melodic Bass</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Content Structural Split (65% Editorial / 35% Ticket Cockpit) -->
+<div class="w-full max-w-7xl mx-auto px-margin py-space-xl">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-xl items-start">
+<!-- ================= LEFT COLUMN: EVENT DETAILS (65% / 8 cols) ================= -->
+<div class="lg:col-span-7 xl:col-span-8 flex flex-col gap-space-xl">
+<!-- SECTION 1: Om arrangementet -->
+<article class="bg-surface-container-low p-space-lg rounded-xl shadow-lg relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary-container"></div>
+<div class="flex items-center gap-space-sm mb-space-md">
+<span class="material-symbols-outlined text-primary-container text-[20px]">nightlife</span>
+<span class="font-label-mono-sm text-label-mono-sm uppercase tracking-widest text-secondary">01 // Konsept &amp; Visjon</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-space-md uppercase tracking-tight">
+            Nattens puls på Shot Spot
+          </h2>
+<div class="space-y-space-md font-body-md text-body-md text-on-surface-variant leading-relaxed">
+<p>
+              Gjør deg klar for sesongens definitive klubbkveld når Titan Events inntar Shot Spot for en ufiltrert utgave av <strong class="text-on-surface font-semibold">Friday Night</strong>. Med oppgradert L-Acoustics lydrigg, spesialbygget laser-matrise og en nøye kuratert reise gjennom mørk tech house, energisk club bounce og hypnotiserende melodiske undertoner, skaper vi et rom der musikken tar full kontroll.
+            </p>
+<p>
+              Shot Spot forvandles for anledningen til et pulserende klubbkammer med dempet lys, tunge basslinjer og et dansegulv designet for uavbrutt flyt fra åpning til stengetid. Vårt residency-crew leverer b2b-sets som bygger opp stemningen før vår hemmelige headliner tar over spakene rundt midnatt.
+            </p>
+</div>
+<!-- Highlight Key Metrics / Atmosphere Badges -->
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-space-md mt-space-lg pt-space-md bg-surface-container rounded-lg p-space-md">
+<div>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Lydsystem</p>
+<p class="font-title-md text-title-md text-on-surface">L-Acoustics 24kW</p>
+</div>
+<div>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Lysrigg</p>
+<p class="font-title-md text-title-md text-on-surface">CO2 &amp; Amber Beam</p>
+</div>
+<div>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Kapasitet</p>
+<p class="font-title-md text-title-md text-on-surface">Begrenset 420 PAX</p>
+</div>
+</div>
+</article>
+<!-- SECTION 2: Program & Lineup (Curated Timeline) -->
+<section class="bg-surface-container-low p-space-lg rounded-xl shadow-lg">
+<div class="flex items-center justify-between mb-space-lg">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary-container text-[20px]">queue_music</span>
+<span class="font-label-mono-sm text-label-mono-sm uppercase tracking-widest text-secondary">02 // Tidsplan &amp; Lineup</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-primary px-2 py-1 rounded bg-surface-container">Direkte fra miksepulten</span>
+</div>
+<!-- Timeline Items -->
+<div class="space-y-space-md">
+<!-- Slot 1 -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between p-space-md rounded bg-surface-container gap-space-md hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-space-md">
+<div class="px-3 py-1.5 rounded bg-surface-container-highest text-primary font-label-mono-sm text-label-mono-sm tracking-wider">
+                  22:00 – 00:00
+                </div>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface">Warmup &amp; Resident Flow</h4>
+<p class="font-body-sm text-body-sm text-secondary">Deep Tech, Minimal Grooves · Titan Sound System</p>
+</div>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-widest sm:text-right">Dørene åpner</span>
+</div>
+<!-- Slot 2: Headline -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between p-space-md rounded bg-surface-container-high gap-space-md relative overflow-hidden">
+<div class="absolute left-0 top-0 w-1.5 h-full bg-primary-container"></div>
+<div class="flex items-center gap-space-md pl-1">
+<div class="px-3 py-1.5 rounded bg-primary-container text-on-primary font-label-mono-sm text-label-mono-sm tracking-wider font-semibold">
+                  00:00 – 02:00
+                </div>
+<div>
+<div class="flex items-center gap-space-xs">
+<h4 class="font-title-md text-title-md text-on-surface">SPECIAL GUEST HEADLINER</h4>
+<span class="material-symbols-outlined text-primary-container text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Melodic Club &amp; Peak-Time Tech House</p>
+</div>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-primary-fixed-dim uppercase tracking-widest sm:text-right">Hovedsett</span>
+</div>
+<!-- Slot 3: Closing -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between p-space-md rounded bg-surface-container gap-space-md hover:bg-surface-container-high transition-colors">
+<div class="flex items-center gap-space-md">
+<div class="px-3 py-1.5 rounded bg-surface-container-highest text-primary font-label-mono-sm text-label-mono-sm tracking-wider">
+                  02:00 – 03:30
+                </div>
+<div>
+<h4 class="font-title-md text-title-md text-on-surface">Closing Velocity Set</h4>
+<p class="font-body-sm text-body-sm text-secondary">Driving Tech House &amp; Fast Grooves · DJ KRONIK</p>
+</div>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-widest sm:text-right">Siste dans</span>
+</div>
+</div>
+</section>
+<!-- SECTION 3: Viktig Informasjon & Retningslinjer (Security & Rules) -->
+<section class="bg-surface-container-low p-space-lg rounded-xl shadow-lg">
+<div class="flex items-center gap-space-sm mb-space-lg">
+<span class="material-symbols-outlined text-primary-container text-[20px]">policy</span>
+<span class="font-label-mono-sm text-label-mono-sm uppercase tracking-widest text-secondary">03 // Viktig informasjon</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<div class="p-space-md rounded bg-surface-container flex gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[22px] flex-shrink-0">checkroom</span>
+<div>
+<h5 class="font-title-md text-title-md text-on-surface mb-1">Garderobe &amp; Oppbevaring</h5>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                  Bemannet garderobe ved hovedinngangen. Standardbillett inkluderer ikke oppheng (kr 45,- vipps/kort i døren). Ordinære VIP-billetter har dedikert garderobekø inkludert.
+                </p>
+</div>
+</div>
+<div class="p-space-md rounded bg-surface-container flex gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[22px] flex-shrink-0">qr_code_scanner</span>
+<div>
+<h5 class="font-title-md text-title-md text-on-surface mb-1">Rask ID- og Dørscanning</h5>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                  Digital billett i Ticketly-appen eller Apple Wallet scannes ved inngangen. Ha legitimasjon (Pass, Førerkort eller Nasjonalt ID-kort) klart. Skjermbilde godtas ikke.
+                </p>
+</div>
+</div>
+<div class="p-space-md rounded bg-surface-container flex gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[22px] flex-shrink-0">block</span>
+<div>
+<h5 class="font-title-md text-title-md text-on-surface mb-1">Vergeordning &amp; Aldersgrense</h5>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                  Strengt 18-årsgrense. Det tilbys ingen vergeordning for dette arrangementet av sikkerhetsmessige hensyn.
+                </p>
+</div>
+</div>
+<div class="p-space-md rounded bg-surface-container flex gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[22px] flex-shrink-0">currency_exchange</span>
+<div>
+<h5 class="font-title-md text-title-md text-on-surface mb-1">Refusjon &amp; Videresalg</h5>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                  Billetter refunderes kun dersom arrangementet avlyses i sin helhet. Sikker billettvideresalg tilbys direkte via din Ticketly-brukerprofil frem til kl. 20:00.
+                </p>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 4: Venue & Veibeskrivelse (Map & Transit Connectivity) -->
+<section class="bg-surface-container-low p-space-lg rounded-xl shadow-lg">
+<div class="flex items-center justify-between mb-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary-container text-[20px]">near_me</span>
+<span class="font-label-mono-sm text-label-mono-sm uppercase tracking-widest text-secondary">04 // Lokasjon &amp; Adkomst</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Strømsø Torg 4, Drammen</span>
+</div>
+<!-- Static Map Canvas Embed -->
+<div class="w-full h-72 rounded-lg bg-cover bg-center relative overflow-hidden shadow-inner flex flex-col justify-end p-space-md" data-location="Shot Spot, Strømsø Torg 4, 3044 Drammen" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA-WuSGqOj2BYX69YKFjainWJoobabMgT6XcDBg5xv_J-Ra3Efqv7lA1nIolw48Ynir8GNvPZpLWHy_kxlgLEz02_xAkgAOQwLEI8ryxUXHour4nNXTY6F1MOMciZa34FZ8xmuYXPnZmLas0k0PaTtKdWKPPPYRzDjkcY35NMyvKexQQQ0AtVxE-oh3Gf3gPbCZ1cTcp1bErUmOHqcUX3zh6SVl9uPGQcLgxIFXbriBY14qDwZuqXd-HA')">
+<div class="absolute inset-0 bg-surface-container-lowest/60 backdrop-blur-sm"></div>
+<div class="relative z-10 bg-surface-container-lowest/90 p-space-md rounded max-w-sm">
+<div class="flex items-center gap-space-xs text-primary-container font-title-md text-title-md mb-1">
+<span class="material-symbols-outlined text-[18px]">pin_drop</span>
+                Shot Spot Drammen
+              </div>
+<p class="font-body-sm text-body-sm text-secondary">
+                Plassert direkte ved Strømsø Torg, kun 120 meter fra plattformene på Drammen Stasjon.
+              </p>
+</div>
+</div>
+<!-- Public Transit Guidance -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md mt-space-md">
+<div class="p-space-sm rounded bg-surface-container flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">train</span>
+<div>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Tog / VY</p>
+<p class="font-body-sm text-body-sm text-on-surface">2 min gange fra stasjon</p>
+</div>
+</div>
+<div class="p-space-sm rounded bg-surface-container flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">directions_bus</span>
+<div>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Bussforbindelse</p>
+<p class="font-body-sm text-body-sm text-on-surface">Brakar nattbuss rute 3 &amp; 5</p>
+</div>
+</div>
+<div class="p-space-sm rounded bg-surface-container flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">local_taxi</span>
+<div>
+<p class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Taxi holdeplass</p>
+<p class="font-body-sm text-body-sm text-on-surface">Taxiholdeplass på torget</p>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 5: Arrangørprofil (Host Entity) -->
+<section class="bg-surface-container-low p-space-lg rounded-xl shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-space-lg">
+<div class="flex items-center gap-space-md">
+<div class="w-16 h-16 rounded-xl bg-surface-container-highest flex items-center justify-center font-headline-md text-headline-md text-primary-container shadow-md">
+<span class="material-symbols-outlined text-[32px]">equalizer</span>
+</div>
+<div>
+<div class="flex items-center gap-space-xs">
+<h4 class="font-title-md text-title-md text-on-surface">Titan Events AS</h4>
+<span class="material-symbols-outlined text-primary-container text-[18px]" style="font-variation-settings: 'FILL' 1;" title="Verifisert arrangør">verified</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary">Offisiell utelivsarrangør og bookingbyrå for Østlandet</p>
+<p class="font-label-mono-sm text-label-mono-sm text-on-surface-variant mt-1">Org.nr: 928 411 902 MVA · 38 gjennomførte events</p>
+</div>
+</div>
+<button class="px-space-md py-space-sm rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-space-xs transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">mail</span>
+            Kontakt arrangør
+          </button>
+</section>
+</div>
+<!-- ================= RIGHT COLUMN: STICKY TICKET SELECTION COCKPIT (35% / 4-5 cols) ================= -->
+<aside class="lg:col-span-5 xl:col-span-4 sticky top-24 space-y-space-md">
+<!-- Main Interactive Booking Shell -->
+<div class="bg-surface-container-low p-space-lg rounded-xl shadow-2xl relative overflow-hidden">
+<!-- Urgent Demand Status Strip -->
+<div class="flex items-center justify-between pb-space-sm mb-space-md bg-surface-container/60 -mx-space-lg -mt-space-lg px-space-lg pt-space-md">
+<div>
+<span class="font-headline-sm text-headline-sm text-on-surface tracking-tight uppercase">Velg billetter</span>
+<p class="font-body-sm text-body-sm text-secondary">Rask og sikker reservasjon</p>
+</div>
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-container/20">
+<span class="w-2 h-2 rounded-full bg-primary-container animate-ping"></span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary tracking-wide uppercase">12 billetter igjen</span>
+</div>
+</div>
+<!-- Ticket Tier Stacks -->
+<div class="space-y-space-md">
+<!-- TIER 1: Early Bird (SELECTED STATE) -->
+<div class="p-space-md rounded-lg bg-surface-container-high transition-all shadow-md relative" id="tier-early-bird">
+<div class="flex items-start justify-between gap-space-sm">
+<div>
+<div class="flex items-center gap-space-xs mb-1">
+<span class="font-title-md text-title-md text-on-surface font-semibold">Early Bird</span>
+<span class="px-2 py-0.5 rounded bg-tertiary-container/30 text-tertiary-fixed font-label-mono-sm text-label-mono-sm tracking-wider uppercase">FÅ IGJEN</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-[210px] leading-tight">
+                    Prioritert inngang før kl. 23:00. Begrenset antall tilgjengelig.
+                  </p>
+</div>
+<div class="text-right">
+<div class="font-headline-sm text-headline-sm text-primary-container font-bold">199 kr</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">+20 kr avg.</span>
+</div>
+</div>
+<!-- Ticket Quantity Counter Control -->
+<div class="mt-space-md pt-space-sm flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-widest">Antall billetter</span>
+<div class="flex items-center bg-surface-container-highest rounded p-1">
+<button aria-label="Fjern én billett" class="w-8 h-8 rounded bg-surface-container hover:bg-surface text-on-surface flex items-center justify-center font-bold transition-transform active:scale-90" onclick="adjustCount('early', -1)" type="button">
+<span class="material-symbols-outlined text-[16px]">remove</span>
+</button>
+<span class="w-10 text-center font-title-md text-title-md text-on-surface" id="count-early">2</span>
+<button aria-label="Legg til én billett" class="w-8 h-8 rounded bg-surface-container hover:bg-surface text-on-surface flex items-center justify-center font-bold transition-transform active:scale-90" onclick="adjustCount('early', 1)" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- TIER 2: Ordinær inngang (AVAILABLE / IDLE) -->
+<div class="p-space-md rounded-lg bg-surface-container hover:bg-surface-container-high transition-all" id="tier-regular">
+<div class="flex items-start justify-between gap-space-sm">
+<div>
+<div class="flex items-center gap-space-xs mb-1">
+<span class="font-title-md text-title-md text-on-surface font-semibold">Ordinær inngang</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-secondary-fixed font-label-mono-sm text-label-mono-sm tracking-wider uppercase">TILGJENGELIG</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-[210px] leading-tight">
+                    Standard inngang hele kvelden. Inkluderer garderobe.
+                  </p>
+</div>
+<div class="text-right">
+<div class="font-headline-sm text-headline-sm text-on-surface font-bold">249 kr</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">+25 kr avg.</span>
+</div>
+</div>
+<!-- Ticket Quantity Counter Control -->
+<div class="mt-space-md pt-space-sm flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-widest">Antall billetter</span>
+<div class="flex items-center bg-surface-container-highest rounded p-1">
+<button aria-label="Fjern én ordinær billett" class="w-8 h-8 rounded bg-surface-container hover:bg-surface text-on-surface flex items-center justify-center font-bold transition-transform active:scale-90" onclick="adjustCount('regular', -1)" type="button">
+<span class="material-symbols-outlined text-[16px]">remove</span>
+</button>
+<span class="w-10 text-center font-title-md text-title-md text-on-surface" id="count-regular">0</span>
+<button aria-label="Legg til én ordinær billett" class="w-8 h-8 rounded bg-surface-container hover:bg-surface text-on-surface flex items-center justify-center font-bold transition-transform active:scale-90" onclick="adjustCount('regular', 1)" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- TIER 3: VIP Mezzanine (SOLD OUT) -->
+<div class="p-space-md rounded-lg bg-surface-container/40 opacity-60 relative overflow-hidden">
+<div class="flex items-start justify-between gap-space-sm">
+<div>
+<div class="flex items-center gap-space-xs mb-1">
+<span class="font-title-md text-title-md text-secondary line-through">VIP Mezzanine &amp; Fast Track</span>
+<span class="px-2 py-0.5 rounded bg-error-container/40 text-error font-label-mono-sm text-label-mono-sm tracking-wider uppercase">UTSOLGT</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary max-w-[210px] leading-tight">
+                    Egen inngang uten kø, tilgang til VIP-balkong med egen bar og sittegruppe.
+                  </p>
+</div>
+<div class="text-right">
+<div class="font-headline-sm text-headline-sm text-secondary font-bold">499 kr</div>
+</div>
+</div>
+<div class="mt-space-md pt-space-sm flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-widest">Kvote brukt</span>
+<span class="px-3 py-1 rounded bg-surface-container-high text-secondary font-label-mono-sm text-label-mono-sm uppercase">Utsolgt</span>
+</div>
+</div>
+<!-- TIER 4: Informasjonskort for Dørsalg -->
+<div class="p-space-sm rounded bg-surface-container/30 flex items-center justify-between text-secondary">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[18px]">door_front</span>
+<span class="font-body-sm text-body-sm">Etterslipp i døren</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<span class="font-label-mono-sm text-label-mono-sm font-semibold text-on-surface">299 kr</span>
+<span class="font-label-mono-sm text-label-mono-sm uppercase text-secondary">KL. 22:00</span>
+</div>
+</div>
+</div>
+<!-- Checkout Subtotals Breakdown -->
+<div class="mt-space-lg pt-space-md space-y-space-xs bg-surface-container/50 -mx-space-lg px-space-lg pb-space-sm">
+<div class="flex items-center justify-between font-body-sm text-body-sm text-secondary">
+<span id="summary-label">Delsum (2 billetter)</span>
+<span class="font-title-md text-title-md text-on-surface" id="summary-subtotal">398 kr</span>
+</div>
+<div class="flex items-center justify-between font-body-sm text-body-sm text-secondary">
+<span>Serviceavgift (Ticketly)</span>
+<span class="text-on-surface" id="summary-fee">40 kr</span>
+</div>
+<div class="flex items-center justify-between pt-space-xs">
+<span class="font-title-md text-title-md text-on-surface font-bold uppercase">Totalt å betale</span>
+<span class="font-headline-sm text-headline-sm text-primary-container font-bold" id="summary-total">438 kr</span>
+</div>
+</div>
+<!-- Primary CTA Button (High-Voltage Obsidian Action) -->
+<div class="mt-space-md">
+<button class="w-full h-12 rounded bg-primary-container hover:bg-tertiary-container text-on-primary font-title-md text-title-md font-bold uppercase tracking-wider flex items-center justify-center gap-space-sm shadow-xl transition-all active:scale-[0.99]" id="checkout-btn" type="button">
+<span id="checkout-btn-label">Gå til checkout · 438 kr</span>
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</div>
+<!-- Direct Payment Facilitators -->
+<div class="mt-space-md pt-space-sm flex items-center justify-center gap-space-md text-secondary">
+<span class="flex items-center gap-1 font-label-mono-sm text-label-mono-sm tracking-widest uppercase">
+<span class="material-symbols-outlined text-[16px]">smartphone</span> Vipps
+            </span>
+<span class="w-1 h-1 rounded-full bg-surface-variant"></span>
+<span class="flex items-center gap-1 font-label-mono-sm text-label-mono-sm tracking-widest uppercase">
+<span class="material-symbols-outlined text-[16px]">credit_card</span> Kort
+            </span>
+<span class="w-1 h-1 rounded-full bg-surface-variant"></span>
+<span class="flex items-center gap-1 font-label-mono-sm text-label-mono-sm tracking-widest uppercase">
+<span class="material-symbols-outlined text-[16px]">wallet</span> Apple Pay
+            </span>
+</div>
+</div>
+<!-- Security & Guarantee Badge Ribbon -->
+<div class="bg-surface-container-low p-space-md rounded-lg flex items-start gap-space-sm shadow-md">
+<span class="material-symbols-outlined text-primary-container text-[22px] flex-shrink-0 mt-0.5">verified</span>
+<div class="space-y-0.5">
+<p class="font-label-mono-sm text-label-mono-sm text-on-surface uppercase font-semibold">
+              Offisiell billettformidler
+            </p>
+<p class="font-body-sm text-body-sm text-secondary leading-snug">
+              Direkte overføring til Apple Wallet &amp; offline QR-kode. Kjøpsbeskyttelse og adgangsvalidering levert av TitanSystems.
+            </p>
+</div>
+</div>
+</aside>
+</div>
+</div>
+<!-- Interactive State Management Script (Vanilla) -->
+<script>
+    const ticketState = {
+      early: { count: 2, price: 199, fee: 20 },
+      regular: { count: 0, price: 249, fee: 25 }
+    };
+
+    function adjustCount(type, delta) {
+      const current = ticketState[type].count;
+      const next = Math.max(0, Math.min(8, current + delta));
+      if (current === next) return;
+
+      ticketState[type].count = next;
+      document.getElementById('count-' + type).innerText = next;
+
+      updateTicketUi();
+    }
+
+    function updateTicketUi() {
+      const earlyTotal = ticketState.early.count * ticketState.early.price;
+      const regularTotal = ticketState.regular.count * ticketState.regular.price;
+      const subtotal = earlyTotal + regularTotal;
+      
+      const totalTickets = ticketState.early.count + ticketState.regular.count;
+      const fee = (ticketState.early.count * ticketState.early.fee) + (ticketState.regular.count * ticketState.regular.fee);
+      const grandTotal = subtotal + fee;
+
+      document.getElementById('summary-label').innerText = `Delsum (${totalTickets} billett${totalTickets === 1 ? '' : 'er'})`;
+      document.getElementById('summary-subtotal').innerText = `${subtotal} kr`;
+      document.getElementById('summary-fee').innerText = `${fee} kr`;
+      document.getElementById('summary-total').innerText = `${grandTotal} kr`;
+
+      const checkoutBtn = document.getElementById('checkout-btn');
+      const checkoutLabel = document.getElementById('checkout-btn-label');
+
+      if (totalTickets === 0) {
+        checkoutBtn.classList.add('opacity-50', 'pointer-events-none');
+        checkoutLabel.innerText = 'Velg minst 1 billett';
+      } else {
+        checkoutBtn.classList.remove('opacity-50', 'pointer-events-none');
+        checkoutLabel.innerText = `Gå til checkout · ${grandTotal} kr`;
+      }
+    }
+  </script>
+</div></main><footer class="w-full bg-surface-container-lowest py-space-xl mt-space-xl"><div class="max-w-7xl mx-auto px-margin"><div class="flex flex-col md:flex-row items-center justify-between gap-space-lg"><div class="flex flex-wrap items-center gap-space-lg"><a class="font-label-md text-label-md text-secondary hover:text-on-surface transition-colors" data-path="kjopsvilkar" href="#">Kjøpsvilkår</a><a class="font-label-md text-label-md text-secondary hover:text-on-surface transition-colors" data-path="personvern" href="#">Personvern</a><a class="font-label-md text-label-md text-secondary hover:text-on-surface transition-colors" data-path="refusjonspolicy" href="#">Refusjonspolicy</a></div><div class="font-label-mono-sm text-label-mono-sm text-secondary uppercase tracking-widest">Levert av TitanSystems • Ticketly © 2025</div></div></div></footer></body></html>

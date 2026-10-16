@@ -186,15 +186,15 @@ export function EventOpsPanel({
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <section className="rounded-xl border border-zinc-200 bg-white p-4">
+            <section className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-4">
               <h3 className="mb-3 font-semibold">Live salg</h3>
               <ul className="max-h-80 space-y-2 overflow-auto text-sm">
                 {live.feed.length === 0 ? (
-                  <li className="text-zinc-500">Ingen betalte ordrer ennå</li>
+                  <li className="text-[color:var(--muted)]">Ingen betalte ordrer ennå</li>
                 ) : (
                   live.feed.map((f, i) => (
-                    <li key={i} className="flex justify-between gap-3 border-b border-zinc-100 py-2">
-                      <span className="text-zinc-500">{formatTime(f.at)}</span>
+                    <li key={i} className="flex justify-between gap-3 border-b border-[color:var(--outline)]/20 py-2">
+                      <span className="text-[color:var(--muted)]">{formatTime(f.at)}</span>
                       <span className="flex-1">
                         {f.lines.map((l) => `${l.quantity} × ${l.name}`).join(", ")}
                       </span>
@@ -205,19 +205,19 @@ export function EventOpsPanel({
               </ul>
             </section>
 
-            <section className="rounded-xl border border-zinc-200 bg-white p-4">
+            <section className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-4">
               <h3 className="mb-3 font-semibold">Inventory & pris</h3>
               <ul className="space-y-4">
                 {live.inventory.types.map((t) => (
-                  <li key={t.id} className="rounded-lg border border-zinc-100 p-3 text-sm">
+                  <li key={t.id} className="rounded-lg border border-[color:var(--outline)]/20 p-3 text-sm">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="font-medium">{t.name}</p>
-                        <p className="text-zinc-500">
+                        <p className="text-[color:var(--muted)]">
                           Released {t.quantityReleased}/{t.quantityTotal} · Solgt {t.quantitySold} ·
                           Res {t.quantityReserved} · Ledig {t.available} · Urelease {t.unreleased}
                         </p>
-                        <p className="text-zinc-500">Pris {formatMoney(t.price)}</p>
+                        <p className="text-[color:var(--muted)]">Pris {formatMoney(t.price)}</p>
                       </div>
                       {t.paused ? (
                         <Button size="sm" disabled={busy} onClick={() => void act({ action: "resume_ticket_type", ticketTypeId: t.id })}>
@@ -231,7 +231,7 @@ export function EventOpsPanel({
                     </div>
                     <div className="mt-3 flex flex-wrap items-end gap-2">
                       <div>
-                        <label className="text-xs text-zinc-500">Ny pris (kr)</label>
+                        <label className="text-xs text-[color:var(--muted)]">Ny pris (kr)</label>
                         <Input
                           type="number"
                           className="w-28"
@@ -260,7 +260,7 @@ export function EventOpsPanel({
             </section>
           </div>
 
-          <section className="rounded-xl border border-zinc-200 bg-white p-4 text-sm">
+          <section className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-4 text-sm">
             <h3 className="mb-2 font-semibold">Funnel</h3>
             <p>
               {live.funnel.pageViews} views → {live.funnel.checkoutStarts} checkout →{" "}
@@ -270,7 +270,7 @@ export function EventOpsPanel({
           </section>
         </>
       ) : (
-        <p className="text-sm text-zinc-500">Laster live data…</p>
+        <p className="text-sm text-[color:var(--muted)]">Laster live data…</p>
       )}
     </div>
   );
@@ -278,8 +278,8 @@ export function EventOpsPanel({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{label}</p>
+    <div className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-[color:var(--muted)]">{label}</p>
       <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
     </div>
   );

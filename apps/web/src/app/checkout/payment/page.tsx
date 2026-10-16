@@ -79,7 +79,7 @@ export default async function CheckoutPaymentPage({ searchParams }: Props) {
       <div>
         <SiteHeader />
         <main className="mx-auto max-w-lg px-4 py-16 text-center">
-          <h1 className="font-display text-2xl text-amber-300">Betaling utilgjengelig</h1>
+          <h1 className="font-display text-2xl text-[color:var(--accent-soft)]">Betaling utilgjengelig</h1>
           <p className="mt-2 text-zinc-400">
             Nexi Checkout er ikke konfigurert. Kontakt support eller prøv senere.
           </p>
@@ -102,7 +102,7 @@ export default async function CheckoutPaymentPage({ searchParams }: Props) {
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_340px]">
           <section className="space-y-4">
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+            <div className="rounded-xl border border-[color:var(--outline)]/30 bg-zinc-900/40 p-4">
               <h2 className="text-sm font-medium text-zinc-300">Kontakt</h2>
               <p className="mt-2 text-white">
                 {order.customerFirstName} {order.customerLastName}
@@ -113,7 +113,7 @@ export default async function CheckoutPaymentPage({ searchParams }: Props) {
               ) : null}
             </div>
 
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+            <div className="rounded-xl border border-[color:var(--outline)]/30 bg-zinc-900/40 p-4">
               <NexiCheckoutContainer
                 paymentId={sp.paymentId}
                 checkoutKey={checkoutKey}
@@ -129,8 +129,8 @@ export default async function CheckoutPaymentPage({ searchParams }: Props) {
           </section>
 
           <aside className="h-fit space-y-4 lg:sticky lg:top-6">
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-              <p className="text-xs uppercase tracking-wide text-zinc-500">Oppsummering</p>
+            <div className="rounded-xl border border-[color:var(--outline)]/30 bg-zinc-900/60 p-5">
+              <p className="text-xs uppercase tracking-wide text-[color:var(--muted)]">Oppsummering</p>
               <p className="mt-2 font-medium text-white">{order.event.name}</p>
               <ul className="mt-4 space-y-2 text-sm text-zinc-300">
                 {order.items.map((item) => (
@@ -148,7 +148,7 @@ export default async function CheckoutPaymentPage({ searchParams }: Props) {
                   <span>{formatMoney(order.serviceFee, order.currency)}</span>
                 </div>
               ) : null}
-              <div className="mt-4 flex justify-between border-t border-zinc-800 pt-3 text-lg font-semibold text-amber-300">
+              <div className="mt-4 flex justify-between border-t border-[color:var(--outline)]/30 pt-3 text-lg font-semibold text-[color:var(--accent-soft)]">
                 <span>Totalt</span>
                 <span>{formatMoney(order.total, order.currency)}</span>
               </div>
@@ -157,7 +157,7 @@ export default async function CheckoutPaymentPage({ searchParams }: Props) {
               ) : null}
             </div>
 
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 text-xs text-zinc-500">
+            <div className="rounded-xl border border-[color:var(--outline)]/30 bg-[color:var(--background)]/50 p-4 text-xs text-[color:var(--muted)]">
               <p className="font-medium text-zinc-400">Selger</p>
               <p className="mt-1 text-zinc-300">
                 {seller.legalName ?? seller.name}
@@ -165,7 +165,7 @@ export default async function CheckoutPaymentPage({ searchParams }: Props) {
               </p>
               <p className="mt-2">
                 Ved å betale godtar du{" "}
-                <a className="text-amber-400 underline" href="/terms">
+                <a className="text-[color:var(--accent)] underline" href="/terms">
                   vilkårene
                 </a>
                 .

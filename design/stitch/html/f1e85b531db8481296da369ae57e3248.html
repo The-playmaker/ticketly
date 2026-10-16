@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "secondary": "#c7c5d0", "tertiary-fixed-dim": "#ffb693", "error-container": "#93000a", "on-secondary-fixed-variant": "#46464e", "outline": "#ab897f", "on-surface-variant": "#e4beb3", "surface-bright": "#39393c", "primary": "#ffb59e", "surface-container-high": "#2a2a2d", "surface-container-low": "#1b1b1e", "background": "#131316", "on-secondary-container": "#b9b7c1", "secondary-fixed-dim": "#c7c5d0", "surface-variant": "#353438", "secondary-container": "#494851", "on-tertiary-container": "#4e1b00", "surface": "#131316", "on-error-container": "#ffdad6", "on-surface": "#e4e1e6", "on-error": "#690005", "on-primary": "#5e1700", "on-tertiary": "#561f00", "on-tertiary-fixed": "#351000", "surface-container-lowest": "#0e0e11", "surface-container-highest": "#353438", "secondary-fixed": "#e4e1ec", "on-background": "#e4e1e6", "on-primary-fixed": "#3a0b00", "surface-dim": "#131316", "primary-container": "#ff5a1f", "primary-fixed": "#ffdbd0", "on-secondary": "#303038", "inverse-surface": "#e4e1e6", "on-tertiary-fixed-variant": "#7a3000", "tertiary-container": "#f46600", "outline-variant": "#5b4038", "surface-container": "#1f1f22", "on-secondary-fixed": "#1b1b22", "on-primary-fixed-variant": "#852400", "tertiary": "#ffb693", "primary-fixed-dim": "#ffb59e", "tertiary-fixed": "#ffdbcc", "on-primary-container": "#541400", "surface-tint": "#ffb59e", "inverse-primary": "#ae3200", "error": "#ffb4ab", "inverse-on-surface": "#303033" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-sm": "0.5rem", "gutter": "1.5rem", "gutter-mobile": "1rem", "space-xs": "0.25rem", "space-md": "1rem", "margin-mobile": "1rem", "space-xl": "2.5rem", "space-lg": "1.5rem", "margin": "2.5rem" }, "fontFamily": { "headline-sm": [ "Space Grotesk" ], "label-lg": [ "Space Grotesk" ], "headline-lg": [ "Space Grotesk" ], "headline-xl-mobile": [ "Space Grotesk" ], "headline-lg-mobile": [ "Space Grotesk" ], "label-mono-sm": [ "Space Grotesk" ], "label-md": [ "Space Grotesk" ], "headline-xl": [ "Space Grotesk" ], "body-sm": [ "Inter" ], "headline-md": [ "Space Grotesk" ], "body-md": [ "Inter" ], "title-md": [ "Space Grotesk" ], "body-lg": [ "Inter" ] }, "fontSize": { "headline-sm": [ "20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "label-lg": [ "14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" } ], "headline-lg": [ "40px", { "lineHeight": "48px", "letterSpacing": "-0.025em", "fontWeight": "600" } ], "headline-xl-mobile": [ "36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "headline-lg-mobile": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "label-mono-sm": [ "11px", { "lineHeight": "14px", "letterSpacing": "0.08em", "fontWeight": "500" } ], "label-md": [ "12px", { "lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "600" } ], "headline-xl": [ "56px", { "lineHeight": "64px", "letterSpacing": "-0.03em", "fontWeight": "700" } ], "body-sm": [ "13px", { "lineHeight": "18px", "letterSpacing": "0em", "fontWeight": "400" } ], "headline-md": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "body-md": [ "15px", { "lineHeight": "22px", "letterSpacing": "-0.005em", "fontWeight": "400" } ], "title-md": [ "16px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "body-lg": [ "18px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "400" } ] } } } };</script></head><body class="bg-surface font-body-md text-on-surface antialiased selection:bg-primary-container selection:text-on-primary-container"><aside class="fixed left-0 top-0 h-screen w-72 bg-surface-container-lowest flex flex-col z-50 border-r border-surface-container-highest"><div class="h-16 px-gutter flex items-center justify-between border-b border-surface-container-highest"><div class="flex items-center gap-space-sm"><span class="font-headline-sm text-headline-sm uppercase tracking-wider text-on-surface">Ticketly</span><span class="px-space-xs py-0.5 rounded bg-primary-container text-on-primary-container font-label-mono-sm text-label-mono-sm uppercase tracking-wider font-semibold">Admin</span></div><span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span></div><div class="p-space-sm"><button class="w-full flex items-center justify-between px-space-md py-space-sm rounded bg-surface-container hover:bg-surface-container-high transition-colors text-left"><div class="flex items-center gap-space-sm overflow-hidden"><span class="material-symbols-outlined text-primary-container text-[18px]">domain</span><div class="truncate"><p class="font-label-md text-label-md text-on-surface truncate">Titan Events AS</p><p class="font-label-mono-sm text-label-mono-sm text-secondary truncate">Enterprise Tier</p></div></div><span class="material-symbols-outlined text-secondary text-[18px]">unfold_more</span></button></div><nav class="flex-1 px-space-sm py-space-xs space-y-0.5 overflow-y-auto" data-active-classes="bg-surface-container-high text-primary border-l-2 border-primary-container font-semibold"><a aria-current="page" class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg transition-all bg-surface-container-high text-primary border-l-2 border-primary-container font-semibold" data-path="overview" href="#"><span class="material-symbols-outlined text-[20px]">dashboard</span>Overview</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="events" href="#"><span class="material-symbols-outlined text-[20px]">calendar_today</span>Events</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="orders" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span>Orders</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="attendees" href="#"><span class="material-symbols-outlined text-[20px]">group</span>Attendees</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="analytics" href="#"><span class="material-symbols-outlined text-[20px]">bar_chart</span>Analytics</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="team" href="#"><span class="material-symbols-outlined text-[20px]">badge</span>Team</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="organization" href="#"><span class="material-symbols-outlined text-[20px]">apartment</span>Organization</a><a class="flex items-center gap-space-sm px-space-md py-space-sm rounded-lg text-secondary hover:bg-surface-container hover:text-on-surface transition-all font-title-md text-title-md" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span>Settings</a></nav><div class="p-space-sm border-t border-surface-container-highest flex flex-col gap-space-sm"><a class="flex items-center justify-between px-space-md py-space-sm rounded bg-surface-container-high hover:bg-surface-container-highest transition-colors" data-path="door-scanner" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-primary-container text-[20px]">qr_code_scanner</span><span class="font-label-lg text-label-lg text-on-surface">Åpne Dørskanner</span></div><span class="material-symbols-outlined text-secondary text-[16px]">north_east</span></a><div class="flex items-center justify-between px-space-md py-space-sm rounded bg-surface-container-lowest"><div class="flex items-center gap-space-sm overflow-hidden"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="truncate"><p class="font-label-md text-label-md text-on-surface truncate">Daniel</p><p class="font-label-mono-sm text-label-mono-sm text-secondary truncate">Organisator</p></div></div><button aria-label="Log out" class="text-secondary hover:text-primary-container transition-colors"><span class="material-symbols-outlined text-[18px]">logout</span></button></div></div></aside><div class="pl-72 flex flex-col min-h-screen"><header class="fixed top-0 left-72 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-md z-40 border-b border-surface-container-highest flex items-center justify-between px-gutter"><div class="flex items-center gap-space-sm"><span class="font-label-md text-label-md text-secondary">Titan Events AS</span><span class="material-symbols-outlined text-secondary text-[16px]">chevron_right</span><span class="font-label-md text-label-md text-on-surface font-semibold">Friday Night</span><span class="flex items-center gap-1 px-space-xs py-0.5 rounded bg-primary-container/20 text-primary-container font-label-mono-sm text-label-mono-sm font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-ping"></span>LIVE</span></div><div class="flex items-center gap-gutter"><div class="hidden xl:flex items-center gap-space-xs text-secondary font-label-mono-sm text-label-mono-sm"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><span>Nexi Checkout: Normal drift</span></div><div class="h-4 w-px bg-surface-container-highest hidden xl:block"></div><div class="hidden lg:flex items-center gap-space-xs text-secondary font-label-mono-sm text-label-mono-sm"><span class="material-symbols-outlined text-[16px]">schedule</span><span>22:42 CET</span></div><div class="flex items-center gap-space-sm"><a class="hidden sm:inline-flex items-center gap-1.5 px-space-md py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md transition-colors" data-path="door-scanner" href="#"><span class="material-symbols-outlined text-[16px]">qr_code_scanner</span>Dørskanner</a><button class="inline-flex items-center gap-1.5 px-space-md py-1.5 rounded bg-primary-container hover:bg-tertiary-container text-on-primary-container font-label-md text-label-md transition-colors shadow-sm font-semibold"><span class="material-symbols-outlined text-[16px]">add</span>Opprett arrangement</button><div class="relative ml-space-xs"><button aria-label="Notifications" class="p-2 text-secondary hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors relative"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-primary-container text-on-primary-container font-label-mono-sm text-[10px] font-bold flex items-center justify-center">2</span></button></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-space-xs"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-surface flex-1"><div class="w-full max-w-[1440px] mx-auto p-gutter"><div class="flex flex-col w-full gap-space-lg">
+<!-- Top Operational Header -->
+<header class="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-space-md pb-space-xs">
+<div class="flex flex-col gap-1 min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+<span class="font-label-mono-sm text-label-mono-sm uppercase tracking-wider text-primary">Live Transaksjonsmotor</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Oversikt &amp; Salgsytelse</h1>
+<p class="font-body-sm text-body-sm text-secondary">
+        Sanntidsoversikt for Titan Events AS · Sist oppdatert kl. 22:42 (<span class="text-primary-container font-medium">Direkte socket-feed</span> · 18ms latens)
+      </p>
+</div>
+<!-- Controls & Actions -->
+<div class="flex flex-wrap items-center gap-space-sm w-full xl:w-auto">
+<nav aria-label="Tidsromvelger" class="flex items-center p-1 rounded-lg bg-surface-container-low shadow-sm">
+<button class="px-space-sm py-1.5 rounded font-label-md text-label-md text-secondary hover:text-on-surface transition-colors" type="button">1 time</button>
+<button class="px-space-sm py-1.5 rounded font-label-md text-label-md bg-surface-container-high text-primary-container font-semibold shadow-inner" type="button">24 timer</button>
+<button class="px-space-sm py-1.5 rounded font-label-md text-label-md text-secondary hover:text-on-surface transition-colors" type="button">7 dager</button>
+<button class="px-space-sm py-1.5 rounded font-label-md text-label-md text-secondary hover:text-on-surface transition-colors" type="button">30 dager</button>
+<button class="px-space-sm py-1.5 rounded font-label-md text-label-md text-secondary hover:text-on-surface transition-colors flex items-center gap-1" type="button">
+<span>Egendefinert</span>
+<span class="material-symbols-outlined text-[14px]">calendar_today</span>
+</button>
+</nav>
+<button class="inline-flex items-center gap-space-xs px-space-md py-2.5 rounded bg-primary-container hover:bg-tertiary-container text-on-primary-container font-label-lg text-label-lg transition-transform active:scale-[0.99] shadow-md font-semibold shrink-0" type="button">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span>Nytt arrangement</span>
+</button>
+</div>
+</header>
+<!-- Section 1: Top Operational KPI Cards -->
+<section aria-label="Nøkkeltall for salg" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-md">
+<!-- KPI 1 -->
+<div class="p-space-lg rounded-xl bg-surface-container-low shadow-md relative overflow-hidden flex flex-col justify-between">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-mono-sm text-label-mono-sm uppercase text-secondary">Total omsetning</span>
+<div class="flex items-baseline gap-space-xs mt-1">
+<span class="font-headline-lg text-headline-lg text-on-surface tracking-tight">92 640</span>
+<span class="font-headline-sm text-headline-sm text-secondary">kr</span>
+</div>
+</div>
+<div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-container/15 text-primary-container font-label-mono-sm text-label-mono-sm font-semibold">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
+<span>+18,4%</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between text-secondary font-label-mono-sm text-label-mono-sm">
+<span>Siste 24 timer</span>
+<span class="text-on-surface font-medium">+14 220 kr vs. igår</span>
+</div>
+<div class="absolute left-0 bottom-0 h-[2px] w-full bg-surface-container-highest">
+<div class="h-full bg-primary-container" style="width: 74%"></div>
+</div>
+</div>
+<!-- KPI 2 -->
+<div class="p-space-lg rounded-xl bg-surface-container-low shadow-md relative overflow-hidden flex flex-col justify-between">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-mono-sm text-label-mono-sm uppercase text-secondary">Billetter solgt</span>
+<div class="flex items-baseline gap-space-xs mt-1">
+<span class="font-headline-lg text-headline-lg text-on-surface tracking-tight">372</span>
+<span class="font-label-lg text-label-lg text-secondary">/ 500 stk</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-primary font-label-mono-sm text-label-mono-sm font-semibold">
+          74,4% fylt
+        </span>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between text-secondary font-label-mono-sm text-label-mono-sm">
+<span>Aktiv total kapasitet</span>
+<span class="text-primary-container font-semibold">128 billetter gjenstår</span>
+</div>
+<div class="absolute left-0 bottom-0 h-[2px] w-full bg-surface-container-highest">
+<div class="h-full bg-primary-container" style="width: 74.4%"></div>
+</div>
+</div>
+<!-- KPI 3 -->
+<div class="p-space-lg rounded-xl bg-surface-container-low shadow-md relative overflow-hidden flex flex-col justify-between">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-mono-sm text-label-mono-sm uppercase text-secondary">Gjennomførte ordre</span>
+<div class="flex items-baseline gap-space-xs mt-1">
+<span class="font-headline-lg text-headline-lg text-on-surface tracking-tight">241</span>
+<span class="font-title-md text-title-md text-secondary">ordre</span>
+</div>
+</div>
+<div class="p-2 rounded bg-surface-container-high text-secondary">
+<span class="material-symbols-outlined text-[18px]">receipt_long</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between text-secondary font-label-mono-sm text-label-mono-sm">
+<span>Snitt per ordre</span>
+<span class="text-on-surface font-semibold">384 kr</span>
+</div>
+<div class="absolute left-0 bottom-0 h-[2px] w-full bg-surface-container-highest">
+<div class="h-full bg-surface-bright" style="width: 62%"></div>
+</div>
+</div>
+<!-- KPI 4 -->
+<div class="p-space-lg rounded-xl bg-surface-container-low shadow-md relative overflow-hidden flex flex-col justify-between">
+<div class="flex items-start justify-between">
+<div>
+<span class="font-label-mono-sm text-label-mono-sm uppercase text-secondary">Konverteringsrate</span>
+<div class="flex items-baseline gap-space-xs mt-1">
+<span class="font-headline-lg text-headline-lg text-primary tracking-tight">8,4</span>
+<span class="font-headline-sm text-headline-sm text-primary">%</span>
+</div>
+</div>
+<div class="p-2 rounded bg-surface-container-high text-primary-container">
+<span class="material-symbols-outlined text-[18px]">bolt</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between text-secondary font-label-mono-sm text-label-mono-sm">
+<span>Trafikkgrunnlag</span>
+<span class="text-on-surface">4 820 arrangementsvisninger</span>
+</div>
+<div class="absolute left-0 bottom-0 h-[2px] w-full bg-surface-container-highest">
+<div class="h-full bg-primary-container" style="width: 84%"></div>
+</div>
+</div>
+</section>
+<!-- Secondary Telemetry Bar (Horizontal ticker strip) -->
+<section aria-label="Sanntidstelemetri" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-space-xs p-space-xs rounded-xl bg-surface-container-lowest shadow-sm">
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col justify-center">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Siste time</span>
+<div class="flex items-center gap-1.5 mt-0.5">
+<span class="font-title-md text-title-md text-on-surface font-bold">48</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary-container font-semibold">billetter</span>
+</div>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col justify-center">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Reservasjoner</span>
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container animate-ping"></span>
+</div>
+<div class="flex items-center gap-1.5 mt-0.5">
+<span class="font-title-md text-title-md text-on-surface font-bold">7 kurver</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">(09:42 låst)</span>
+</div>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col justify-center">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Checkout startet</span>
+<div class="flex items-center gap-1.5 mt-0.5">
+<span class="font-title-md text-title-md text-on-surface font-bold">1 104</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">sesjoner</span>
+</div>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col justify-center">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Feilede betalinger</span>
+<div class="flex items-center gap-1.5 mt-0.5">
+<span class="font-title-md text-title-md text-on-surface font-bold">3</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Nexi håndtert</span>
+</div>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col justify-center">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Refusjoner</span>
+<div class="flex items-center gap-1.5 mt-0.5">
+<span class="font-title-md text-title-md text-on-surface font-bold">4</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">(1 040 kr)</span>
+</div>
+</div>
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col justify-center">
+<div class="flex items-center justify-between">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Payment Gateway</span>
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+</div>
+<div class="flex items-center gap-1 mt-0.5">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface font-semibold truncate">Nexi 100% OK · 0 err</span>
+</div>
+</div>
+</section>
+<!-- Section 2: Primary Sales Activity Chart & Quick Funnel -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-space-lg">
+<!-- Left 2/3: Sales Volume Area / Surge Chart -->
+<div class="lg:col-span-2 p-space-lg rounded-xl bg-surface-container-low shadow-md flex flex-col justify-between">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm mb-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Billettsalg over tid</h2>
+<span class="font-label-mono-sm text-label-mono-sm px-2 py-0.5 rounded bg-surface-container-highest text-secondary">Siste 24 timer</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Salgsbølger korrelert med markedsføring og slipp</span>
+</div>
+<!-- Metric Switcher -->
+<div class="flex items-center p-1 rounded-lg bg-surface-container-lowest shrink-0">
+<button class="px-space-sm py-1 rounded font-label-mono-sm text-label-mono-sm bg-primary-container text-on-primary-container font-semibold" type="button">Billetter solgt</button>
+<button class="px-space-sm py-1 rounded font-label-mono-sm text-label-mono-sm text-secondary hover:text-on-surface transition-colors" type="button">Omsetning (kr)</button>
+</div>
+</div>
+<!-- Tactical SVG Volume Chart -->
+<div class="w-full relative">
+<div class="flex items-center justify-between text-secondary font-label-mono-sm text-label-mono-sm pb-2">
+<span>Høyeste rush: 68 b/t (kl. 20:30)</span>
+<span class="flex items-center gap-1.5 text-primary">
+<span class="w-2 h-0.5 bg-primary-container"></span>
+            Aktivitetskurve
+          </span>
+</div>
+<svg aria-label="Billettsalg over tid diagram" class="w-full h-56 overflow-visible" viewbox="0 0 760 220">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#ff5a1f" stop-opacity="0.32"></stop>
+<stop offset="85%" stop-color="#ff5a1f" stop-opacity="0.02"></stop>
+<stop offset="100%" stop-color="#ff5a1f" stop-opacity="0"></stop>
+</lineargradient>
+<lineargradient id="surgePulse" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#ffb59e" stop-opacity="0.8"></stop>
+<stop offset="100%" stop-color="#ff5a1f" stop-opacity="0.2"></stop>
+</lineargradient>
+</defs>
+<!-- Horizontal Grid Guides -->
+<line stroke="#353438" stroke-dasharray="3 3" stroke-width="1" x1="30" x2="740" y1="20" y2="20"></line>
+<line stroke="#353438" stroke-dasharray="3 3" stroke-width="1" x1="30" x2="740" y1="70" y2="70"></line>
+<line stroke="#353438" stroke-dasharray="3 3" stroke-width="1" x1="30" x2="740" y1="120" y2="120"></line>
+<line stroke="#353438" stroke-dasharray="3 3" stroke-width="1" x1="30" x2="740" y1="170" y2="170"></line>
+<!-- Y Axis Marks -->
+<text fill="#c7c5d0" font-family="Space Grotesk" font-size="10" text-anchor="end" x="20" y="24">70</text>
+<text fill="#c7c5d0" font-family="Space Grotesk" font-size="10" text-anchor="end" x="20" y="74">50</text>
+<text fill="#c7c5d0" font-family="Space Grotesk" font-size="10" text-anchor="end" x="20" y="124">25</text>
+<text fill="#c7c5d0" font-family="Space Grotesk" font-size="10" text-anchor="end" x="20" y="174">0</text>
+<!-- Area Under Curve -->
+<path d="M 40 170 
+                   C 90 170, 110 165, 140 155 
+                   C 170 145, 190 162, 220 150 
+                   C 250 138, 280 152, 310 130 
+                   C 340 108, 360 85, 390 62 
+                   C 420 40, 440 95, 470 115 
+                   C 500 135, 520 80, 560 30 
+                   C 590 65, 620 90, 650 55 
+                   C 680 40, 710 48, 730 42 
+                   L 730 170 L 40 170 Z" fill="url(#chartGradient)"></path>
+<!-- Stroke Path -->
+<path d="M 40 170 
+                   C 90 170, 110 165, 140 155 
+                   C 170 145, 190 162, 220 150 
+                   C 250 138, 280 152, 310 130 
+                   C 340 108, 360 85, 390 62 
+                   C 420 40, 440 95, 470 115 
+                   C 500 135, 520 80, 560 30 
+                   C 590 65, 620 90, 650 55 
+                   C 680 40, 710 48, 730 42" fill="none" stroke="#ff5a1f" stroke-linecap="round" stroke-width="2.5"></path>
+<!-- Surge Markers / Dots -->
+<!-- 18:00 Surge -->
+<circle cx="390" cy="62" fill="#131316" r="4.5" stroke="#ff5a1f" stroke-width="2"></circle>
+<!-- 20:30 Batch 2 Surge (Main Peak) -->
+<line stroke="#ff5a1f" stroke-dasharray="2 2" stroke-width="1.5" x1="560" x2="560" y1="30" y2="170"></line>
+<circle cx="560" cy="30" fill="#ff5a1f" r="5" stroke="#131316" stroke-width="2"></circle>
+<!-- 22:00 Rush -->
+<circle cx="650" cy="55" fill="#ffb59e" r="4" stroke="#131316" stroke-width="2"></circle>
+<circle class="animate-pulse" cx="730" cy="42" fill="#ff5a1f" r="5"></circle>
+<!-- Timeline X Axis Labels -->
+<text fill="#c7c5d0" font-family="Space Grotesk" font-size="11" x="40" y="195">00:00</text>
+<text fill="#c7c5d0" font-family="Space Grotesk" font-size="11" x="170" y="195">06:00</text>
+<text fill="#c7c5d0" font-family="Space Grotesk" font-size="11" x="300" y="195">12:00</text>
+<text fill="#ffb59e" font-family="Space Grotesk" font-size="11" font-weight="600" x="390" y="195">18:00</text>
+<text fill="#ff5a1f" font-family="Space Grotesk" font-size="11" font-weight="700" x="560" y="195">20:30</text>
+<text fill="#ffb59e" font-family="Space Grotesk" font-size="11" x="650" y="195">22:00</text>
+<text fill="#ff5a1f" font-family="Space Grotesk" font-size="11" font-weight="600" x="730" y="195">Nå</text>
+</svg>
+<!-- Dynamic Milestone Annotation Card -->
+<div class="absolute top-10 left-[68%] -translate-x-1/2 p-2 rounded bg-surface-container-highest/95 backdrop-blur-md shadow-lg pointer-events-none hidden sm:flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<div class="flex flex-col">
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface font-semibold">Batch 2 sluppet kl. 20:30</span>
+<span class="font-label-mono-sm text-[10px] text-secondary">68 b/t toppmåling · 100% solgt på 18 min</span>
+</div>
+</div>
+</div>
+<!-- Quick Summary strip below chart -->
+<div class="mt-space-md pt-space-sm flex flex-wrap items-center justify-between gap-space-sm bg-surface-container-lowest p-space-sm rounded-lg">
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">flash_on</span>
+<span class="font-label-mono-sm text-label-mono-sm text-on-surface">Spisstidspunkt: <strong>20:00 - 21:00</strong></span>
+</div>
+<div class="hidden sm:flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[18px]">devices</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">86% via mobil (Vipps / Apple Pay)</span>
+</div>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-primary-container font-semibold">Live transaksjonstrøm aktiv</span>
+</div>
+</div>
+<!-- Right 1/3: Kjøpsfunnel & Konvertering -->
+<div class="p-space-lg rounded-xl bg-surface-container-low shadow-md flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-space-md">
+<div class="flex flex-col">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Kjøpsfunnel</h2>
+<span class="font-body-sm text-body-sm text-secondary">Drop-off telemetri uten friksjon</span>
+</div>
+<span class="material-symbols-outlined text-secondary">filter_alt</span>
+</div>
+<!-- Funnel Step 1 -->
+<div class="space-y-space-md">
+<div class="flex flex-col gap-1.5 p-space-sm rounded-lg bg-surface-container-lowest">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface font-semibold">1. Arrangementsvisninger</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">100%</span>
+</div>
+<div class="flex items-baseline justify-between">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">4 820</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Unike sesjoner</span>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-surface-bright w-full"></div>
+</div>
+</div>
+<!-- Drop Indicator 1 -->
+<div class="flex items-center justify-between px-space-sm text-secondary font-label-mono-sm text-label-mono-sm -my-1">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-secondary">arrow_downward</span>
+<span>Engasjement til handlekurv</span>
+</div>
+<span class="text-error font-medium">-77,1% drop-off</span>
+</div>
+<!-- Funnel Step 2 -->
+<div class="flex flex-col gap-1.5 p-space-sm rounded-lg bg-surface-container-lowest">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface font-semibold">2. Kurv / Checkout startet</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary font-semibold">22,9%</span>
+</div>
+<div class="flex items-baseline justify-between">
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">1 104</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Valgte billetter</span>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-secondary w-[22.9%]"></div>
+</div>
+</div>
+<!-- Drop Indicator 2 -->
+<div class="flex items-center justify-between px-space-sm text-secondary font-label-mono-sm text-label-mono-sm -my-1">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-secondary">arrow_downward</span>
+<span>Betalingsfullføring (Nexi)</span>
+</div>
+<span class="text-error font-medium">-61,8% avbrutt</span>
+</div>
+<!-- Funnel Step 3 -->
+<div class="flex flex-col gap-1.5 p-space-sm rounded-lg bg-surface-container-lowest">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-primary-container font-semibold">3. Fullført betaling</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary-container font-bold">8,7% total</span>
+</div>
+<div class="flex items-baseline justify-between">
+<span class="font-headline-sm text-headline-sm text-primary-container font-bold">421</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary">Godkjente transaksjoner</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-primary-container w-[38.1%]"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-space-md p-space-sm rounded bg-surface-container text-secondary font-label-mono-sm text-label-mono-sm flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary-container text-[16px]">verified</span>
+<span>Snitt tid fra visning til betalt: <strong>1m 48s</strong></span>
+</div>
+</div>
+</section>
+<!-- Section 3: Aktive & Kommende Arrangementer -->
+<section aria-label="Aktive arrangementer" class="flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Operativ arrangementsstatus</h2>
+<span class="px-2 py-0.5 rounded font-label-mono-sm text-label-mono-sm bg-surface-container-high text-secondary">3 aktive produksjoner</span>
+</div>
+<button class="font-label-md text-label-md text-primary-container hover:text-primary transition-colors flex items-center gap-1" type="button">
+<span>Se alle arrangementer</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+<!-- Active Production 1: Friday Night (Featured Tactical Card) -->
+<div class="p-space-lg rounded-xl bg-surface-container-low shadow-xl flex flex-col xl:flex-row gap-space-lg items-stretch justify-between relative overflow-hidden">
+<!-- Image / Poster context thumbnail -->
+<div class="flex flex-col sm:flex-row gap-space-md xl:w-2/5 min-w-0">
+<div class="w-full sm:w-44 h-36 rounded-lg overflow-hidden shrink-0 relative bg-surface-container-highest">
+<img class="w-full h-full object-cover" data-alt="High contrast atmospheric underground club interior with amber stage lights, crowded dancefloor, techno performers silhouette, cinematic grain and dark graphite ambient shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGGH7z3yy9nv3EyndQ4HQh_W2bFI_kZZX3gZxihPRe6rIiVkPgNFivsGzfNA3LLeiQJo-bk4zfxKiqXKgwmkXCmpvPUDq9ix1NU6ifjWS9v2Lw1CxD5BiOaWmU9-4M9daf06JLwTxk3s1W7oasYPHPZYo6qR_pACFo5EaugH741gLnxcNwKkwWU7HUl_NY4EAjIAiE7SNgqbqeIeTYT4bfLoh3RjPwohqqr3CShB4dUJnB8-B3S1uALQ"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-transparent to-transparent"></div>
+<span class="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-lowest/90 backdrop-blur-md text-primary-container font-label-mono-sm text-label-mono-sm font-bold shadow-md">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-ping"></span>
+            LIVE NÅ
+          </span>
+</div>
+<div class="flex flex-col justify-between min-w-0">
+<div>
+<span class="font-label-mono-sm text-label-mono-sm uppercase text-secondary">16. okt 2026 · Shot Spot, Drammen</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface truncate mt-0.5">Friday Night</h3>
+<p class="font-body-sm text-body-sm text-secondary truncate mt-1">Klubbkonsept · 18+ · Hovedsal + Mezzanine</p>
+</div>
+<div class="flex items-center gap-space-xs mt-space-sm flex-wrap">
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface font-label-mono-sm text-label-mono-sm">Dørene åpner 22:00</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-primary font-label-mono-sm text-label-mono-sm font-semibold">13 ledig i Batch 2</span>
+</div>
+</div>
+</div>
+<!-- Live metrics cluster -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-sm xl:w-2/5 p-space-sm rounded-lg bg-surface-container-lowest items-center">
+<div class="flex flex-col">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Billettsalg</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold mt-0.5">372 / 500</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary font-semibold">74% solgt</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Omsetning</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold mt-0.5">92 640</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">kr brutto</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Konvertering</span>
+<span class="font-headline-sm text-headline-sm text-primary font-bold mt-0.5">8,4%</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Stabil ytelse</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary uppercase">Innslipp / Skann</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold mt-0.5">0 / 372</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">Dør ikke åpnet</span>
+</div>
+</div>
+<!-- Quick Operational Action Buttons -->
+<div class="flex sm:flex-row xl:flex-col justify-center gap-space-xs xl:w-1/5 shrink-0">
+<button class="w-full py-2 px-space-sm rounded bg-surface-container-high hover:bg-surface-container-highest text-primary font-label-md text-label-md transition-colors flex items-center justify-center gap-1.5 font-semibold" type="button">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+<span>Slipp +50 billetter</span>
+</button>
+<button class="w-full py-2 px-space-sm rounded bg-surface-container-high hover:bg-surface-container-highest text-secondary hover:text-error transition-colors flex items-center justify-center gap-1.5 font-label-md text-label-md" type="button">
+<span class="material-symbols-outlined text-[16px]">pause</span>
+<span>Pause salg</span>
+</button>
+<a class="w-full py-2.5 px-space-sm rounded bg-primary-container hover:bg-tertiary-container text-on-primary-container font-label-md text-label-md transition-transform active:scale-[0.99] flex items-center justify-center gap-1.5 font-semibold shadow-sm text-center" href="#">
+<span>Åpne Event Control</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Compact Secondary Event Rows -->
+<div class="space-y-space-xs">
+<!-- Row 2: Resonance Clubnight -->
+<div class="p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-12 h-12 rounded bg-surface-container-highest overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="Monochrome deep techno dj console with glowing amber vu meters and minimal club lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAe-swuEqpQw_2F6lMkBrGKUxHeHndqz8FnnOF9I4lARER7n8OGt0BDZSJDN387eu5QcS58D1SLX9JVqsBNLipIYPzdOKXIp8EEg1aow8jhtLmHoedLlMqqgX_T_e1AP3kD2EmrAaLd6WsjBmiLiVruU9TmjaugWY8vaPKYAASPfENyMw1I1JoTGjUoHiRDI07bRls0NRC1MBJiYSAblTFKg3aCTAPbKDeGxAnDNhqf95Q8TYEO8zJHEw"/>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Resonance Clubnight</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-secondary font-label-mono-sm text-label-mono-sm font-semibold">KOMMENDE</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">24. okt 2026 · Jæger, Oslo · Klubb &amp; Bakgård</span>
+</div>
+</div>
+<div class="flex items-center gap-space-lg w-full md:w-auto justify-between md:justify-end">
+<div class="flex flex-col text-right">
+<span class="font-label-md text-label-md text-on-surface font-semibold">112 / 300 solgt</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">37% kapasitet</span>
+</div>
+<div class="flex flex-col text-right">
+<span class="font-label-md text-label-md text-on-surface font-semibold">28 000 kr</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary">Normal fart</span>
+</div>
+<button class="px-space-md py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md transition-colors shrink-0 font-semibold" type="button">
+            Administrer
+          </button>
+</div>
+</div>
+<!-- Row 3: Nordic Lights Festival -->
+<div class="p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-12 h-12 rounded bg-surface-container-highest overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="Expansive dark concert arena festival stage with sharp geometric orange lasers beam through smoke haze" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6Ad8Vzgq9ZOYtFugD8jY4XFN4iN_ym0uP4hFvj53E2ThD1Jajd79LxK8L_ub0362RMmfnm4ITitmz-eM3gxkgOkwbkAFQ1H4_7ifvSAcpj1J348tq6THk4DDqlzucpeLvMy0LJ5zs_xVQVNEdXmWcI0NwxhMHT0IUqeRKkVOWYyUp4X-O_4SROk7Hp1mIFmL4Dmnf-5xXd3THYLeWg_ZLBy3EXCNLQY4ICU07eCtMZ6BEOreGdJY7hw"/>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Nordic Lights Festival</span>
+<span class="px-2 py-0.5 rounded bg-primary-container/20 text-primary-container font-label-mono-sm text-label-mono-sm font-semibold">TIDLIG SALG</span>
+</div>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">06. nov 2026 · Sentrum Scene, Oslo · Hovedarena</span>
+</div>
+</div>
+<div class="flex items-center gap-space-lg w-full md:w-auto justify-between md:justify-end">
+<div class="flex flex-col text-right">
+<span class="font-label-md text-label-md text-on-surface font-semibold">680 / 1 200 solgt</span>
+<span class="font-label-mono-sm text-label-mono-sm text-secondary">56,6% kapasitet</span>
+</div>
+<div class="flex flex-col text-right">
+<span class="font-label-md text-label-md text-on-surface font-semibold">469 200 kr</span>
+<span class="font-label-mono-sm text-label-mono-sm text-primary">+34 500 kr idag</span>
+</div>
+<button class="px-space-md py-1.5 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md transition-colors shrink-0 font-semibold" type="button">
+            Administrer
+          </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 4: Kompakt Live Sales Feed & Operativ Sanntidslogg -->
+<section aria-label="Siste transaksjoner sanntid" class="p-space-lg rounded-xl bg-surface-container-low shadow-md flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Direktestrøm: Siste transaksjoner</h2>
+</div>
+<div class="flex items-center gap-space-sm">
+<span class="font-label-mono-sm text-label-mono-sm text-secondary hidden sm:inline">Webhook: nexi.checkout.completed</span>
+<button class="font-label-mono-sm text-label-mono-sm text-primary hover:text-primary-container transition-colors flex items-center gap-1" type="button">
+<span>Full transaksjonslogg</span>
+<span class="material-symbols-outlined text-[14px]">open_in_new</span>
+</button>
+</div>
+</div>
+<!-- Ticker / Real-time Transaction Items -->
+<div class="space-y-1 font-label-mono-sm text-label-mono-sm">
+<!-- Item 1 -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-space-sm">
+<span class="text-primary font-bold">22:41:08</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface font-semibold">2 × Ordinær</span>
+<span class="text-secondary truncate">Friday Night · Shot Spot</span>
+</div>
+<div class="flex items-center gap-space-md text-secondary">
+<span class="font-title-md text-title-md text-on-surface font-semibold">498 kr</span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+            Vipps
+          </span>
+<span class="text-secondary font-mono">#TKT-00124</span>
+<span class="text-emerald-400 font-semibold">Godkjent</span>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-space-sm">
+<span class="text-primary font-bold">22:40:19</span>
+<span class="px-1.5 py-0.5 rounded bg-primary-container/20 text-primary-container font-semibold">1 × VIP Mezzanine</span>
+<span class="text-secondary truncate">Friday Night · Shot Spot</span>
+</div>
+<div class="flex items-center gap-space-md text-secondary">
+<span class="font-title-md text-title-md text-on-surface font-semibold">499 kr</span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+            Nexi Kort (Mastercard)
+          </span>
+<span class="text-secondary font-mono">#TKT-00123</span>
+<span class="text-emerald-400 font-semibold">Godkjent</span>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-space-sm">
+<span class="text-secondary">22:38:52</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface font-semibold">4 × Early Bird</span>
+<span class="text-secondary truncate">Nordic Lights Festival · Sentrum Scene</span>
+</div>
+<div class="flex items-center gap-space-md text-secondary">
+<span class="font-title-md text-title-md text-on-surface font-semibold">796 kr</span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+            Vipps
+          </span>
+<span class="text-secondary font-mono">#TKT-00122</span>
+<span class="text-emerald-400 font-semibold">Godkjent</span>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-space-sm">
+<span class="text-secondary">22:31:14</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface font-semibold">2 × Ordinær</span>
+<span class="text-secondary truncate">Friday Night · Shot Spot</span>
+</div>
+<div class="flex items-center gap-space-md text-secondary">
+<span class="font-title-md text-title-md text-on-surface font-semibold">498 kr</span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+            Apple Pay
+          </span>
+<span class="text-secondary font-mono">#TKT-00121</span>
+<span class="text-emerald-400 font-semibold">Godkjent</span>
+</div>
+</div>
+</div>
+</section>
+</div></div></main><footer class="w-full border-t border-surface-container-highest bg-surface-container-lowest py-space-md px-gutter text-secondary font-label-mono-sm text-label-mono-sm flex items-center justify-between"><p>© 2024 Ticketly Platform. All rights reserved.</p><div class="flex items-center gap-space-md"><span>Cluster: EU-NORTH-1</span><span>Latency: 18ms</span></div></footer></div></body></html>

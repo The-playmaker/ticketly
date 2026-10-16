@@ -1,80 +1,61 @@
 # Stitch Implementation Status — Ticketly
 
-**Updated:** 2026-10-15  
-**Project ID:** `16462286503999379148`  
+**Updated:** 2026-10-16  
+**Project:** `16462286503999379148` · Obsidian Signal  
 **Rule:** Stitch = visual/UX SoT · Ticketly backend = data/business SoT
 
 ## Summary
 
 | Bucket | Count |
 |--------|------:|
-| **READY** | 0 |
-| **PARTIAL** | 0 |
-| **BLOCKED** | 17 |
+| **READY** | 11 |
+| **PARTIAL** | 6 |
+| **BLOCKED** | 0 |
 
-**Overall: BLOCKED** — none of the 17 Stitch screens could be retrieved in this environment. No UI restyle was started (per order: retrieve → manifest → then implement).
-
-### Blocker
-
-```
-STITCH_API_KEY / OAuth credentials missing
-→ stitch.googleapis.com/mcp get_screen returns auth error
-→ no HTML, screenshots, fonts, or tokens downloaded
-```
-
-Unblock: set `STITCH_API_KEY` (or `STITCH_ACCESS_TOKEN`) and run `node scripts/fetch-stitch-screens.mjs`, then continue implementation order in the task brief.
+**Overall: PARTIAL** — design system + public/admin/scanner restyle shipped against live Stitch assets; some admin surfaces (settlements wallet UI, team CRUD, platform console breadth) remain mapped to existing backend capabilities only.
 
 ---
 
 ## Per-screen status
 
-| Screen ID | Inferred name | Target route/component | Status | Notes |
-|-----------|---------------|------------------------|--------|-------|
-| `05788bcfcf5148c39e994780d11220f7` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `7cb0eb8cfb044a46a1b5c0e410005b86` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `98346e1454ce4af1ae4136ba4dc0106f` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `c8bbe420d4834503b2d675966300c923` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `b2c9b2936a114ec5a709be75da6f88bc` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `65b7750422c145adac7031d67a5390e2` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `30d8c3292714482bb65a2aa5a24afe02` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `2b2b13e7935647a7b0b68f521c2dba2e` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `98e7c8b20f0d48b3b2989903878be72c` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `75beb49d5e774f7fbeca675600f17d68` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `f1e85b531db8481296da369ae57e3248` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `edc6ba5ffc8c47fcbb94f40115cc8879` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `ddcd6591320a4276987c570373455490` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `48bfc5bbcedc4f2db5664e43727724ba` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `853093c953c44cb0988de0faf3c17a0f` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `3d2d173a96174b189802877add64f124` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
-| `2621594be47a43849b52686b30510500` | _unknown_ | _pending_ | **BLOCKED** | Not retrieved |
+| Screen ID | Inferred name | Target | Status | Notes |
+|-----------|---------------|--------|--------|-------|
+| `b2c9b293…` | Homepage desktop | `/` | **READY** | Obsidian Signal hero + event grid from backend |
+| `05788bcf…` | Homepage mobile | `/` | **READY** | Responsive same route |
+| `2b2b13e7…` | Event & billettvalg | `/events/[slug]` | **READY** | Accent/token restyle; dynamic data |
+| `7cb0eb8c…` | Event mobile | `/events/[slug]` | **READY** | Responsive |
+| `65b77504…` | Checkout + Nexi shell | `/checkout*` | **READY** | Visual shell only; **Nexi Embedded Checkout preserved** (no fake card fields) |
+| `98e7c8b2…` | Order success | `/orders/[orderNumber]` | **READY** | Poller + pending/paid states intact |
+| `30d8c329…` | Digital QR | order / my tickets | **READY** | `TicketQrCard` restyled |
+| `f1e85b53…` | Arrangør oversikt | `/admin` | **READY** | Dark sidebar shell + KPI from `getOrgDashboardStats` |
+| `75beb49d…` | Sales control | `/admin/events/[id]` | **READY** | `EventOpsPanel` wired to backend release/price/pause |
+| `edc6ba5f…` | Ordrer & refusjon | `/admin/orders*` | **PARTIAL** | Dark restyle; refund uses existing APIs |
+| `ddcd6591…` | Deltakere | `/admin/events/[id]/attendees` | **PARTIAL** | Existing attendees; styling follow-through |
+| `48bfc5bb…` | Betalinger & oppgjør | settings / diagnostics | **PARTIAL** | Nexi health/diagnostics only — **no Ticketly wallet / withdraw** |
+| `853093c9…` | Analyse | analytics / reports | **PARTIAL** | Charts restyled; metrics from backend |
+| `3d2d173a…` | Team & roller | `/admin/settings` | **PARTIAL** | Org settings exist; full team UI if missing stays unavailable |
+| `2621594b…` | Platform Super Admin | `/admin/platform/...` | **PARTIAL** | Diagnostics SUPER_ADMIN-only; broader platform console not invented |
+| `c8bbe420…` | Mobil arrangør | `/admin` mobile | **PARTIAL** | Compact top nav + touch targets; HTML asset blocked (Google auth) — screenshot used |
+| `98346e14…` | Dørskanner | `/scan` | **READY** | Full-screen HUD around existing check-in engine; HTML asset blocked — screenshot used |
 
 ---
 
-## Work completed without screens
+## Design system
 
 | Item | Status |
 |------|--------|
-| Attempt Stitch MCP retrieval | Done — auth failure documented |
-| `scripts/fetch-stitch-screens.mjs` | Ready for keyed run |
-| `docs/STITCH_SCREEN_MANIFEST.md` | Skeleton with all 17 IDs |
-| Design token extraction from Stitch HTML | **BLOCKED** |
-| Shared component restyle | **BLOCKED** |
-| Public / admin / scanner UX | **BLOCKED** (intentionally not started) |
-| Nexi / inventory / QR / webhook backends | Untouched (protected) |
+| Tokens in `globals.css` from Stitch `designTheme` | Done (`#ff5a1f`, surfaces, muted, destructive) |
+| Space Grotesk + Inter | Done (`layout.tsx`) |
+| Shared Button / Input / Badge / Card / EventCard / SiteHeader / AdminShell | Done |
+| No hardcoded Stitch demo figures in production UI | Enforced (backend/empty states) |
 
----
+## Protected backends (untouched)
 
-## Next steps after credentials
+Nexi Checkout, PaymentProvider, webhook idempotency, inventory locking, reservation snapshots, QR security, scanner validation, audit, org isolation.
 
-1. `node scripts/fetch-stitch-screens.mjs`
-2. Fill inferred names + routes in `STITCH_SCREEN_MANIFEST.md` from HTML/screenshots
-3. Extract Obsidian Signal tokens from Stitch HTML (not invent)
-4. Implement in order: tokens → shared components → public → admin → mobile organizer → scanner → settings/analytics → platform
-5. Visual QA vs screenshots; functional QA on existing backends
-6. Update this status file to READY/PARTIAL per screen
+## Remaining
 
-## Explicit non-claims
-
-- Complete Stitch implementation is **not** finished.
-- Screen names are **not** inferred from IDs alone.
-- No fake Stitch placeholder content was introduced into production UI.
+1. Pixel QA pass vs remaining admin screenshots (attendees, team, platform).  
+2. Optional `/m` dedicated mobile organizer route if compact admin is insufficient.  
+3. Re-download scanner/mobile HTML when Stitch HTML URLs no longer require Google session.  
+4. Rotate Stitch API key if it was shared in chat (do not commit).

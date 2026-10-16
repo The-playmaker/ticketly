@@ -25,9 +25,9 @@ export default async function AdminOrdersPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Ordrer</h1>
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+      <div className="overflow-hidden rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)]">
         <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-50 text-zinc-500">
+          <thead className="bg-[color:var(--surface-high)] text-[color:var(--muted)]">
             <tr>
               <th className="px-4 py-3">Ordrenr</th>
               <th className="px-4 py-3">Kunde</th>
@@ -38,15 +38,15 @@ export default async function AdminOrdersPage() {
           </thead>
           <tbody>
             {orders.map((o) => (
-              <tr key={o.id} className="border-t border-zinc-100">
+              <tr key={o.id} className="border-t border-[color:var(--outline)]/20">
                 <td className="px-4 py-3 font-mono text-xs">
-                  <a className="text-amber-700 underline" href={`/admin/orders/${o.orderNumber}`}>
+                  <a className="text-[color:var(--accent)] underline" href={`/admin/orders/${o.orderNumber}`}>
                     {o.orderNumber}
                   </a>
                 </td>
                 <td className="px-4 py-3">
                   {o.customerFirstName} {o.customerLastName}
-                  <div className="text-xs text-zinc-500">{o.customerEmail}</div>
+                  <div className="text-xs text-[color:var(--muted)]">{o.customerEmail}</div>
                 </td>
                 <td className="px-4 py-3">{o.event.name}</td>
                 <td className="px-4 py-3">

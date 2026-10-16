@@ -8,11 +8,12 @@ export function Badge({
   variant?: "default" | "success" | "danger" | "warning" | "muted";
 }) {
   const variants = {
-    default: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+    default:
+      "bg-[color:var(--accent)]/15 text-[color:var(--accent-soft)] border-[color:var(--accent)]/30",
     success: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
     danger: "bg-red-500/15 text-red-300 border-red-500/30",
-    warning: "bg-orange-500/15 text-orange-300 border-orange-500/30",
-    muted: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30",
+    warning: "bg-[color:var(--warning)]/15 text-[color:var(--warning)] border-[color:var(--warning)]/30",
+    muted: "bg-[color:var(--surface-high)] text-[color:var(--muted)] border-[color:var(--outline)]/30",
   };
   return (
     <div

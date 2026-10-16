@@ -1,0 +1,350 @@
+{
+  "name": "projects/16462286503999379148",
+  "title": "Ticketly: Premium Event Ticketing Platform",
+  "visibility": "PRIVATE",
+  "createTime": "2026-10-15T20:53:51.806405Z",
+  "updateTime": "2026-10-16T08:07:45.884368Z",
+  "projectType": "TEXT_TO_UI_PRO",
+  "thumbnailScreenshot": {
+    "name": "projects/16462286503999379148/screens/b2c9b2936a114ec5a709be75da6f88bc/fileEntries/screenshot",
+    "downloadUrl": "https://lh3.googleusercontent.com/aida/AEtjO1WAwCi2RqQ3tuUakpJ9eZbUzD6gLPjx1TU2nURmPU65QgEnfGlDjEypr7B_sKfCW_0QzvU1p0DUpSdXFOohDVG9pmlVJ8ZI-qJnrLN_A8mhAS8ARnpQjb3oIKLCVtcEajNFMkRh4MFp6qxaGGT_fhDTw7vNHH6qNmJ5zmNvEDpELG16-oroZIK_ovcoKelD7dZ0nExhEUzgt_0chbx0x8OG__B9e0SN6oqn1-FgHX7TCiaaECmQSXCFUSw"
+  },
+  "origin": "STITCH",
+  "deviceType": "DESKTOP",
+  "designTheme": {
+    "colorMode": "DARK",
+    "font": "SPACE_GROTESK",
+    "roundness": "ROUND_FOUR",
+    "customColor": "#ff5a1f",
+    "headlineFont": "SPACE_GROTESK",
+    "bodyFont": "INTER",
+    "labelFont": "SPACE_GROTESK",
+    "namedColors": {
+      "outline_variant": "#5b4038",
+      "on_background": "#e4e1e6",
+      "secondary_fixed_dim": "#c7c5d0",
+      "on_primary_container": "#541400",
+      "on_tertiary_fixed": "#351000",
+      "on_error_container": "#ffdad6",
+      "on_primary_fixed_variant": "#852400",
+      "primary": "#ffb59e",
+      "error_container": "#93000a",
+      "tertiary_fixed_dim": "#ffb693",
+      "surface_container_high": "#2a2a2d",
+      "surface_bright": "#39393c",
+      "primary_fixed_dim": "#ffb59e",
+      "tertiary_fixed": "#ffdbcc",
+      "on_secondary_container": "#b9b7c1",
+      "on_primary": "#5e1700",
+      "on_surface": "#e4e1e6",
+      "secondary": "#c7c5d0",
+      "on_secondary_fixed_variant": "#46464e",
+      "on_tertiary_fixed_variant": "#7a3000",
+      "inverse_on_surface": "#303033",
+      "on_error": "#690005",
+      "error": "#ffb4ab",
+      "on_primary_fixed": "#3a0b00",
+      "surface_container": "#1f1f22",
+      "surface_container_lowest": "#0e0e11",
+      "surface": "#131316",
+      "surface_container_highest": "#353438",
+      "outline": "#ab897f",
+      "background": "#131316",
+      "tertiary": "#ffb693",
+      "secondary_container": "#494851",
+      "surface_variant": "#353438",
+      "primary_fixed": "#ffdbd0",
+      "surface_tint": "#ffb59e",
+      "surface_dim": "#131316",
+      "on_secondary": "#303038",
+      "primary_container": "#ff5a1f",
+      "surface_container_low": "#1b1b1e",
+      "inverse_surface": "#e4e1e6",
+      "on_secondary_fixed": "#1b1b22",
+      "on_tertiary": "#561f00",
+      "tertiary_container": "#f46600",
+      "on_tertiary_container": "#4e1b00",
+      "on_surface_variant": "#e4beb3",
+      "inverse_primary": "#ae3200",
+      "secondary_fixed": "#e4e1ec"
+    },
+    "designMd": "---\nname: Obsidian Signal\ncolors:\n  surface: '#131316'\n  surface-dim: '#131316'\n  surface-bright: '#39393c'\n  surface-container-lowest: '#0e0e11'\n  surface-container-low: '#1b1b1e'\n  surface-container: '#1f1f22'\n  surface-container-high: '#2a2a2d'\n  surface-container-highest: '#353438'\n  on-surface: '#e4e1e6'\n  on-surface-variant: '#e4beb3'\n  inverse-surface: '#e4e1e6'\n  inverse-on-surface: '#303033'\n  outline: '#ab897f'\n  outline-variant: '#5b4038'\n  surface-tint: '#ffb59e'\n  primary: '#ffb59e'\n  on-primary: '#5e1700'\n  primary-container: '#ff5a1f'\n  on-primary-container: '#541400'\n  inverse-primary: '#ae3200'\n  secondary: '#c7c5d0'\n  on-secondary: '#303038'\n  secondary-container: '#494851'\n  on-secondary-container: '#b9b7c1'\n  tertiary: '#ffb693'\n  on-tertiary: '#561f00'\n  tertiary-container: '#f46600'\n  on-tertiary-container: '#4e1b00'\n  error: '#ffb4ab'\n  on-error: '#690005'\n  error-container: '#93000a'\n  on-error-container: '#ffdad6'\n  primary-fixed: '#ffdbd0'\n  primary-fixed-dim: '#ffb59e'\n  on-primary-fixed: '#3a0b00'\n  on-primary-fixed-variant: '#852400'\n  secondary-fixed: '#e4e1ec'\n  secondary-fixed-dim: '#c7c5d0'\n  on-secondary-fixed: '#1b1b22'\n  on-secondary-fixed-variant: '#46464e'\n  tertiary-fixed: '#ffdbcc'\n  tertiary-fixed-dim: '#ffb693'\n  on-tertiary-fixed: '#351000'\n  on-tertiary-fixed-variant: '#7a3000'\n  background: '#131316'\n  on-background: '#e4e1e6'\n  surface-variant: '#353438'\ntypography:\n  headline-xl:\n    fontFamily: Space Grotesk\n    fontSize: 56px\n    fontWeight: '700'\n    lineHeight: 64px\n    letterSpacing: -0.03em\n  headline-xl-mobile:\n    fontFamily: Space Grotesk\n    fontSize: 36px\n    fontWeight: '700'\n    lineHeight: 44px\n    letterSpacing: -0.02em\n  headline-lg:\n    fontFamily: Space Grotesk\n    fontSize: 40px\n    fontWeight: '600'\n    lineHeight: 48px\n    letterSpacing: -0.025em\n  headline-lg-mobile:\n    fontFamily: Space Grotesk\n    fontSize: 28px\n    fontWeight: '600'\n    lineHeight: 36px\n    letterSpacing: -0.02em\n  headline-md:\n    fontFamily: Space Grotesk\n    fontSize: 28px\n    fontWeight: '600'\n    lineHeight: 36px\n    letterSpacing: -0.02em\n  headline-sm:\n    fontFamily: Space Grotesk\n    fontSize: 20px\n    fontWeight: '600'\n    lineHeight: 28px\n    letterSpacing: -0.01em\n  title-md:\n    fontFamily: Space Grotesk\n    fontSize: 16px\n    fontWeight: '600'\n    lineHeight: 24px\n    letterSpacing: -0.01em\n  body-lg:\n    fontFamily: Inter\n    fontSize: 18px\n    fontWeight: '400'\n    lineHeight: 28px\n    letterSpacing: -0.01em\n  body-md:\n    fontFamily: Inter\n    fontSize: 15px\n    fontWeight: '400'\n    lineHeight: 22px\n    letterSpacing: -0.005em\n  body-sm:\n    fontFamily: Inter\n    fontSize: 13px\n    fontWeight: '400'\n    lineHeight: 18px\n    letterSpacing: 0em\n  label-lg:\n    fontFamily: Space Grotesk\n    fontSize: 14px\n    fontWeight: '600'\n    lineHeight: 20px\n    letterSpacing: 0.02em\n  label-md:\n    fontFamily: Space Grotesk\n    fontSize: 12px\n    fontWeight: '600'\n    lineHeight: 16px\n    letterSpacing: 0.04em\n  label-mono-sm:\n    fontFamily: Space Grotesk\n    fontSize: 11px\n    fontWeight: '500'\n    lineHeight: 14px\n    letterSpacing: 0.08em\nrounded:\n  sm: 0.125rem\n  DEFAULT: 0.25rem\n  md: 0.375rem\n  lg: 0.5rem\n  xl: 0.75rem\n  full: 9999px\nspacing:\n  gutter: 1.5rem\n  gutter-mobile: 1rem\n  margin: 2.5rem\n  margin-mobile: 1rem\n  space-xs: 0.25rem\n  space-sm: 0.5rem\n  space-md: 1rem\n  space-lg: 1.5rem\n  space-xl: 2.5rem\n---\n\n## Brand & Style\n\nThe design system establishes a high-voltage, editorial dark aesthetic tailored for nightlife, arena concerts, underground electronic shows, and private festival experiences. The target audience spans discerning event-goers, tour managers, promoter collectives, and hospitality directors who demand utility, speed, and uncompromising visual poise.\n\nThe visual style merges technical precision with stark architectural minimalism:\n- **Tone:** Monolithic, disciplined, nocturnal, and tactile.\n- **Surface Philosophy:** Deep, light-absorbing carbon and graphite backdrops anchor the interface. Layers are structured through crisp 1px mechanical lines and matte tonal elevation rather than soft ambient blur or decorative neon glows.\n- **Focal Discipline:** An electric safety-orange accent is treated as an active electrical signal—deployed strictly to guide transactional intent, indicate ticket states, and spotlight interactive selection. No ornamental gradients or arbitrary atmospheric fills are permitted.\n\n## Colors\n\nThe palette operates under a strict dark-mode-first taxonomy built on deep obsidian tones, structured neutral dividers, and a singular luminous kinetic accent.\n\n### Color Tokens & Roles\n\n- **Canvas & Backdrops:**\n  - `bg-canvas`: `#09090B` — Absolute deepest surface base.\n  - `bg-surface-1`: `#121215` — Default card background, modular panels, and modal shells.\n  - `bg-surface-2`: `#18181C` — Interactive item surface, input fills, dropdown menus, and raised tabs.\n  - `bg-surface-active`: `#222228` — Pressed states, hover highlights, and active segment wells.\n\n- **Borders & Dividers:**\n  - `border-subtle`: `#222228` — Secondary panel division, metadata separation lines, and nested borders.\n  - `border-strong`: `#2E2E36` — Primary container edges, input field rest states, and active cards.\n  - `border-focus`: `#FF5A1F` — High-visibility keyboard rings, focus rings, and active seat selections.\n\n- **Content & Typography:**\n  - `text-primary`: `#FFFFFF` — Display headings, hero titling, critical event details, and ticket counts.\n  - `text-secondary`: `#A1A1AA` — Subtitles, dates, stage locations, and venue info.\n  - `text-tertiary`: `#9494A0` — Supporting metadata, ticket fine print, timestamps, and input placeholders.\n  - `text-disabled`: `#4A4A55` — Locked seat states, sold-out tiers, and inactive controls.\n\n- **Brand Signal (Primary Accent):**\n  - `brand-primary`: `#FF5A1F` — Core call-to-actions, primary buy flows, selected seat indicators, and live badges.\n  - `brand-hover`: `#FF6B00` — Active hover states on primary controls.\n  - `brand-tint`: `rgba(255, 90, 31, 0.12)` — Selected item backdrops, category filters, and active tags.\n\n- **Functional Status Indicators:**\n  - `status-valid`: `#10B981` (Emerald) — Validated tickets, active gate scans, and completed purchases.\n  - `status-invalid`: `#EF4444` (Vivid Crimson) — Invalid barcode, expired credentials, and already-scanned tickets.\n  - `status-warning`: `#F59E0B` (Amber) — Low inventory alerts, countdown timers, hold expirations, and paused gates.\n\n## Typography\n\nThe typographic system contrasts the structural, technical flair of Space Grotesk against the neutral, legible engine of Inter.\n\n- **Headlines & Titles (Space Grotesk):** Engineered with geometric proportion and precise mechanical rhythm. Used for event names, festival headliners, ticket denominations, and pricing. Letter spacing is compressed on large headings to produce high-density visual weight.\n- **Body & Data (Inter):** Deployed across long descriptions, venue policies, gate directions, checkout order summaries, and validation logs. Ensures crisp readability even when rendered at small scale under low-light venue settings.\n- **Labels & Micro-data (Space Grotesk):** Used uppercase with tracked-out spacing (`letterSpacing: 0.04em` to `0.08em`) for section caps, barcode serial numbers, gate identifiers, and VIP tier markers.\n\n## Layout & Spacing\n\nThe layout is built around a structural, content-dense grid system engineered to withstand high volumes of data, visual line-ups, and step-by-step transaction checkout flows.\n\n- **Desktop (1200px+):** 12-column layout with 24px (`1.5rem`) gutters and minimum 40px (`2.5rem`) outer page margins. Maximum container width caps at 1440px to ensure event media remains impactful without stretching metadata.\n- **Tablet (768px - 1199px):** 8-column layout with 20px gutters and 32px canvas margins. Multi-column event sidebars shift below the primary imagery.\n- **Mobile (320px - 767px):** 4-column layout with 16px (`1rem`) gutters and 16px (`1rem`) outer margins. Cards collapse to full-bleed horizontal or edge-to-edge vertical compositions to maximize touch surface and scanning ease.\n\n### Spacing Scale Intent\n- `space-xs` (4px): Micro-spacing between badges and labels, status dots and timestamps.\n- `space-sm` (8px): Form input inner vertical padding, button icon-to-label separation, and compact tag clusters.\n- `space-md` (16px): Card internal padding, form field groupings, list item spacing.\n- `space-lg` (24px): Event card module padding, grid row separations, sub-section breaks.\n- `space-xl` (40px): Full section offsets, checkout container separation, and hero headline clearance.\n\n## Elevation & Depth\n\nVisual hierarchy is maintained via stacked tonal depth, hairline outlines, and strategic matte elevation. Diffuse colored drop-shadows and generic multi-color glows are avoided.\n\n1. **Base Tier (Elevation 0):** `#09090B` — Viewport backdrop and full-page canvas.\n2. **Structural Tier (Elevation 1):** `#121215` with a crisp `1px solid #222228` border. Applied to cards, list groups, and ticket shells.\n3. **Floating Overlays & Controls (Elevation 2):** `#18181C` with `1px solid #2E2E36` border. Supported by a pure black drop silhouette: `box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.7)`. Used for checkout modals, dropdown menus, flyout filters, and fixed mobile bottom purchase bars.\n4. **Accent Glow (Focused Interaction):** When a ticket tier or interactive seat is chosen, depth is enforced via an inner ring and an electric amber rim: `box-shadow: 0 0 0 1px #FF5A1F, 0 8px 24px -2px rgba(255, 90, 31, 0.25)`.\n\n## Shapes\n\nThe design language uses deliberate, architectural radii to preserve a clean, industrial look.\n\n- **Base Radius (6px / 0.375rem):** Form inputs, action buttons, filter chips, dropdown menus, and barcode blocks.\n- **Container Radius (`rounded-lg` / 8px - 10px):** Large event cards, checkout summaries, modal dialogues, and split ticket passes.\n- **Pill Exceptions:** Rounded-full is restricted solely to live status badges (e.g., \"LIVE NOW\", \"SELLING FAST\"), counter circles, and audio play toggles.\n- **Physical Ticket Notches:** Ticket components use semi-circular cutouts (16px diameter) along perforated separation lines with hairline dashed borders (`#2E2E36`), evoking the mechanical reality of paper ticket stubs.\n\n## Components\n\n### Buttons\n- **Primary Action (Purchase / Confirm):** Solid `#FF5A1F` background, text `#FFFFFF`, font `Space Grotesk` 600. Height 48px (desktop) / 52px (mobile). Hover transforms surface to `#FF6B00`. Active state compresses slightly (`transform: scale(0.99)`).\n- **Secondary (Detail / Manage):** Background `#18181C`, border `1px solid #2E2E36`, text `#FFFFFF`. Hover changes border to `#9494A0`.\n- **Ghost (Action Link):** Background transparent, text `#A1A1AA`, hover text `#FFFFFF`.\n\n### Event Cards\n- **Structure:** Surface `#121215`, outline `1px solid #222228`, border-radius 8px.\n- **Imagery:** High-contrast 16:9 or 3:4 aspect ratio with an overlay gradient at the bottom (`linear-gradient(180deg, transparent 50%, #121215 100%)`).\n- **Details:** Event date and venue in Space Grotesk uppercase (`label-md`), headliner title in Space Grotesk bold (`headline-sm`), price tier pinned to the lower right in `#FF5A1F`.\n\n### Digital Ticket Stub & Pass\n- **Design:** Dual-compartment card separated by a punched notch line and a `1px dashed #2E2E36` rule.\n- **Stub Left / Top:** Venue information, gate details, seat/tier designation, and calendar sync button.\n- **Stub Right / Bottom:** High-contrast QR/Aztec code rendered on a crisp white container or direct high-contrast monochrome inversion, accompanied by a dynamic security scan bar.\n- **Status Indicator:** Integrated state tag (`#10B981` VALID, `#EF4444` ALREADY USED, `#F59E0B` RESERVED/HOLD).\n\n### Input Fields & Selectors\n- **Surface:** `#18181C`, border `1px solid #2E2E36`, text `#FFFFFF`, placeholder `#4A4A55`, padding 12px 16px, radius 6px.\n- **Focus State:** Border shifts directly to `#FF5A1F`, with no broad fuzzy outer rings.\n\n### Chips & Filter Pills\n- **Rest:** `#121215` with `1px solid #222228`, text `#A1A1AA`.\n- **Selected:** Background `rgba(255, 90, 31, 0.12)`, border `1px solid #FF5A1F`, text `#FFFFFF`.\n\n### Checkboxes & Segment Controls\n- **Checkboxes:** 18px square, `#18181C` fill with `1px solid #2E2E36`. Checked state fills `#FF5A1F` with a crisp white check icon.\n- **Segmented Tier Switcher:** Embedded track in `#121215` with a sliding `#222228` indicator pill and sharp Space Grotesk text labels.",
+    "colorVariant": "FIDELITY",
+    "overridePrimaryColor": "#ff5a1f",
+    "overrideSecondaryColor": "#2e2e36",
+    "overrideTertiaryColor": "#ff6b00",
+    "overrideNeutralColor": "#121215",
+    "spacingScale": 2,
+    "typography": {
+      "headline-lg": {
+        "fontFamily": "Space Grotesk",
+        "fontSize": "40px",
+        "fontWeight": "600",
+        "lineHeight": "48px",
+        "letterSpacing": "-0.025em"
+      },
+      "body-sm": {
+        "fontFamily": "Inter",
+        "fontSize": "13px",
+        "fontWeight": "400",
+        "lineHeight": "18px",
+        "letterSpacing": "0em"
+      },
+      "label-md": {
+        "fontFamily": "Space Grotesk",
+        "fontSize": "12px",
+        "fontWeight": "600",
+        "lineHeight": "16px",
+        "letterSpacing": "0.04em"
+      },
+      "headline-md": {
+        "fontFamily": "Space Grotesk",
+        "fontSize": "28px",
+        "fontWeight": "600",
+        "lineHeight": "36px",
+        "letterSpacing": "-0.02em"
+      },
+      "body-lg": {
+        "fontFamily": "Inter",
+        "fontSize": "18px",
+        "fontWeight": "400",
+        "lineHeight": "28px",
+        "letterSpacing": "-0.01em"
+      },
+      "body-md": {
+        "fontFamily": "Inter",
+        "fontSize": "15px",
+        "fontWeight": "400",
+        "lineHeight": "22px",
+        "letterSpacing": "-0.005em"
+      },
+      "label-lg": {
+        "fontFamily": "Space Grotesk",
+        "fontSize": "14px",
+        "fontWeight": "600",
+        "lineHeight": "20px",
+        "letterSpacing": "0.02em"
+      },
+      "label-mono-sm": {
+        "fontFamily": "Space Grotesk",
+        "fontSize": "11px",
+        "fontWeight": "500",
+        "lineHeight": "14px",
+        "letterSpacing": "0.08em"
+      },
+      "headline-xl-mobile": {
+        "fontFamily": "Space Grotesk",
+        "fontSize": "36px",
+        "fontWeight": "700",
+        "lineHeight": "44px",
+        "letterSpacing": "-0.02em"
+      },
+      "headline-sm": {
+        "fontFamily": "Space Grotesk",
+        "fontSize": "20px",
+        "fontWeight": "600",
+        "lineHeight": "28px",
+        "letterSpacing": "-0.01em"
+      },
+      "title-md": {
+        "fontFamily": "Space Grotesk",
+        "fontSize": "16px",
+        "fontWeight": "600",
+        "lineHeight": "24px",
+        "letterSpacing": "-0.01em"
+      },
+      "headline-lg-mobile": {
+        "fontFamily": "Space Grotesk",
+        "fontSize": "28px",
+        "fontWeight": "600",
+        "lineHeight": "36px",
+        "letterSpacing": "-0.02em"
+      },
+      "headline-xl": {
+        "fontFamily": "Space Grotesk",
+        "fontSize": "56px",
+        "fontWeight": "700",
+        "lineHeight": "64px",
+        "letterSpacing": "-0.03em"
+      }
+    },
+    "spacing": {
+      "space-lg": "1.5rem",
+      "gutter-mobile": "1rem",
+      "space-xs": "0.25rem",
+      "space-md": "1rem",
+      "space-xl": "2.5rem",
+      "gutter": "1.5rem",
+      "margin-mobile": "1rem",
+      "margin": "2.5rem",
+      "space-sm": "0.5rem"
+    },
+    "headlineFontFamily": "Space Grotesk",
+    "bodyFontFamily": "Inter",
+    "labelFontFamily": "Space Grotesk"
+  },
+  "screenInstances": [
+    {
+      "id": "05788bcfcf5148c39e994780d11220f7",
+      "sourceScreen": "projects/16462286503999379148/screens/05788bcfcf5148c39e994780d11220f7",
+      "x": -645,
+      "y": 1469,
+      "width": 390,
+      "height": 2225,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "2621594be47a43849b52686b30510500",
+      "sourceScreen": "projects/16462286503999379148/screens/2621594be47a43849b52686b30510500",
+      "x": 2075,
+      "y": 9224,
+      "width": 1280,
+      "height": 2168,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "2b2b13e7935647a7b0b68f521c2dba2e",
+      "sourceScreen": "projects/16462286503999379148/screens/2b2b13e7935647a7b0b68f521c2dba2e",
+      "x": 2368,
+      "width": 1280,
+      "height": 2680,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "30d8c3292714482bb65a2aa5a24afe02",
+      "sourceScreen": "projects/16462286503999379148/screens/30d8c3292714482bb65a2aa5a24afe02",
+      "x": 946,
+      "y": 3695,
+      "width": 1280,
+      "height": 1320,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "3d2d173a96174b189802877add64f124",
+      "sourceScreen": "projects/16462286503999379148/screens/3d2d173a96174b189802877add64f124",
+      "x": -612,
+      "y": 9664,
+      "width": 1280,
+      "height": 1762,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "48bfc5bbcedc4f2db5664e43727724ba",
+      "sourceScreen": "projects/16462286503999379148/screens/48bfc5bbcedc4f2db5664e43727724ba",
+      "x": 731,
+      "y": 9224,
+      "width": 1280,
+      "height": 2861,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "65b7750422c145adac7031d67a5390e2",
+      "sourceScreen": "projects/16462286503999379148/screens/65b7750422c145adac7031d67a5390e2",
+      "x": 967,
+      "y": 2071,
+      "width": 1280,
+      "height": 1588,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "75beb49d5e774f7fbeca675600f17d68",
+      "sourceScreen": "projects/16462286503999379148/screens/75beb49d5e774f7fbeca675600f17d68",
+      "x": 2376,
+      "y": 5243,
+      "width": 1280,
+      "height": 1591,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "7cb0eb8cfb044a46a1b5c0e410005b86",
+      "sourceScreen": "projects/16462286503999379148/screens/7cb0eb8cfb044a46a1b5c0e410005b86",
+      "x": -105,
+      "y": 1392,
+      "width": 390,
+      "height": 2120,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "853093c953c44cb0988de0faf3c17a0f",
+      "sourceScreen": "projects/16462286503999379148/screens/853093c953c44cb0988de0faf3c17a0f",
+      "x": -2378,
+      "y": 9224,
+      "width": 1280,
+      "height": 2751,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "98346e1454ce4af1ae4136ba4dc0106f",
+      "sourceScreen": "projects/16462286503999379148/screens/98346e1454ce4af1ae4136ba4dc0106f",
+      "x": -1704,
+      "y": 1695,
+      "width": 390,
+      "height": 775,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "98e7c8b20f0d48b3b2989903878be72c",
+      "sourceScreen": "projects/16462286503999379148/screens/98e7c8b20f0d48b3b2989903878be72c",
+      "x": 2360,
+      "y": 2744,
+      "width": 1280,
+      "height": 1373,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "assets_fe3804d342cb4edeab144044cb1064bf",
+      "x": -768,
+      "y": 112,
+      "width": 960,
+      "height": 540,
+      "sourceAsset": "assets/fe3804d342cb4edeab144044cb1064bf",
+      "type": "DESIGN_SYSTEM_INSTANCE"
+    },
+    {
+      "id": "b2c9b2936a114ec5a709be75da6f88bc",
+      "sourceScreen": "projects/16462286503999379148/screens/b2c9b2936a114ec5a709be75da6f88bc",
+      "x": 1024,
+      "width": 1280,
+      "height": 1964,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "c8bbe420d4834503b2d675966300c923",
+      "sourceScreen": "projects/16462286503999379148/screens/c8bbe420d4834503b2d675966300c923",
+      "x": -1259,
+      "y": 1705,
+      "width": 390,
+      "height": 1311,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "ddcd6591320a4276987c570373455490",
+      "sourceScreen": "projects/16462286503999379148/screens/ddcd6591320a4276987c570373455490",
+      "x": 1344,
+      "y": 7459,
+      "width": 1280,
+      "height": 1509,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "edc6ba5ffc8c47fcbb94f40115cc8879",
+      "sourceScreen": "projects/16462286503999379148/screens/edc6ba5ffc8c47fcbb94f40115cc8879",
+      "y": 7459,
+      "width": 1280,
+      "height": 1072,
+      "label": "Generating Screen..."
+    },
+    {
+      "id": "f1e85b531db8481296da369ae57e3248",
+      "sourceScreen": "projects/16462286503999379148/screens/f1e85b531db8481296da369ae57e3248",
+      "x": 973,
+      "y": 5272,
+      "width": 1280,
+      "height": 1931,
+      "label": "Generating Screen..."
+    }
+  ],
+  "metadata": {
+    "userRole": "OWNER"
+  }
+}
