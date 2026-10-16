@@ -90,3 +90,5 @@ export * from "./types";
 export * from "./nexi-config";
 export { NexiCheckoutProvider } from "./nexi-provider";
 export { NexiApiError } from "./nexi-client";
+export { StripePaymentProvider, stripeConfigHealth } from "./stripe-provider";
+export { MockStripePaymentProvider } from "./mock-stripe-provider";

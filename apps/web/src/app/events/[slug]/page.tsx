@@ -7,6 +7,7 @@ import { formatEventDate, formatEventTime } from "@/lib/time";
 import { formatMoney } from "@/lib/utils";
 import { getAvailableQuantity, resolveUnitPrice } from "@/services/reservation-service";
 import { TicketSelector } from "@/components/checkout/ticket-selector";
+import { WaitlistJoinForm } from "@/components/checkout/waitlist-join-form";
 import { TrackPageView } from "@/components/analytics/track-page-view";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -179,6 +180,10 @@ export default async function EventDetailPage({ params }: Props) {
                     }))}
                 />
               )}
+              {event.waitlistEnabled &&
+              types.every((t) => t.available <= 0 || t.typePaused) ? (
+                <WaitlistJoinForm eventId={event.id} />
+              ) : null}
             </div>
           </div>
         </div>

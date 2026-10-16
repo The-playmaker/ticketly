@@ -12,7 +12,8 @@ export const dynamic = "force-dynamic";
 const nav = [
   { href: "/admin", label: "Oversikt" },
   { href: "/admin/events", label: "Arrangementer" },
-  { href: "/admin/orders", label: "Ordrer" },
+  { href: "/admin/orders", label: "Ordrer / Support" },
+  { href: "/admin/promos", label: "Kampanjekoder" },
   { href: "/admin/reports", label: "Analyse" },
   { href: "/admin/webhooks", label: "Webhooks" },
   { href: "/admin/settings", label: "Innstillinger" },

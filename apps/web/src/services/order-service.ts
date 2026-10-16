@@ -228,6 +228,15 @@ export class OrderService {
           else if (promo.expiresAt && promo.expiresAt < now) promo = null;
           else if (promo.maxUses != null && promo.usedCount >= promo.maxUses) {
             throw new AppError("PROMO_EXHAUSTED", "Kampanjekoden er oppbrukt", 409);
+          } else if (
+            promo.ticketTypeId &&
+            !safeItems.some((i) => i.ticketTypeId === promo!.ticketTypeId)
+          ) {
+            throw new AppError(
+              "PROMO_WRONG_TICKET_TYPE",
+              "Kampanjekoden gjelder ikke for valgte billetter",
+              400
+            );
           }
         }
       }

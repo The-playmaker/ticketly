@@ -37,6 +37,13 @@ export class MockStripePaymentProvider implements PaymentProvider {
     };
   }
 
+  async getHealth() {
+    return {
+      status: "operational" as const,
+      message: "Mock Stripe (local only)",
+    };
+  }
+
   async parseWebhook(rawBody: string | Buffer, _signature: string | null): Promise<WebhookHandleResult> {
     const payload = JSON.parse(typeof rawBody === "string" ? rawBody : rawBody.toString());
     return {
@@ -49,6 +56,8 @@ export class MockStripePaymentProvider implements PaymentProvider {
       providerPaymentId: payload.paymentId ?? payload.sessionId,
       amount: payload.amount,
       currency: payload.currency,
+      paymentMethod: payload.paymentMethod ?? "CARD",
+      paymentType: payload.paymentType ?? "CARD",
       raw: payload,
     };
   }

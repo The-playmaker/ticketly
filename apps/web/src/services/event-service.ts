@@ -105,6 +105,143 @@ export class EventService {
     );
   }
 
+  /**
+   * Duplicate event metadata, venue, ticket types, tax/checkout/refund config.
+   * Does NOT copy orders, tickets, attendees, payments, check-ins, or promo usage.
+   */
+  static async duplicate(sourceId: string, actorId?: string) {
+    const source = await prisma.event.findUniqueOrThrow({
+      where: { id: sourceId },
+      include: {
+        ticketTypes: { include: { priceTiers: true }, orderBy: { sortOrder: "asc" } },
+        images: { orderBy: { sortOrder: "asc" } },
+      },
+    });
+
+    const baseSlug = `${source.slug}-kopi`;
+    let slug = baseSlug;
+    let n = 1;
+    while (await prisma.event.findFirst({ where: { organizationId: source.organizationId, slug } })) {
+      slug = `${baseSlug}-${n++}`;
+    }
+
+    const weekMs = 7 * 24 * 60 * 60_000;
+    const created = await prisma.$transaction(async (tx) => {
+      const event = await tx.event.create({
+        data: {
+          organizationId: source.organizationId,
+          sellerOrganizationId: source.sellerOrganizationId,
+          venueId: source.venueId,
+          seriesId: source.seriesId,
+          name: `${source.name} (kopi)`,
+          slug,
+          description: source.description,
+          shortDescription: source.shortDescription,
+          address: source.address,
+          postalCode: source.postalCode,
+          city: source.city,
+          country: source.country,
+          timezone: source.timezone,
+          startsAt: new Date(source.startsAt.getTime() + weekMs),
+          endsAt: new Date(source.endsAt.getTime() + weekMs),
+          doorsOpenAt: source.doorsOpenAt
+            ? new Date(source.doorsOpenAt.getTime() + weekMs)
+            : null,
+          ageLimit: source.ageLimit,
+          coverImageUrl: source.coverImageUrl,
+          capacity: source.capacity,
+          status: EventStatus.DRAFT,
+          visibility: source.visibility,
+          category: source.category,
+          salesStartAt: null,
+          salesEndAt: null,
+          publishAt: null,
+          salesPausedAt: null,
+          availabilityDisplay: source.availabilityDisplay,
+          lowStockThreshold: source.lowStockThreshold,
+          soldOutDisplay: source.soldOutDisplay,
+          allowTransfer: source.allowTransfer,
+          serviceFee: source.serviceFee,
+          serviceFeeMode: source.serviceFeeMode,
+          currency: source.currency,
+          refundPolicyType: source.refundPolicyType,
+          refundPolicyText: source.refundPolicyText,
+          termsVersion: source.termsVersion,
+          waitlistEnabled: source.waitlistEnabled,
+          waitlistOnReleaseSoldOut: source.waitlistOnReleaseSoldOut,
+          reminder24hEnabled: source.reminder24hEnabled,
+          reminder3hEnabled: source.reminder3hEnabled,
+        },
+      });
+
+      for (const img of source.images) {
+        await tx.eventImage.create({
+          data: {
+            eventId: event.id,
+            url: img.url,
+            alt: img.alt,
+            sortOrder: img.sortOrder,
+          },
+        });
+      }
+
+      for (const tt of source.ticketTypes) {
+        const createdTt = await tx.ticketType.create({
+          data: {
+            eventId: event.id,
+            name: tt.name,
+            description: tt.description,
+            price: tt.price,
+            vatRate: tt.vatRate,
+            taxTreatmentId: tt.taxTreatmentId,
+            serviceFee: tt.serviceFee,
+            serviceFeeTaxTreatmentId: tt.serviceFeeTaxTreatmentId,
+            quantityTotal: tt.quantityTotal,
+            quantityReleased: 0,
+            quantitySold: 0,
+            quantityReserved: 0,
+            maxPerOrder: tt.maxPerOrder,
+            minPerOrder: tt.minPerOrder,
+            salesStartAt: null,
+            salesEndAt: null,
+            salesPausedAt: null,
+            isVisible: tt.isVisible,
+            isPubliclyPurchasable: tt.isPubliclyPurchasable,
+            releaseMode: tt.releaseMode,
+            admissionCount: tt.admissionCount,
+            isBundle: tt.isBundle,
+            sortOrder: tt.sortOrder,
+          },
+        });
+        for (const tier of tt.priceTiers) {
+          await tx.ticketPriceTier.create({
+            data: {
+              ticketTypeId: createdTt.id,
+              name: tier.name,
+              price: tier.price,
+              quantityFrom: tier.quantityFrom,
+              quantityTo: tier.quantityTo,
+              sortOrder: tier.sortOrder,
+            },
+          });
+        }
+      }
+
+      return event;
+    });
+
+    await writeAuditLog({
+      actorId,
+      organizationId: created.organizationId,
+      action: "EVENT_DUPLICATED",
+      entityType: "Event",
+      entityId: created.id,
+      metadata: { sourceId, slug: created.slug },
+    });
+
+    return created;
+  }
+
   static async cancel(
     id: string,
     options: { refundAll?: boolean; actorId?: string } = {}

@@ -76,10 +76,37 @@ export async function GET(_req: Request, { params }: Props) {
         )
       : { _sum: { total: 0, serviceFee: 0 } };
 
+    const [waitlistWaiting, topPromo, bundleSold, remindersScheduled] = await Promise.all([
+      prisma.waitlistEntry.count({ where: { eventId: id, status: "WAITING" } }),
+      prisma.promoCode.findFirst({
+        where: {
+          organizationId: event.organizationId,
+          OR: [{ eventId: id }, { eventId: null }],
+          usedCount: { gt: 0 },
+        },
+        orderBy: { usedCount: "desc" },
+        select: { code: true, usedCount: true },
+      }),
+      prisma.ticketType.findFirst({
+        where: { eventId: id, isBundle: true },
+        orderBy: { quantitySold: "desc" },
+        select: { name: true, quantitySold: true },
+      }),
+      prisma.eventReminderJob.count({
+        where: { eventId: id, status: "SCHEDULED" },
+      }),
+    ]);
+
     return NextResponse.json({
       inventory,
       checkedIn,
       refunded,
+      parity: {
+        waitlistWaiting,
+        promo: topPromo,
+        bundle: bundleSold,
+        remindersScheduled,
+      },
       today: {
         revenue: todayOrders.reduce((s, o) => s + o.total, 0),
         orders: todayOrders.length,

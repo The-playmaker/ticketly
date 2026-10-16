@@ -1,8 +1,5 @@
 import Stripe from "stripe";
-import {
-  PaymentProviderType,
-  PaymentStatus,
-} from "@prisma/client";
+import { PaymentProviderType, PaymentStatus } from "@prisma/client";
 import type {
   CreateCheckoutInput,
   CreateCheckoutResult,
@@ -13,11 +10,33 @@ import type {
 } from "./types";
 
 function getStripe(): Stripe {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key || key.includes("placeholder")) {
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!key || key.includes("placeholder") || key.length < 8) {
     throw new Error("STRIPE_SECRET_KEY is not configured");
   }
   return new Stripe(key);
+}
+
+function stripeConfigured(): boolean {
+  try {
+    getStripe();
+    const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+    if (!secret || secret.includes("placeholder") || secret.length < 8) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function mapStripePaymentMethod(
+  session: Stripe.Checkout.Session
+): { paymentMethod?: string; paymentType?: string } {
+  const types = session.payment_method_types ?? [];
+  const primary = types[0]?.toUpperCase();
+  if (!primary) return {};
+  if (primary === "CARD") return { paymentMethod: "CARD", paymentType: "CARD" };
+  if (primary === "LINK") return { paymentMethod: "LINK", paymentType: "WALLET" };
+  return { paymentMethod: primary, paymentType: "OTHER" };
 }
 
 export class StripePaymentProvider implements PaymentProvider {
@@ -25,35 +44,38 @@ export class StripePaymentProvider implements PaymentProvider {
 
   async createCheckout(input: CreateCheckoutInput): Promise<CreateCheckoutResult> {
     const stripe = getStripe();
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      customer_email: input.customerEmail,
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: input.currency.toLowerCase(),
-            unit_amount: input.amount,
-            product_data: {
-              name: input.description,
+    const session = await stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        customer_email: input.customerEmail,
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: input.currency.toLowerCase(),
+              unit_amount: input.amount,
+              product_data: {
+                name: input.description,
+              },
             },
           },
-        },
-      ],
-      success_url: input.successUrl,
-      cancel_url: input.cancelUrl,
-      metadata: {
-        orderId: input.orderId,
-        orderNumber: input.orderNumber,
-        ...input.metadata,
-      },
-      payment_intent_data: {
+        ],
+        success_url: input.successUrl,
+        cancel_url: input.cancelUrl,
         metadata: {
           orderId: input.orderId,
           orderNumber: input.orderNumber,
+          ...input.metadata,
+        },
+        payment_intent_data: {
+          metadata: {
+            orderId: input.orderId,
+            orderNumber: input.orderNumber,
+          },
         },
       },
-    });
+      { idempotencyKey: `checkout_${input.orderId}` }
+    );
 
     if (!session.url) {
       throw new Error("Stripe did not return a checkout URL");
@@ -64,6 +86,7 @@ export class StripePaymentProvider implements PaymentProvider {
       sessionId: session.id,
       paymentId: typeof session.payment_intent === "string" ? session.payment_intent : undefined,
       checkoutUrl: session.url,
+      integrationType: "HostedPaymentPage",
     };
   }
 
@@ -81,8 +104,28 @@ export class StripePaymentProvider implements PaymentProvider {
 
     return {
       providerRefundId: refund.id,
-      status: refund.status === "succeeded" ? "SUCCEEDED" : refund.status === "failed" ? "FAILED" : "PENDING",
+      status:
+        refund.status === "succeeded"
+          ? "SUCCEEDED"
+          : refund.status === "failed"
+            ? "FAILED"
+            : "PENDING",
       amount: refund.amount,
+    };
+  }
+
+  async getHealth() {
+    if (!stripeConfigured()) {
+      return {
+        status: "configuration_error" as const,
+        message: "STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET missing or placeholder",
+      };
+    }
+    const key = process.env.STRIPE_SECRET_KEY ?? "";
+    const env = key.startsWith("sk_live_") ? "live" : key.startsWith("sk_test_") ? "test" : "unknown";
+    return {
+      status: "operational" as const,
+      message: `Stripe ${env} keys configured`,
     };
   }
 
@@ -98,6 +141,7 @@ export class StripePaymentProvider implements PaymentProvider {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        const method = mapStripePaymentMethod(session);
         return {
           handled: true,
           type: event.type,
@@ -109,6 +153,9 @@ export class StripePaymentProvider implements PaymentProvider {
             typeof session.payment_intent === "string" ? session.payment_intent : undefined,
           amount: session.amount_total ?? undefined,
           currency: session.currency ?? undefined,
+          paymentMethod: method.paymentMethod,
+          paymentType: method.paymentType,
+          providerStatus: session.payment_status ?? undefined,
           raw: session,
         };
       }
@@ -123,6 +170,8 @@ export class StripePaymentProvider implements PaymentProvider {
           providerPaymentId: pi.id,
           amount: pi.amount,
           currency: pi.currency ?? undefined,
+          paymentMethod: typeof pi.payment_method === "string" ? undefined : undefined,
+          providerStatus: pi.status,
           raw: pi,
         };
       }
@@ -135,6 +184,7 @@ export class StripePaymentProvider implements PaymentProvider {
           orderId: pi.metadata?.orderId,
           paymentStatus: PaymentStatus.FAILED,
           providerPaymentId: pi.id,
+          providerStatus: pi.status,
           raw: pi,
         };
       }
@@ -161,4 +211,18 @@ export class StripePaymentProvider implements PaymentProvider {
         };
     }
   }
+}
+
+export function stripeConfigHealth(): {
+  status: "operational" | "configuration_error";
+  message?: string;
+  mode: "test" | "live" | "unknown" | "missing";
+} {
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+  if (!key || key.includes("placeholder") || !secret || secret.includes("placeholder")) {
+    return { status: "configuration_error", message: "Stripe keys not configured", mode: "missing" };
+  }
+  const mode = key.startsWith("sk_live_") ? "live" : key.startsWith("sk_test_") ? "test" : "unknown";
+  return { status: "operational", mode };
 }

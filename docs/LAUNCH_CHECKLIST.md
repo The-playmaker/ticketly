@@ -36,15 +36,31 @@ See [LAUNCH_STATUS.md](./LAUNCH_STATUS.md) for READY / MANUAL / BLOCKED.
 - [ ] QR tested
 - [ ] Scanner tested
 
-## OPTIONAL / FALLBACK — Stripe
+## STRIPE BACKUP (temporary / live fallback)
 
-Not required when `PAYMENT_PROVIDER=nexi`.
+Use while Nexi onboarding is pending: `PAYMENT_PROVIDER=stripe`.
 
-- [ ] (Optional) Stripe keys if fallback needed
-- [ ] `STRIPE_MOCK_MODE=false` whenever Stripe is used outside local mock
+Does **not** require Nexi to be READY. Historical Stripe orders stay on Stripe forever.
+
+- [ ] Correct legal business Stripe account
+- [ ] Business verification complete
+- [ ] Production API keys configured (`STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`)
+- [ ] Production webhook configured → `{APP_URL}/api/payments/stripe/webhook`
+- [ ] `STRIPE_WEBHOOK_SECRET` set
+- [ ] Correct bank settlement account
+- [ ] Statement descriptor reviewed
+- [ ] Test payment completed
+- [ ] Refund tested
+- [ ] QR generated
+- [ ] Refunded QR rejected
+- [ ] `STRIPE_MOCK_MODE=false` (never mock in production)
+
+When switching later to Nexi: set `PAYMENT_PROVIDER=nexi`. Do **not** migrate old payments.
 
 ## Absolute rules
 
 - Missing payment config in production → **fail closed** (no silent mock)
 - Browser success URL alone never marks order paid
-- Do not mark payment production READY without Nexi sandbox round-trip
+- No automatic Nexi → Stripe failover after a payment has started
+- Do not mark Nexi production READY without Nexi sandbox round-trip
+- Stripe may be READY for sales independently of Nexi

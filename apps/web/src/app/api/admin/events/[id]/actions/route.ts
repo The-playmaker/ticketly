@@ -38,6 +38,7 @@ const actionSchema = z.discriminatedUnion("action", [
     action: z.literal("resume_ticket_type"),
     ticketTypeId: z.string(),
   }),
+  z.object({ action: z.literal("duplicate") }),
 ]);
 
 async function assertAccess(eventId: string) {
@@ -109,6 +110,10 @@ export async function POST(req: Request, { params }: Props) {
         return NextResponse.json(await InventoryService.pauseTicketType(body.ticketTypeId, user.id));
       case "resume_ticket_type":
         return NextResponse.json(await InventoryService.resumeTicketType(body.ticketTypeId, user.id));
+      case "duplicate": {
+        const copy = await EventService.duplicate(id, user.id);
+        return NextResponse.json(copy, { status: 201 });
+      }
       default:
         throw new AppError("UNKNOWN_ACTION", "Ukjent handling", 400);
     }

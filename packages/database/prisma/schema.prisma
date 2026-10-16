@@ -311,6 +311,7 @@ model Organization {
   venues             Venue[]
   events             Event[]             @relation("EventOrganizer")
   sellerEvents       Event[]             @relation("EventSeller")
+  eventSeries        EventSeries[]
   orders             Order[]
   promoCodes         PromoCode[]
   auditLogs          AuditLog[]
@@ -457,12 +458,21 @@ model Event {
   refundPolicyType     RefundPolicyType?
   refundPolicyText     String?         @db.Text
   termsVersion         String?
+  /// Waitlist when ticket type / release is sold out
+  waitlistEnabled      Boolean         @default(false)
+  /// If true, waitlist also when current release is sold out (unreleased remains)
+  waitlistOnReleaseSoldOut Boolean     @default(false)
+  /// Transactional event reminders (not marketing)
+  reminder24hEnabled   Boolean         @default(true)
+  reminder3hEnabled    Boolean         @default(false)
+  seriesId             String?
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
 
   organization       Organization              @relation("EventOrganizer", fields: [organizationId], references: [id], onDelete: Cascade)
   sellerOrganization Organization              @relation("EventSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
   venue              Venue?                    @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  series             EventSeries?              @relation(fields: [seriesId], references: [id], onDelete: SetNull)
   images             EventImage[]
   ticketTypes        TicketType[]
   orders             Order[]
@@ -478,6 +488,7 @@ model Event {
   analyticsEvents    AnalyticsEvent[]
   waitlistEntries    WaitlistEntry[]
   ticketBatches      TicketBatch[]
+  reminderJobs       EventReminderJob[]
 
   @@unique([organizationId, slug])
   @@index([slug])
@@ -486,6 +497,26 @@ model Event {
   @@index([organizationId, status])
   @@index([sellerOrganizationId])
   @@index([visibility, status, startsAt])
+  @@index([seriesId])
+}
+
+/// Shared defaults for recurring / related events (Friday Night series, etc.)
+model EventSeries {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?  @db.Text
+  venueId        String?
+  coverImageUrl  String?
+  ageLimit       Int?
+  defaults       Json? // ticket type / tax / fee defaults snapshot
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events       Event[]
+
+  @@index([organizationId])
 }
 
 model EventImage {
@@ -529,6 +560,9 @@ model TicketType {
   isPubliclyPurchasable Boolean @default(true)
   /// MANUAL (default) or AUTOMATIC batch/price progression
   releaseMode      String    @default("MANUAL")
+  /// Bundle: how many individual QR tickets to issue per purchased unit (4-pack → 4)
+  admissionCount   Int       @default(1)
+  isBundle         Boolean   @default(false)
   sortOrder        Int       @default(0)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
@@ -544,6 +578,7 @@ model TicketType {
   guestList          GuestListEntry[]
   priceHistory       PriceHistory[]
   batches            TicketBatch[]
+  waitlistEntries    WaitlistEntry[]
 
   @@index([eventId, sortOrder])
   @@index([eventId, isVisible])
@@ -587,20 +622,73 @@ model TicketBatch {
   @@index([ticketTypeId])
 }
 
-/// Waitlist stub — full waitlist post-launch
+enum WaitlistStatus {
+  WAITING
+  INVITED
+  CLAIMED
+  EXPIRED
+  REMOVED
+}
+
 model WaitlistEntry {
-  id        String   @id @default(cuid())
-  eventId   String
-  email     String
-  name      String?
-  quantity  Int      @default(1)
-  createdAt DateTime @default(now())
-  notifiedAt DateTime?
+  id                String         @id @default(cuid())
+  eventId           String
+  ticketTypeId      String?
+  email             String
+  name              String?
+  phone             String?
+  requestedQuantity Int            @default(1)
+  /// @deprecated use requestedQuantity
+  quantity          Int            @default(1)
+  status            WaitlistStatus @default(WAITING)
+  inviteToken       String?        @unique
+  inviteExpiresAt   DateTime?
+  claimedAt         DateTime?
+  notifiedAt        DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketType TicketType? @relation(fields: [ticketTypeId], references: [id], onDelete: SetNull)
+
+  @@index([eventId, status, createdAt])
+  @@index([eventId, email])
+  @@index([ticketTypeId, status])
+  @@index([inviteToken])
+}
+
+enum ReminderKind {
+  EVENT_24H
+  EVENT_3H
+  EVENT_CHANGED
+  EVENT_CANCELLED
+}
+
+enum ReminderJobStatus {
+  SCHEDULED
+  SENT
+  FAILED
+  CANCELLED
+  SKIPPED
+}
+
+model EventReminderJob {
+  id           String            @id @default(cuid())
+  eventId      String
+  orderId      String
+  kind         ReminderKind
+  scheduledFor DateTime
+  status       ReminderJobStatus @default(SCHEDULED)
+  sentAt       DateTime?
+  error        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  @@index([eventId, createdAt])
-  @@index([email])
+  @@unique([eventId, orderId, kind])
+  @@index([status, scheduledFor])
+  @@index([eventId, kind])
 }
 
 /// Lightweight funnel / traffic analytics (not financial SoT)
@@ -1193,20 +1281,34 @@ model NotificationPreference {
   @@unique([userId, channel, category])
 }
 
+enum NotificationDeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
 model NotificationLog {
-  id        String                @id @default(cuid())
-  userId    String?
-  channel   NotificationChannel
-  category  NotificationCategory
-  title     String
-  body      String
-  payload   Json?
-  sentAt    DateTime              @default(now())
-  provider  String?
+  id         String                     @id @default(cuid())
+  userId     String?
+  orderId    String?
+  eventId    String?
+  channel    NotificationChannel
+  category   NotificationCategory
+  title      String
+  body       String
+  payload    Json?
+  status     NotificationDeliveryStatus @default(SENT)
+  sentAt     DateTime                   @default(now())
+  provider   String?
   externalId String?
+  error      String?
 
   @@index([userId, sentAt])
+  @@index([orderId, sentAt])
+  @@index([eventId, sentAt])
   @@index([category, sentAt])
+  @@index([status, sentAt])
 }
 
 // ─── Devices & scanner sessions ──────────────────────────────────────────────

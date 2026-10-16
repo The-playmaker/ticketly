@@ -43,16 +43,23 @@ export class TicketService {
 
       for (const item of order.items) {
         const locked = await tx.$queryRaw<
-          { id: string; quantity_total: number; quantity_sold: number; quantity_reserved: number }[]
+          {
+            id: string;
+            quantity_total: number;
+            quantity_sold: number;
+            quantity_reserved: number;
+            admission_count: number;
+          }[]
         >`
           SELECT id, "quantityTotal" as quantity_total, "quantitySold" as quantity_sold,
-                 "quantityReserved" as quantity_reserved
+                 "quantityReserved" as quantity_reserved,
+                 COALESCE("admissionCount", 1) as admission_count
           FROM "TicketType" WHERE id = ${item.ticketTypeId} FOR UPDATE
         `;
         const row = locked[0];
         if (!row) throw new AppError("TICKET_TYPE_MISSING", "Billettype mangler", 500);
 
-        // After converting reserved→sold, sold must not exceed total
+        // After converting reserved→sold, sold must not exceed total (sale units)
         if (row.quantity_sold + item.quantity > row.quantity_total) {
           throw new AppError(
             "INVENTORY_INVARIANT",
@@ -69,7 +76,10 @@ export class TicketService {
           },
         });
 
-        for (let i = 0; i < item.quantity; i++) {
+        // Bundles: 1 purchased unit → admissionCount individual QR tickets
+        const admitPerUnit = Math.max(1, row.admission_count || 1);
+        const ticketsToIssue = item.quantity * admitPerUnit;
+        for (let i = 0; i < ticketsToIssue; i++) {
           const rawToken = generateSecureToken(32);
           const ticket = await tx.ticket.create({
             data: {

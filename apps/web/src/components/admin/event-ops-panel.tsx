@@ -33,6 +33,12 @@ type LivePayload = {
   totals: { grossRevenue: number; ticketsSold: number; available: number; reserved: number };
   funnel: { pageViews: number; checkoutStarts: number; paidOrders: number; conversion: number | null };
   feed: { at: string; lines: { quantity: number; name: string; total: number }[]; total: number }[];
+  parity?: {
+    waitlistWaiting: number;
+    promo: { code: string; usedCount: number } | null;
+    bundle: { name: string; quantitySold: number } | null;
+    remindersScheduled: number;
+  };
 };
 
 function formatMoney(ore: number) {
@@ -183,6 +189,24 @@ export function EventOpsPanel({
               label="Konvertering"
               value={live.funnel.conversion != null ? `${live.funnel.conversion}%` : "—"}
             />
+            {live.parity && live.parity.waitlistWaiting > 0 ? (
+              <Stat label="Venteliste" value={`${live.parity.waitlistWaiting} venter`} />
+            ) : null}
+            {live.parity?.promo ? (
+              <Stat
+                label="Promo"
+                value={`${live.parity.promo.code} · ${live.parity.promo.usedCount}`}
+              />
+            ) : null}
+            {live.parity && live.parity.remindersScheduled > 0 ? (
+              <Stat label="Påminnelser" value={String(live.parity.remindersScheduled)} />
+            ) : null}
+            {live.parity?.bundle && live.parity.bundle.quantitySold > 0 ? (
+              <Stat
+                label="Bundle"
+                value={`${live.parity.bundle.name} · ${live.parity.bundle.quantitySold}`}
+              />
+            ) : null}
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">

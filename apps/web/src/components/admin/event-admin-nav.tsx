@@ -7,6 +7,7 @@ const links = [
   { suffix: "", label: "Oversikt" },
   { suffix: "/orders", label: "Ordrer" },
   { suffix: "/attendees", label: "Deltakere" },
+  { suffix: "/waitlist", label: "Venteliste" },
   { suffix: "/analytics", label: "Analyse" },
   { suffix: "/settings", label: "Innstillinger" },
 ] as const;
