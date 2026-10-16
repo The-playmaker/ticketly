@@ -139,8 +139,21 @@ export class StripePaymentProvider implements PaymentProvider {
     const event = stripe.webhooks.constructEvent(rawBody, signature, secret);
 
     switch (event.type) {
-      case "checkout.session.completed": {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
+        // Fulfill only when payment is not unpaid (async methods can complete unpaid)
+        if (session.payment_status === "unpaid") {
+          return {
+            handled: false,
+            type: event.type,
+            externalEventId: event.id,
+            orderId: session.metadata?.orderId,
+            providerSessionId: session.id,
+            providerStatus: session.payment_status,
+            raw: session,
+          };
+        }
         const method = mapStripePaymentMethod(session);
         return {
           handled: true,
@@ -155,6 +168,21 @@ export class StripePaymentProvider implements PaymentProvider {
           currency: session.currency ?? undefined,
           paymentMethod: method.paymentMethod,
           paymentType: method.paymentType,
+          providerStatus: session.payment_status ?? undefined,
+          raw: session,
+        };
+      }
+      case "checkout.session.async_payment_failed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        return {
+          handled: true,
+          type: event.type,
+          externalEventId: event.id,
+          orderId: session.metadata?.orderId,
+          paymentStatus: PaymentStatus.FAILED,
+          providerSessionId: session.id,
+          providerPaymentId:
+            typeof session.payment_intent === "string" ? session.payment_intent : undefined,
           providerStatus: session.payment_status ?? undefined,
           raw: session,
         };
