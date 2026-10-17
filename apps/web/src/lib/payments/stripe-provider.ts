@@ -9,12 +9,35 @@ import type {
   WebhookHandleResult,
 } from "./types";
 
+/** Dahlia API version required for Checkout Session `ui_mode: "form"`. */
+const STRIPE_API_VERSION = "2026-08-26.dahlia" as const;
+
+export const STRIPE_CHECKOUT_SCRIPT_URL = "https://js.stripe.com/dahlia/stripe.js";
+
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY?.trim();
   if (!key || key.includes("placeholder") || key.length < 8) {
     throw new Error("STRIPE_SECRET_KEY is not configured");
   }
-  return new Stripe(key);
+  return new Stripe(key, { apiVersion: STRIPE_API_VERSION });
+}
+
+export function getStripePublishableKey(): string {
+  const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();
+  if (!key || key.includes("placeholder") || key.length < 8) {
+    throw new Error("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not configured");
+  }
+  return key;
+}
+
+/** Re-fetch client_secret for an existing Checkout Session (page refresh / payment page). */
+export async function retrieveStripeCheckoutClientSecret(sessionId: string): Promise<string> {
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  if (!session.client_secret) {
+    throw new Error("Stripe session has no client_secret (expired or wrong ui_mode)");
+  }
+  return session.client_secret;
 }
 
 function stripeConfigured(): boolean {
@@ -44,9 +67,13 @@ export class StripePaymentProvider implements PaymentProvider {
 
   async createCheckout(input: CreateCheckoutInput): Promise<CreateCheckoutResult> {
     const stripe = getStripe();
+    // Scenario A — embedded Checkout Form (ui_mode: form).
+    // fixed_by_ui params from Checkout Studio; sample_only mode/line_items preserved.
+    // Rule 8: payment_method_collection only for subscription mode — omitted (mode=payment).
     const session = await stripe.checkout.sessions.create(
       {
         mode: "payment",
+        ui_mode: "form",
         customer_email: input.customerEmail,
         line_items: [
           {
@@ -60,8 +87,15 @@ export class StripePaymentProvider implements PaymentProvider {
             },
           },
         ],
-        success_url: input.successUrl,
-        cancel_url: input.cancelUrl,
+        // Form UI uses return_url (not success_url/cancel_url)
+        return_url: input.successUrl,
+        billing_address_collection: "auto",
+        phone_number_collection: { enabled: false },
+        automatic_tax: { enabled: false },
+        submit_type: "auto",
+        name_collection: { individual: { enabled: true } },
+        integration_identifier: "custom_embedded_web_0001",
+        // Ticketly fulfillment — retained outside Studio field list
         metadata: {
           orderId: input.orderId,
           orderNumber: input.orderNumber,
@@ -77,16 +111,18 @@ export class StripePaymentProvider implements PaymentProvider {
       { idempotencyKey: `checkout_${input.orderId}` }
     );
 
-    if (!session.url) {
-      throw new Error("Stripe did not return a checkout URL");
+    if (!session.client_secret) {
+      throw new Error("Stripe did not return a checkout client_secret");
     }
 
     return {
       provider: PaymentProviderType.STRIPE,
       sessionId: session.id,
       paymentId: typeof session.payment_intent === "string" ? session.payment_intent : undefined,
-      checkoutUrl: session.url,
-      integrationType: "HostedPaymentPage",
+      clientSecret: session.client_secret,
+      checkoutKey: getStripePublishableKey(),
+      checkoutScriptUrl: STRIPE_CHECKOUT_SCRIPT_URL,
+      integrationType: "EmbeddedCheckout",
     };
   }
 

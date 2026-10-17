@@ -44,10 +44,12 @@ export type CreateCheckoutResult = {
   paymentId?: string;
   /** Hosted redirect URL when not using embedded checkout */
   checkoutUrl?: string;
-  /** Client-safe checkout key for EmbeddedCheckout */
+  /** Client-safe checkout key for EmbeddedCheckout (Nexi) or Stripe publishable key */
   checkoutKey?: string;
-  /** Script URL for Checkout.js (test vs production) */
+  /** Script URL for Checkout.js (test vs production) / Stripe.js Dahlia */
   checkoutScriptUrl?: string;
+  /** Stripe Checkout Session client_secret for ui_mode=form embedded form */
+  clientSecret?: string;
   integrationType?: "EmbeddedCheckout" | "HostedPaymentPage";
 };
 

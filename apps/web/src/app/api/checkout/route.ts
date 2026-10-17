@@ -141,7 +141,7 @@ export async function POST(req: Request) {
       /* non-blocking */
     }
 
-    // Client-safe payload only
+    // Client-safe payload only (client_secret is designed for browser use with Stripe.js)
     return NextResponse.json({
       orderId: order.id,
       orderNumber: order.orderNumber,
@@ -155,6 +155,8 @@ export async function POST(req: Request) {
       checkoutKey: checkout.checkoutKey,
       checkoutScriptUrl: checkout.checkoutScriptUrl,
       checkoutUrl: checkout.checkoutUrl,
+      clientSecret: checkout.clientSecret,
+      client_secret: checkout.clientSecret,
     });
   } catch (e) {
     return jsonError(e);

@@ -1,9 +1,16 @@
 import { notFound } from "next/navigation";
+import { PaymentProviderType } from "@prisma/client";
 import { SiteHeader } from "@/components/layout/site-header";
 import { NexiCheckoutContainer } from "@/components/checkout/nexi-checkout-container";
+import { StripeCheckoutContainer } from "@/components/checkout/stripe-checkout-container";
 import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/utils";
 import { getNexiCheckoutKey, getNexiCheckoutScriptUrl } from "@/lib/payments/nexi-config";
+import {
+  getStripePublishableKey,
+  retrieveStripeCheckoutClientSecret,
+  STRIPE_CHECKOUT_SCRIPT_URL,
+} from "@/lib/payments/stripe-provider";
 import { timingSafeEqual } from "crypto";
 import { ReservationCountdown } from "@/components/checkout/reservation-countdown";
 
@@ -69,23 +76,53 @@ export default async function CheckoutPaymentPage({ searchParams }: Props) {
     notFound();
   }
 
-  let checkoutKey: string;
-  let checkoutScriptUrl: string;
-  try {
-    checkoutKey = getNexiCheckoutKey();
-    checkoutScriptUrl = getNexiCheckoutScriptUrl();
-  } catch {
-    return (
-      <div>
-        <SiteHeader />
-        <main className="mx-auto max-w-lg px-4 py-16 text-center">
-          <h1 className="font-display text-2xl text-[color:var(--accent-soft)]">Betaling utilgjengelig</h1>
-          <p className="mt-2 text-zinc-400">
-            Nexi Checkout er ikke konfigurert. Kontakt support eller prøv senere.
-          </p>
-        </main>
-      </div>
-    );
+  const isStripe = payment.provider === PaymentProviderType.STRIPE;
+
+  let nexiCheckoutKey: string | undefined;
+  let nexiCheckoutScriptUrl: string | undefined;
+  let stripeClientSecret: string | undefined;
+  let stripePublishableKey: string | undefined;
+
+  if (isStripe) {
+    try {
+      stripePublishableKey = getStripePublishableKey();
+      stripeClientSecret = await retrieveStripeCheckoutClientSecret(
+        payment.providerSessionId ?? sp.paymentId
+      );
+    } catch {
+      return (
+        <div>
+          <SiteHeader />
+          <main className="mx-auto max-w-lg px-4 py-16 text-center">
+            <h1 className="font-display text-2xl text-[color:var(--accent-soft)]">
+              Betaling utilgjengelig
+            </h1>
+            <p className="mt-2 text-zinc-400">
+              Stripe Checkout er ikke konfigurert eller økten er utløpt. Start checkout på nytt.
+            </p>
+          </main>
+        </div>
+      );
+    }
+  } else {
+    try {
+      nexiCheckoutKey = getNexiCheckoutKey();
+      nexiCheckoutScriptUrl = getNexiCheckoutScriptUrl();
+    } catch {
+      return (
+        <div>
+          <SiteHeader />
+          <main className="mx-auto max-w-lg px-4 py-16 text-center">
+            <h1 className="font-display text-2xl text-[color:var(--accent-soft)]">
+              Betaling utilgjengelig
+            </h1>
+            <p className="mt-2 text-zinc-400">
+              Nexi Checkout er ikke konfigurert. Kontakt support eller prøv senere.
+            </p>
+          </main>
+        </div>
+      );
+    }
   }
 
   const seller = order.event.organization;
@@ -114,17 +151,31 @@ export default async function CheckoutPaymentPage({ searchParams }: Props) {
             </div>
 
             <div className="rounded-xl border border-[color:var(--outline)]/30 bg-zinc-900/40 p-4">
-              <NexiCheckoutContainer
-                paymentId={sp.paymentId}
-                checkoutKey={checkoutKey}
-                checkoutScriptUrl={checkoutScriptUrl}
-                orderNumber={order.orderNumber}
-                accessToken={order.accessToken}
-                paymentStatus={order.paymentStatus}
-                paymentAnomaly={order.paymentAnomaly}
-                reservationExpiresAt={reservation?.expiresAt?.toISOString() ?? null}
-                reservationStatus={reservation?.status ?? null}
-              />
+              {isStripe && stripeClientSecret && stripePublishableKey ? (
+                <StripeCheckoutContainer
+                  clientSecret={stripeClientSecret}
+                  publishableKey={stripePublishableKey}
+                  checkoutScriptUrl={STRIPE_CHECKOUT_SCRIPT_URL}
+                  orderNumber={order.orderNumber}
+                  accessToken={order.accessToken}
+                  paymentStatus={order.paymentStatus}
+                  paymentAnomaly={order.paymentAnomaly}
+                  reservationExpiresAt={reservation?.expiresAt?.toISOString() ?? null}
+                  reservationStatus={reservation?.status ?? null}
+                />
+              ) : nexiCheckoutKey && nexiCheckoutScriptUrl ? (
+                <NexiCheckoutContainer
+                  paymentId={sp.paymentId}
+                  checkoutKey={nexiCheckoutKey}
+                  checkoutScriptUrl={nexiCheckoutScriptUrl}
+                  orderNumber={order.orderNumber}
+                  accessToken={order.accessToken}
+                  paymentStatus={order.paymentStatus}
+                  paymentAnomaly={order.paymentAnomaly}
+                  reservationExpiresAt={reservation?.expiresAt?.toISOString() ?? null}
+                  reservationStatus={reservation?.status ?? null}
+                />
+              ) : null}
             </div>
           </section>
 
