@@ -33,7 +33,7 @@ Explicit roles — do not assume the platform is the seller:
 | PLATFORM | Ticketly operator |
 | ORGANIZER | Runs the event (`Event.organizationId`) |
 | SELLER_OF_RECORD | Legal seller (`Event.sellerOrganizationId`) |
-| PAYMENT_PROVIDER | Licensed PSP — production default **Nexi Checkout**; Stripe optional; Vipps via Nexi |
+| PAYMENT_PROVIDER | Licensed PSP — **current production: Stripe** Checkout Form; Nexi future/optional; Vipps via Nexi when enabled |
 | CUSTOMER | Buyer / ticket holder |
 
 Checkout, confirmation, and receipts must show **seller legal name, org.nr, address, customer service**.

@@ -10,7 +10,7 @@ Statuses for this phase: see also [LAUNCH_STATUS.md](./LAUNCH_STATUS.md).
 
 | Area | Ticketly |
 |------|----------|
-| Paid checkout + webhooks | Nexi Checkout primary target; Stripe full fallback via `PAYMENT_PROVIDER` |
+| Paid checkout + webhooks | Stripe Checkout Form current production; Nexi future/optional via `PAYMENT_PROVIDER` |
 | Provider stored per payment | `Payment.provider` immutable for refunds / lookup |
 | Promo codes | Percentage + fixed; event / ticket-type scope; max uses; date window; admin CRUD |
 | Waitlist | Join, invite N, claim token, expiry; no false queue-position promise |

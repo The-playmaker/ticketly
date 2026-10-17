@@ -2,7 +2,7 @@
 
 **Scenario:** A (existing `stripe.checkout.sessions.create` in Ticketly payment provider)
 
-Embedded Checkout Form (`ui_mode: "form"`) wired into the existing order → webhook fulfillment flow. Nexi remains the primary production PSP; Stripe is the optional/fallback provider when `PAYMENT_PROVIDER=stripe`.
+Embedded Checkout Form (`ui_mode: "form"`) wired into the existing order → webhook fulfillment flow. **Stripe is the current production PSP** (`PAYMENT_PROVIDER=stripe`). Nexi remains available as a future/optional provider.
 
 ## Values to Replace
 
@@ -67,7 +67,7 @@ Contact form → pay still uses [apps/web/src/components/checkout/checkout-form.
 
 ## Setup and next steps
 
-1. **Env** — Set `PAYMENT_PROVIDER=stripe`, `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_MOCK_MODE=false`, `APP_URL`.
+1. **Env** — Set `PAYMENT_PROVIDER=stripe`, `STRIPE_SECRET_KEY` (`sk_live_…`), `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (`pk_live_…`), `STRIPE_WEBHOOK_SECRET` (`whsec_…`), `STRIPE_MOCK_MODE=false`, `APP_URL` + `NEXT_PUBLIC_APP_URL` (production: `https://billett.xodrammen.no`).
 2. **API version** — Node SDK uses `2026-08-26.dahlia` (≥ `2026-03-25.dahlia`) for `ui_mode: "form"`.
 3. **Client** — Stripe.js loaded from `https://js.stripe.com/dahlia/stripe.js` (never bundled). Appearance: `theme: "night"`. Form: `createForm({ layout: "expanded" })` → `#checkout-form` + confirm wiring.
 4. **Flow** — Reservation → `/api/checkout` creates order + Checkout Session → `{ client_secret }` / payment page retrieves secret by session id → embedded form → `return_url` order page → webhook `checkout.session.completed` fulfills tickets.

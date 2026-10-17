@@ -5,7 +5,7 @@ See [LAUNCH_STATUS.md](./LAUNCH_STATUS.md) for READY / MANUAL / BLOCKED.
 ## READY in code
 
 - [x] Organizer create-event + inventory controls
-- [x] Nexi Checkout primary (`PAYMENT_PROVIDER=nexi`)
+- [x] Stripe Checkout Form current production (`PAYMENT_PROVIDER=stripe`)
 - [x] Webhook idempotency + payment verification
 - [x] Embedded checkout + checkout UI states
 - [x] Admin shell: events, orders, attendees, analytics, settings
@@ -13,7 +13,7 @@ See [LAUNCH_STATUS.md](./LAUNCH_STATUS.md) for READY / MANUAL / BLOCKED.
 - [x] UTM on orders + funnel tracking emitters
 - [x] System health endpoint
 - [x] QR + scanner unchanged security model
-- [x] Stripe optional / not required for launch
+- [x] Nexi available as future / optional provider
 
 ## Critical manual items
 
@@ -21,41 +21,41 @@ See [LAUNCH_STATUS.md](./LAUNCH_STATUS.md) for READY / MANUAL / BLOCKED.
 - [ ] Production PostgreSQL
 - [ ] DB migrations
 - [ ] `AUTH_SECRET`
-- [ ] `APP_URL`
-- [ ] Nexi production keys
-- [ ] Nexi webhook configured
-- [ ] Vipps enabled if desired
-- [ ] Cards enabled
+- [ ] `APP_URL` / `NEXT_PUBLIC_APP_URL` (`https://billett.xodrammen.no`)
+- [ ] Stripe live keys + webhook (see below)
+- [ ] Cards enabled in Stripe Dashboard
 - [ ] Email provider configured
 - [ ] Seller legal data correct
 - [ ] Terms / privacy / refund links
 - [ ] Real event created
 - [ ] Initial release configured
-- [ ] End-to-end test purchase (Nexi)
+- [ ] End-to-end test purchase (Stripe)
 - [ ] Refund tested
 - [ ] QR tested
 - [ ] Scanner tested
 
-## STRIPE BACKUP (temporary / live fallback)
+## STRIPE (current production PSP)
 
-Use while Nexi onboarding is pending: `PAYMENT_PROVIDER=stripe`.
-
-Does **not** require Nexi to be READY. Historical Stripe orders stay on Stripe forever.
+Required for live sales. Nexi is **not** required today.
 
 - [ ] Correct legal business Stripe account
 - [ ] Business verification complete
-- [ ] Production API keys configured (`STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`)
-- [ ] Production webhook configured → `{APP_URL}/api/payments/stripe/webhook`
-- [ ] `STRIPE_WEBHOOK_SECRET` set
+- [ ] `PAYMENT_PROVIDER=stripe`
+- [ ] Production API keys (`STRIPE_SECRET_KEY=sk_live_…`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_…`)
+- [ ] Production webhook → `https://billett.xodrammen.no/api/payments/stripe/webhook`
+- [ ] `STRIPE_WEBHOOK_SECRET=whsec_…`
+- [ ] `STRIPE_MOCK_MODE=false` (never mock in production)
 - [ ] Correct bank settlement account
 - [ ] Statement descriptor reviewed
-- [ ] Test payment completed
+- [ ] Test / live payment completed
 - [ ] Refund tested
 - [ ] QR generated
 - [ ] Refunded QR rejected
-- [ ] `STRIPE_MOCK_MODE=false` (never mock in production)
 
-When switching later to Nexi: set `PAYMENT_PROVIDER=nexi`. Do **not** migrate old payments.
+## NEXI (future / optional)
+
+When switching later to Nexi: set `PAYMENT_PROVIDER=nexi` + Nexi production keys/webhook.
+Do **not** migrate old Stripe payments.
 
 ## Absolute rules
 

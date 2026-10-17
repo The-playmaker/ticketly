@@ -3,7 +3,7 @@
 **Business:** [xodrammen.no](https://xodrammen.no) — bar / nightclub, age 18–24 (Drammen, Norway)  
 **Products requested:** Payments · Invoicing · Terminal  
 **Stack:** Ticketly (`PAYMENT_PROVIDER` + `PaymentProvider` abstraction)  
-**Primary long-term target remains Nexi**; Stripe is the live fallback / temporary primary.
+**Stripe is the current production PSP** for Xo Drammen ticket sales. Nexi remains a future/optional cutover target.
 
 > Generated without `stripe_implementation_planner` (Stripe MCP not authenticated in this Cloud Agent session). Based on Stripe agent skills (`stripe-best-practices`) + Ticketly code review.
 

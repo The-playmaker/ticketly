@@ -60,7 +60,7 @@ export function checkoutStateCopy(state: CheckoutUiState): {
     case "ACTIVE":
       return {
         title: "Fullfør betaling",
-        body: "Velg betalingsmetode nedenfor. Kort- og Vipps-detaljer håndteres av Nexi.",
+        body: "Velg betalingsmetode nedenfor. Kort- og betalingsdetaljer håndteres av betalingsleverandøren.",
       };
     case "PROCESSING":
       return {

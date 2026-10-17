@@ -1,19 +1,21 @@
 # Payments — Ticketly
 
-## Production default
+## Production current
 
-**Nexi Checkout (Nets Easy)** is the primary production payment provider.
+**Stripe Checkout Form** (`ui_mode=form`) is the **current** production payment provider.
 
 ```
-PAYMENT_PROVIDER=nexi
+PAYMENT_PROVIDER=stripe
 ```
+
+Nexi Checkout remains available as a **future / optional** cutover target — not the live PSP today.
 
 Architecture:
 
 ```
 PaymentProvider
-├── NexiCheckoutProvider   ← production default
-├── StripePaymentProvider  ← optional / fallback
+├── StripePaymentProvider  ← current production
+├── NexiCheckoutProvider   ← future / optional
 └── MockPaymentProvider    ← local only (PAYMENT_PROVIDER=mock)
 ```
 
@@ -61,14 +63,22 @@ order status until PAID or timeout.
 - **Never** silently fall back to mock when Nexi keys are missing in production
 - Missing production config → `PAYMENT_CONFIG_ERROR` and checkout blocked
 
-## Stripe (optional)
+## Stripe (current production)
 
-Keep Stripe keys only if you need Stripe as fallback. Launch checklist does
-**not** require Stripe when `PAYMENT_PROVIDER=nexi`.
+Required for live sales: `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`,
+`STRIPE_WEBHOOK_SECRET`, `STRIPE_MOCK_MODE=false`, plus `APP_URL` /
+`NEXT_PUBLIC_APP_URL` (production: `https://billett.xodrammen.no`).
+Webhook: `{APP_URL}/api/payments/stripe/webhook`.
+
+## Nexi (future / optional)
+
+When cutting over later, set `PAYMENT_PROVIDER=nexi` with Nexi production keys.
+Do **not** migrate historical Stripe payments.
 
 ## Further reading
 
-- [NEXI_CHECKOUT.md](./NEXI_CHECKOUT.md) — keys, webhooks, sandbox, debugging
+- [STRIPE_INTEGRATION_TODO.md](../STRIPE_INTEGRATION_TODO.md) — Checkout Form wiring
+- [NEXI_CHECKOUT.md](./NEXI_CHECKOUT.md) — keys, webhooks, sandbox (future)
 - [MOBILE_PAYMENTS.md](./MOBILE_PAYMENTS.md) — Expo path (may be partial for web launch)
 - [LAUNCH_CHECKLIST.md](./LAUNCH_CHECKLIST.md)
 - [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)

@@ -31,9 +31,9 @@ Related: [EVENTBRITE_PARITY.md](./EVENTBRITE_PARITY.md) · [VERCEL_DEPLOYMENT.md
 
 | Setting | Value |
 |---------|--------|
-| **Active for new checkouts** | Set via `PAYMENT_PROVIDER` |
-| Recommended first sales (while Nexi onboards) | `PAYMENT_PROVIDER=stripe` |
-| Long-term primary target | `PAYMENT_PROVIDER=nexi` |
+| **Current production PSP** | `PAYMENT_PROVIDER=stripe` (Checkout Form) |
+| Production origin | `https://billett.xodrammen.no` |
+| Future / optional cutover | `PAYMENT_PROVIDER=nexi` |
 
 ---
 

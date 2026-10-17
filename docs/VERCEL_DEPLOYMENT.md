@@ -33,10 +33,10 @@ PostgreSQL remains the source of truth for money/inventory. Use **Upstash Redis*
 
 Create two Vercel environments:
 
-1. **Production** — live domain, **Nexi production** keys (long-term primary), production DB  
-2. **Preview** — staging subdomain, **dedicated staging Postgres**, **Stripe TEST** for first Preview E2E  
+1. **Production** — `https://billett.xodrammen.no`, **Stripe live** keys (current PSP), production DB  
+2. **Preview** — staging subdomain, **dedicated staging Postgres**, **Stripe TEST** for Preview E2E  
 
-Preview must not use live credentials.
+Preview must not use live credentials. Nexi remains a future/optional production cutover.
 
 ---
 
@@ -95,7 +95,18 @@ Leave **unset** while `PAYMENT_PROVIDER=stripe`:
 
 Do **not** set `PAYMENT_PROVIDER=nexi` on Preview without real Nexi test keys — startup validation will fail.
 
-### Production (Nexi primary) — for later go-live
+### Production (Stripe current)
+
+| Variable | Production |
+|----------|------------|
+| `APP_URL` / `NEXT_PUBLIC_APP_URL` | `https://billett.xodrammen.no` |
+| `PAYMENT_PROVIDER` | `stripe` |
+| `STRIPE_SECRET_KEY` | `sk_live_…` |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_live_…` |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_…` |
+| `STRIPE_MOCK_MODE` | `false` |
+
+### Production (Nexi) — future / optional cutover
 
 | Variable | Production |
 |----------|------------|
@@ -105,7 +116,6 @@ Do **not** set `PAYMENT_PROVIDER=nexi` on Preview without real Nexi test keys �
 | `NEXI_CHECKOUT_KEY` | Live checkout key |
 | `NEXI_WEBHOOK_SECRET` | 8–64 char shared secret |
 | `NEXI_MERCHANT_ID` | If required by agreement |
-| `STRIPE_*` | Only if Stripe fallback is configured |
 
 Never default to `PAYMENT_PROVIDER=mock` or `STRIPE_MOCK_MODE=true` in production.
 
@@ -169,5 +179,5 @@ Additional smoke:
 - Install and build must run from the **repo root** via `cd ../..` so workspace packages resolve (`@ticketly/database`, `@ticketly/auth`, `@ticketly/ticketing`, `@ticketly/payments`, `@ticketly/notifications`, `@ticketly/wallet`, `@ticketly/ui`, `@ticketly/validation`, `@ticketly/shared-types`).  
 - `next.config.ts` sets `outputFileTracingRoot` to the monorepo root and `transpilePackages` for those workspaces.  
 - `apps/api` is not a build dependency of `@ticketly/web`.  
-- Production long-term: `PAYMENT_PROVIDER=nexi`. First Preview E2E: `PAYMENT_PROVIDER=stripe` + Stripe TEST.  
+- Production current: `PAYMENT_PROVIDER=stripe` + live keys. Preview E2E: Stripe TEST. Nexi = future/optional.  
 - Preview and production **must** use separate databases and separate PSP key sets.
