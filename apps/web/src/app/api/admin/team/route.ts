@@ -1,20 +1,19 @@
 import { NextResponse } from "next/server";
 import { OrgRole } from "@prisma/client";
 import { z } from "zod";
-import { requireAdminSession, resolveOrgIdForUser, requireOrgAdmin } from "@/lib/admin/org-access";
+import {
+  requireAdminSession,
+  resolveOrgIdParam,
+  requireOrgAdmin,
+} from "@/lib/admin/org-access";
 import { UserAdminService } from "@/services/user-admin-service";
-import { jsonError } from "@/lib/api-error";
+import { AppError, jsonError } from "@/lib/api-error";
 import { clientIp } from "@/lib/security/rate-limit";
 import { canManageTeam, isSuperAdmin } from "@/lib/auth/rbac";
 
 async function resolveManagedOrg(req: Request) {
   const session = await requireAdminSession();
   const url = new URL(req.url);
-  const orgParam = url.searchParams.get("organizationId");
-  const orgId =
-    orgParam ??
-    (await resolveOrgIdForUser(session.user.id, session.user.globalRole));
-  if (!orgId) throw new Error("Forbidden");
   const user = {
     id: session.user.id,
     email: session.user.email!,
@@ -22,8 +21,12 @@ async function resolveManagedOrg(req: Request) {
     isActive: session.user.isActive !== false,
     memberships: session.user.memberships,
   };
+  const orgId = await resolveOrgIdParam(user, url.searchParams.get("organizationId"), {
+    requireOrg: true,
+  });
+  if (!orgId) throw new AppError("ORG_CONTEXT_REQUIRED", "Velg en organisasjon", 400);
   if (!canManageTeam(user, orgId) && !isSuperAdmin(user)) {
-    throw new Error("Forbidden");
+    throw new AppError("FORBIDDEN", "Ingen tilgang", 403);
   }
   return { session, orgId, user };
 }
@@ -49,9 +52,14 @@ export async function POST(req: Request) {
   try {
     const body = inviteSchema.parse(await req.json());
     const session = await requireAdminSession();
-    const orgId =
-      body.organizationId ??
-      (await resolveOrgIdForUser(session.user.id, session.user.globalRole));
+    const user = {
+      id: session.user.id,
+      email: session.user.email!,
+      globalRole: session.user.globalRole,
+      isActive: session.user.isActive !== false,
+      memberships: session.user.memberships,
+    };
+    const orgId = await resolveOrgIdParam(user, body.organizationId, { requireOrg: true });
     if (!orgId) return NextResponse.json({ error: "No org" }, { status: 400 });
     await requireOrgAdmin(orgId);
 
@@ -82,9 +90,14 @@ export async function PATCH(req: Request) {
   try {
     const body = patchSchema.parse(await req.json());
     const session = await requireAdminSession();
-    const orgId =
-      body.organizationId ??
-      (await resolveOrgIdForUser(session.user.id, session.user.globalRole));
+    const user = {
+      id: session.user.id,
+      email: session.user.email!,
+      globalRole: session.user.globalRole,
+      isActive: session.user.isActive !== false,
+      memberships: session.user.memberships,
+    };
+    const orgId = await resolveOrgIdParam(user, body.organizationId, { requireOrg: true });
     if (!orgId) return NextResponse.json({ error: "No org" }, { status: 400 });
     await requireOrgAdmin(orgId);
     const ip = clientIp(req);

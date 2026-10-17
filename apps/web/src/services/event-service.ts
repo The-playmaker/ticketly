@@ -394,13 +394,16 @@ export class EventService {
     };
   }
 
-  static async getOrgDashboardStats(organizationId: string) {
+  /** Pass `null` for SUPER_ADMIN platform-wide aggregation across all organizations. */
+  static async getOrgDashboardStats(organizationId: string | null) {
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
+    const orgFilter = organizationId ? { organizationId } : {};
+    const eventOrgFilter = organizationId ? { organizationId } : {};
 
     const orders = await prisma.order.findMany({
       where: {
-        organizationId,
+        ...orgFilter,
         paymentStatus: {
           in: [
             PaymentStatus.PAID,
@@ -426,24 +429,24 @@ export class EventService {
 
     const ticketsSold = await prisma.ticket.count({
       where: {
-        event: { organizationId },
+        event: eventOrgFilter,
         status: { in: ["VALID", "CHECKED_IN", "TRANSFERRED"] },
       },
     });
     const checkedIn = await prisma.ticket.count({
-      where: { event: { organizationId }, status: "CHECKED_IN" },
+      where: { event: eventOrgFilter, status: "CHECKED_IN" },
     });
 
     const activeReservations = await prisma.ticketReservation.count({
       where: {
         status: "ACTIVE",
         expiresAt: { gt: new Date() },
-        event: { organizationId },
+        event: eventOrgFilter,
       },
     });
 
     const refundsAgg = await prisma.refund.aggregate({
-      where: { order: { organizationId }, status: "SUCCEEDED" },
+      where: { order: orgFilter, status: "SUCCEEDED" },
       _sum: { amount: true },
       _count: true,
     });
@@ -451,16 +454,16 @@ export class EventService {
     const failedPayments = orders.filter((o) => o.paymentStatus === PaymentStatus.FAILED).length;
 
     const pageViews = await prisma.analyticsEvent.count({
-      where: { type: "PAGE_VIEW", event: { organizationId } },
+      where: { type: "PAGE_VIEW", event: eventOrgFilter },
     });
     const checkoutStarts = await prisma.analyticsEvent.count({
-      where: { type: "CHECKOUT_STARTED", event: { organizationId } },
+      where: { type: "CHECKOUT_STARTED", event: eventOrgFilter },
     });
     const conversion =
       pageViews > 0 ? Math.round((paid.length / pageViews) * 1000) / 10 : null;
 
     const events = await prisma.event.findMany({
-      where: { organizationId },
+      where: eventOrgFilter,
       select: { capacity: true, ticketTypes: { select: { quantitySold: true } } },
     });
     const capacity = events.reduce((s, e) => s + e.capacity, 0);

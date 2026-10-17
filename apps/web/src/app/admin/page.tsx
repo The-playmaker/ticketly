@@ -5,32 +5,45 @@ import { EventService } from "@/services/event-service";
 import { formatMoney } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SalesCharts } from "@/components/admin/sales-charts";
+import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
+import { NoOrganizationPanel } from "@/components/admin/no-organization-panel";
+import { organizationIdWhere } from "@/lib/admin/org-context";
 
-async function getOrgId(userId: string, globalRole: string) {
-  if (globalRole === "SUPER_ADMIN") {
-    return (await prisma.organization.findFirst({ where: { slug: "titan-events" } }))?.id;
-  }
-  return (
-    await prisma.organizationMember.findFirst({ where: { userId, isActive: true } })
-  )?.organizationId;
-}
+export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
   const session = await auth();
-  const orgId = await getOrgId(session!.user.id, session!.user.globalRole);
-  if (!orgId) {
+  const scope = await resolveOrgScopeForUser(session!.user.id, session!.user.globalRole);
+
+  if (scope.mode === "none" && !scope.isPlatformAdmin) {
     return <p>Ingen organisasjon tilknyttet.</p>;
   }
 
-  const stats = await EventService.getOrgDashboardStats(orgId);
+  if (scope.mode === "none" && scope.isPlatformAdmin) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">Oversikt</h1>
+          <p className="mt-1 text-sm text-[color:var(--muted)]">
+            Plattformadmin — opprett første organisasjon for å starte salg.
+          </p>
+        </div>
+        <NoOrganizationPanel showCreateCta />
+      </div>
+    );
+  }
+
+  const orgFilter = organizationIdWhere(scope.organizationId);
+  const stats = await EventService.getOrgDashboardStats(scope.organizationId);
   const events = await prisma.event.findMany({
-    where: { organizationId: orgId },
+    where: orgFilter,
+    include: { organization: { select: { id: true, name: true } } },
     orderBy: { startsAt: "asc" },
     take: 10,
   });
 
   const paidOrders = await prisma.order.findMany({
-    where: { organizationId: orgId, paymentStatus: "PAID" },
+    where: { ...orgFilter, paymentStatus: "PAID" },
     select: { total: true, paidAt: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   });
@@ -41,6 +54,11 @@ export default async function AdminDashboardPage() {
     byDayMap.set(d, (byDayMap.get(d) ?? 0) + o.total);
   }
   const salesPerDay = [...byDayMap.entries()].map(([date, amount]) => ({ date, amount }));
+
+  const scopeLabel =
+    scope.mode === "global"
+      ? "Alle organisasjoner"
+      : (scope.organizations.find((o) => o.id === scope.organizationId)?.name ?? "Organisasjon");
 
   const cards = [
     { label: "Omsetning i dag", value: formatMoney(stats.revenueToday) },
@@ -73,7 +91,7 @@ export default async function AdminDashboardPage() {
             Oversikt &amp; salgsytelse
           </h1>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
-            Live salg og innsjekking for organisasjonen
+            Live salg og innsjekking · {scopeLabel}
           </p>
         </div>
         <Link
@@ -119,6 +137,9 @@ export default async function AdminDashboardPage() {
             <thead className="bg-[color:var(--surface-high)] text-[color:var(--muted)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Navn</th>
+                {scope.mode === "global" ? (
+                  <th className="px-4 py-3 font-medium">Organisasjon</th>
+                ) : null}
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Start</th>
                 <th className="px-4 py-3 font-medium" />
@@ -128,6 +149,9 @@ export default async function AdminDashboardPage() {
               {events.map((e) => (
                 <tr key={e.id} className="border-t border-[color:var(--outline)]/20">
                   <td className="px-4 py-3 font-medium">{e.name}</td>
+                  {scope.mode === "global" ? (
+                    <td className="px-4 py-3 text-[color:var(--muted)]">{e.organization.name}</td>
+                  ) : null}
                   <td className="px-4 py-3 text-[color:var(--muted)]">{e.status}</td>
                   <td className="px-4 py-3 text-[color:var(--muted)]">
                     {e.startsAt.toLocaleString("nb-NO")}

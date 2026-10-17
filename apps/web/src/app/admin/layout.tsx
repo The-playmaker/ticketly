@@ -5,8 +5,9 @@ import { canAccessAdmin, isSuperAdmin } from "@/lib/auth/rbac";
 import { isDoorStaffOnly } from "@/lib/auth/event-access";
 import { formatMoney } from "@/lib/utils";
 import { EventService } from "@/services/event-service";
-import { prisma } from "@/lib/db";
+import { getAdminOrgId, resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { Badge } from "@/components/ui/badge";
+import { OrgContextSwitcher } from "@/components/admin/org-context-switcher";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const platform = isSuperAdmin(user);
   const doorOnly = isDoorStaffOnly(user);
   const nav = doorOnly ? doorNav : fullNav;
+  const orgScope = platform
+    ? await resolveOrgScopeForUser(user.id, user.globalRole)
+    : null;
 
   return (
     <div className="min-h-dvh bg-[color:var(--background)] text-foreground">
@@ -57,6 +61,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               Ticketly Admin
             </Link>
             <p className="mt-1 truncate text-xs text-[color:var(--muted)]">{session.user.email}</p>
+            {platform && orgScope ? (
+              <div className="mt-3">
+                <OrgContextSwitcher
+                  organizations={orgScope.organizations}
+                  selectedOrganizationId={orgScope.organizationId}
+                  mode={orgScope.mode === "none" ? "global" : orgScope.mode}
+                  allowGlobal
+                />
+              </div>
+            ) : null}
           </div>
           <nav className="flex flex-1 flex-col gap-1 p-3 text-sm">
             {nav.map((item) => (
@@ -119,12 +133,23 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link href="/admin" className="font-display text-sm font-semibold uppercase tracking-wider">
                 Ticketly
               </Link>
+              {platform && orgScope ? (
+                <OrgContextSwitcher
+                  organizations={orgScope.organizations}
+                  selectedOrganizationId={orgScope.organizationId}
+                  mode={orgScope.mode === "none" ? "global" : orgScope.mode}
+                  allowGlobal
+                />
+              ) : null}
             </div>
             <div className="hidden items-center gap-2 text-xs text-[color:var(--muted)] sm:flex">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-300">
                 <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-emerald-400" />
                 LIVE
               </span>
+              {platform && orgScope?.mode === "global" ? (
+                <span className="text-[color:var(--accent-soft)]">Global</span>
+              ) : null}
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="muted" className="hidden sm:inline-flex">
@@ -166,21 +191,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   );
 }
 
-export async function getAdminOrgId(userId: string, globalRole: string) {
-  if (globalRole === "SUPER_ADMIN") {
-    const org = await prisma.organization.findFirst({ orderBy: { createdAt: "asc" } });
-    return org?.id ?? null;
-  }
-  const membership = await prisma.organizationMember.findFirst({
-    where: { userId, isActive: true },
-  });
-  return membership?.organizationId ?? null;
-}
+export { getAdminOrgId };
 
 export async function getOrgStatsForUser(userId: string, globalRole: string) {
-  const orgId = await getAdminOrgId(userId, globalRole);
-  if (!orgId) return null;
-  return EventService.getOrgDashboardStats(orgId);
+  const scope = await resolveOrgScopeForUser(userId, globalRole);
+  if (scope.isPlatformAdmin && scope.mode === "global") {
+    return EventService.getOrgDashboardStats(null);
+  }
+  if (!scope.organizationId) return null;
+  return EventService.getOrgDashboardStats(scope.organizationId);
 }
 
 export { formatMoney };

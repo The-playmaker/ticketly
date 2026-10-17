@@ -31,15 +31,6 @@ vi.mock("@/lib/admin/org-access", () => ({
   resolveOrgIdForUser: vi.fn(),
 }));
 
-/** Mirrors resolveOrgIdForUser for SUPER_ADMIN without importing auth-bound modules. */
-async function resolveSettingsOrgIdForSuperAdmin() {
-  const org = await prisma.organization.findFirst({
-    where: { isActive: true },
-    orderBy: { createdAt: "asc" },
-  });
-  return org?.id ?? null;
-}
-
 describe("SUPER_ADMIN no-org settings CTA", () => {
   it("settings page shows prominent Opprett organisasjon CTA when no org", () => {
     const settingsSrc = readFileSync(
@@ -47,6 +38,7 @@ describe("SUPER_ADMIN no-org settings CTA", () => {
       "utf8"
     );
     expect(settingsSrc).toContain("NoOrganizationPanel");
+    expect(settingsSrc).toContain("SelectOrganizationPrompt");
     expect(settingsSrc).toContain("isSuperAdmin(user)");
 
     const panelSrc = readFileSync(
@@ -208,12 +200,16 @@ describe.runIf(runDb)("POST /api/admin/organizations", () => {
     expect(stored.refundPolicyText).toBe(payload.refundPolicyText);
     expect(stored.isActive).toBe(true);
 
-    // Settings resolves an active org after create (same query as resolveOrgIdForUser)
-    const settingsOrgId = await resolveSettingsOrgIdForSuperAdmin();
-    expect(settingsOrgId).toBeTruthy();
+    // Created org is active and listed for SUPER_ADMIN platform management
     expect(
       await prisma.organization.findFirst({ where: { id: org.id, isActive: true } })
     ).toBeTruthy();
+
+    const allOrgs = await prisma.organization.findMany({
+      where: { isActive: true },
+      select: { id: true },
+    });
+    expect(allOrgs.some((o) => o.id === org.id)).toBe(true);
 
     const teamMembers = await prisma.organizationMember.findMany({
       where: { organizationId: org.id, isActive: true },

@@ -1,43 +1,56 @@
 import { NextResponse } from "next/server";
 import { DiscountType } from "@prisma/client";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { canManageEvents, isSuperAdmin } from "@/lib/auth/rbac";
 import { PromoService } from "@/services/promo-service";
-import { resolveOrgIdForUser } from "@/lib/admin/org-access";
+import { resolveOrgIdParam } from "@/lib/admin/org-access";
+import { jsonError } from "@/lib/api-error";
 
 export async function GET(req: Request) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const orgId = await resolveOrgIdForUser(session.user.id, session.user.globalRole);
-  if (!orgId) return NextResponse.json({ error: "No organization" }, { status: 400 });
-  const eventId = new URL(req.url).searchParams.get("eventId") ?? undefined;
-  const promos = await PromoService.list(orgId, eventId ?? undefined);
-  return NextResponse.json({ promos });
+  try {
+    const session = await auth();
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = {
+      id: session.user.id,
+      email: session.user.email!,
+      globalRole: session.user.globalRole,
+      isActive: session.user.isActive !== false,
+      memberships: session.user.memberships,
+    };
+    const url = new URL(req.url);
+    const orgId = await resolveOrgIdParam(user, url.searchParams.get("organizationId"), {
+      requireOrg: true,
+    });
+    const eventId = url.searchParams.get("eventId") ?? undefined;
+    const promos = await PromoService.list(orgId!, eventId ?? undefined);
+    return NextResponse.json({ promos });
+  } catch (e) {
+    return jsonError(e);
+  }
 }
 
 export async function POST(req: Request) {
+  try {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const orgId = await resolveOrgIdForUser(session.user.id, session.user.globalRole);
-  if (!orgId) return NextResponse.json({ error: "No organization" }, { status: 400 });
 
   const user = {
     id: session.user.id,
-    email: session.user.email,
+    email: session.user.email!,
     name: session.user.name,
     globalRole: session.user.globalRole,
-    isActive: true,
+    isActive: session.user.isActive !== false,
     memberships: session.user.memberships,
   };
-  if (!canManageEvents(user, orgId) && !isSuperAdmin(user)) {
+  const body = await req.json();
+  const orgId = await resolveOrgIdParam(user, body.organizationId ?? null, { requireOrg: true });
+  if (!canManageEvents(user, orgId!) && !isSuperAdmin(user)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json();
   const promo = await PromoService.create(
     {
-      organizationId: orgId,
+      organizationId: orgId!,
       code: String(body.code ?? ""),
       discountType: body.discountType === "FIXED" ? DiscountType.FIXED : DiscountType.PERCENTAGE,
       discountValue: Number(body.discountValue),
@@ -51,4 +64,7 @@ export async function POST(req: Request) {
     session.user.id
   );
   return NextResponse.json({ promo }, { status: 201 });
+  } catch (e) {
+    return jsonError(e);
+  }
 }

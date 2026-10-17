@@ -2,8 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { resolveOrgIdForUser } from "@/lib/admin/org-access";
+import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
+import { organizationIdWhere } from "@/lib/admin/org-context";
 import { isDoorStaffOnly } from "@/lib/auth/event-access";
+import { NoOrganizationPanel } from "@/components/admin/no-organization-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -28,13 +30,22 @@ export default async function AdminReportsPage() {
   };
   if (isDoorStaffOnly(user)) redirect("/scan");
 
-  const orgId = await resolveOrgIdForUser(session!.user.id, session!.user.globalRole);
-  const events = orgId
-    ? await prisma.event.findMany({
-        where: { organizationId: orgId },
-        orderBy: { startsAt: "desc" },
-      })
-    : [];
+  const scope = await resolveOrgScopeForUser(session!.user.id, session!.user.globalRole);
+
+  if (scope.mode === "none" && scope.isPlatformAdmin) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-semibold">Rapporter / eksport</h1>
+        <NoOrganizationPanel showCreateCta />
+      </div>
+    );
+  }
+
+  const events = await prisma.event.findMany({
+    where: organizationIdWhere(scope.organizationId),
+    include: { organization: { select: { name: true } } },
+    orderBy: { startsAt: "desc" },
+  });
 
   return (
     <div className="space-y-6">
@@ -42,6 +53,7 @@ export default async function AdminReportsPage() {
         <h1 className="text-2xl font-semibold">Rapporter / eksport</h1>
         <p className="text-sm text-[color:var(--muted)]">
           CSV og Excel. Inneholder ikke QR-token, betalingshemmeligheter eller audit-metadata.
+          {scope.mode === "global" ? " · Alle organisasjoner" : ""}
         </p>
       </div>
       <div className="space-y-3">
@@ -52,7 +64,10 @@ export default async function AdminReportsPage() {
           >
             <div className="mb-3">
               <p className="font-medium">{e.name}</p>
-              <p className="text-xs text-[color:var(--muted)]">{e.status}</p>
+              <p className="text-xs text-[color:var(--muted)]">
+                {e.status}
+                {scope.mode === "global" ? ` · ${e.organization.name}` : ""}
+              </p>
             </div>
             <div className="flex flex-wrap gap-2 text-sm">
               {TYPES.map((t) => (

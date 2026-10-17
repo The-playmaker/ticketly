@@ -1,23 +1,47 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { resolveOrgIdForUser } from "@/lib/admin/org-access";
+import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { PromoService } from "@/services/promo-service";
 import { PromoManager } from "@/components/admin/promo-manager";
+import { NoOrganizationPanel } from "@/components/admin/no-organization-panel";
+import { SelectOrganizationPrompt } from "@/components/admin/select-organization-prompt";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPromosPage() {
   const session = await auth();
-  const orgId = await resolveOrgIdForUser(session!.user.id, session!.user.globalRole);
-  const promos = orgId ? await PromoService.list(orgId) : [];
-  const events = orgId
-    ? await prisma.event.findMany({
-        where: { organizationId: orgId },
-        select: { id: true, name: true },
-        orderBy: { startsAt: "desc" },
-        take: 100,
-      })
-    : [];
+  const scope = await resolveOrgScopeForUser(session!.user.id, session!.user.globalRole);
+
+  if (scope.mode === "none") {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-semibold">Kampanjekoder</h1>
+        <NoOrganizationPanel showCreateCta={scope.isPlatformAdmin} />
+      </div>
+    );
+  }
+
+  if (scope.mode === "global" || !scope.organizationId) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-semibold">Kampanjekoder</h1>
+        <SelectOrganizationPrompt
+          organizations={scope.organizations}
+          title="Velg organisasjon for kampanjekoder"
+          description="Promo-koder er organisasjonsbundne. Velg en organisasjon for å administrere dem."
+        />
+      </div>
+    );
+  }
+
+  const orgId = scope.organizationId;
+  const promos = await PromoService.list(orgId);
+  const events = await prisma.event.findMany({
+    where: { organizationId: orgId },
+    select: { id: true, name: true },
+    orderBy: { startsAt: "desc" },
+    take: 100,
+  });
 
   return (
     <div className="space-y-6">

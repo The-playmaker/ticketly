@@ -3,7 +3,9 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/utils";
-import { resolveOrgIdForUser } from "@/lib/admin/org-access";
+import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
+import { organizationIdWhere } from "@/lib/admin/org-context";
+import { isSuperAdmin } from "@/lib/auth/rbac";
 
 function providerLabel(provider: string) {
   switch (provider) {
@@ -30,12 +32,23 @@ type Props = { params: Promise<{ orderNumber: string }> };
 export default async function AdminOrderDetailPage({ params }: Props) {
   const { orderNumber } = await params;
   const session = await auth();
-  const orgId = await resolveOrgIdForUser(session!.user.id, session!.user.globalRole);
+  const user = {
+    id: session!.user.id,
+    email: session!.user.email!,
+    globalRole: session!.user.globalRole,
+    isActive: session!.user.isActive !== false,
+    memberships: session!.user.memberships,
+  };
+  const scope = await resolveOrgScopeForUser(user.id, user.globalRole);
+
+  if (scope.mode === "none" && !scope.isPlatformAdmin) {
+    notFound();
+  }
 
   const order = await prisma.order.findFirst({
     where: {
       orderNumber,
-      ...(orgId ? { organizationId: orgId } : { id: "impossible" }),
+      ...organizationIdWhere(scope.organizationId),
     },
     include: {
       event: true,
@@ -47,6 +60,13 @@ export default async function AdminOrderDetailPage({ params }: Props) {
     },
   });
   if (!order) notFound();
+  if (
+    !isSuperAdmin(user) &&
+    scope.organizationId &&
+    order.organizationId !== scope.organizationId
+  ) {
+    notFound();
+  }
 
   const payment = order.payments[order.payments.length - 1];
   const refundedAmount = order.refunds

@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { resolveOrgIdForUser } from "@/lib/admin/org-access";
+import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { nexiConfigHealth, resolvePaymentProviderType } from "@/lib/payments";
 import { canManageOrganization, isSuperAdmin } from "@/lib/auth/rbac";
 import { SellerSettingsForm } from "@/components/admin/seller-settings-form";
 import { NoOrganizationPanel } from "@/components/admin/no-organization-panel";
+import { SelectOrganizationPrompt } from "@/components/admin/select-organization-prompt";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminSettingsPage() {
   const session = await auth();
@@ -16,7 +19,8 @@ export default async function AdminSettingsPage() {
     isActive: session!.user.isActive !== false,
     memberships: session!.user.memberships,
   };
-  const orgId = await resolveOrgIdForUser(user.id, user.globalRole);
+  const scope = await resolveOrgScopeForUser(user.id, user.globalRole);
+  const orgId = scope.organizationId;
   const org = orgId
     ? await prisma.organization.findUnique({ where: { id: orgId } })
     : null;
@@ -52,8 +56,16 @@ export default async function AdminSettingsPage() {
         ) : null}
       </div>
 
-      {!org ? (
-        <NoOrganizationPanel showCreateCta={isSuperAdmin(user)} />
+      {scope.mode === "none" && scope.isPlatformAdmin ? (
+        <NoOrganizationPanel showCreateCta />
+      ) : scope.mode === "none" ? (
+        <NoOrganizationPanel showCreateCta={false} />
+      ) : scope.mode === "global" || !org ? (
+        <SelectOrganizationPrompt
+          organizations={scope.organizations}
+          title="Velg organisasjon for innstillinger"
+          description="Selgerfelter og org-innstillinger gjelder én organisasjon om gangen. Velg i velgeren i sidepanelet, eller her."
+        />
       ) : canEdit ? (
         <SellerSettingsForm org={org} />
       ) : (
@@ -88,6 +100,16 @@ export default async function AdminSettingsPage() {
           </div>
         </dl>
         {nexi.message ? <p className="mt-2 text-xs text-[color:var(--accent)]">{nexi.message}</p> : null}
+        {isSuperAdmin(user) ? (
+          <p className="mt-3 text-xs text-[color:var(--muted)]">
+            <Link
+              href="/admin/platform/payments/diagnostics"
+              className="text-[color:var(--accent)] hover:underline"
+            >
+              Åpne betalingsdiagnostikk
+            </Link>
+          </p>
+        ) : null}
       </section>
     </div>
   );

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { canManageEvents, assertAuthorized } from "@/lib/auth/rbac";
+import { canManageEvents, assertAuthorized, isSuperAdmin } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/db";
 import { EventAdminNav } from "@/components/admin/event-admin-nav";
 import { Badge } from "@/components/ui/badge";
@@ -14,22 +14,23 @@ type Props = {
 export default async function EventAdminLayout({ children, params }: Props) {
   const { id } = await params;
   const session = await auth();
-  const event = await prisma.event.findUnique({ where: { id } });
+  const event = await prisma.event.findUnique({
+    where: { id },
+    include: { organization: { select: { name: true } } },
+  });
   if (!event) notFound();
 
   const user = {
     id: session!.user.id,
-    email: session!.user.email,
+    email: session!.user.email!,
     name: session!.user.name,
     globalRole: session!.user.globalRole,
-    isActive: true,
+    isActive: session!.user.isActive !== false,
     memberships: session!.user.memberships,
   };
 
   try {
-    assertAuthorized(
-      canManageEvents(user, event.organizationId) || user.globalRole === "SUPER_ADMIN"
-    );
+    assertAuthorized(canManageEvents(user, event.organizationId) || isSuperAdmin(user));
   } catch {
     notFound();
   }
@@ -42,10 +43,16 @@ export default async function EventAdminLayout({ children, params }: Props) {
           {event.salesPausedAt ? <Badge variant="warning">PAUSED</Badge> : null}
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">{event.name}</h1>
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-[color:var(--muted)]">
           <Link href="/admin/events" className="hover:underline">
             Arrangementer
           </Link>
+          {isSuperAdmin(user) ? (
+            <span>
+              {" "}
+              · {event.organization.name}
+            </span>
+          ) : null}
         </p>
       </div>
       <EventAdminNav eventId={id} />

@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { resolveOrgIdForUser } from "@/lib/admin/org-access";
+import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { canManageTeam, isSuperAdmin } from "@/lib/auth/rbac";
 import { UserAdminService } from "@/services/user-admin-service";
 import { prisma } from "@/lib/db";
 import { TeamAdminClient } from "@/components/admin/team-admin-client";
 import { NoOrganizationPanel } from "@/components/admin/no-organization-panel";
+import { SelectOrganizationPrompt } from "@/components/admin/select-organization-prompt";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +22,9 @@ export default async function TeamSettingsPage() {
     memberships: session.user.memberships,
   };
 
-  const orgId = await resolveOrgIdForUser(user.id, user.globalRole);
-  if (!orgId) {
+  const scope = await resolveOrgScopeForUser(user.id, user.globalRole);
+
+  if (scope.mode === "none") {
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-semibold">Team</h1>
@@ -31,6 +33,20 @@ export default async function TeamSettingsPage() {
     );
   }
 
+  if (scope.mode === "global" || !scope.organizationId) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-semibold">Team</h1>
+        <SelectOrganizationPrompt
+          organizations={scope.organizations}
+          title="Velg organisasjon for team"
+          description="Invitasjoner og roller gjelder én organisasjon. Velg kontekst i sidepanelet eller her."
+        />
+      </div>
+    );
+  }
+
+  const orgId = scope.organizationId;
   if (!canManageTeam(user, orgId) && !isSuperAdmin(user)) {
     redirect("/admin");
   }

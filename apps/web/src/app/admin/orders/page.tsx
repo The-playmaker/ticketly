@@ -2,7 +2,9 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/utils";
-import { resolveOrgIdForUser } from "@/lib/admin/org-access";
+import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
+import { organizationIdWhere } from "@/lib/admin/org-context";
+import { NoOrganizationPanel } from "@/components/admin/no-organization-panel";
 import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -17,52 +19,65 @@ function maskRef(ref: string | null | undefined) {
 
 export default async function AdminOrdersPage({ searchParams }: Props) {
   const session = await auth();
-  const orgId = await resolveOrgIdForUser(session!.user.id, session!.user.globalRole);
+  const scope = await resolveOrgScopeForUser(session!.user.id, session!.user.globalRole);
   const { q: rawQ } = await searchParams;
   const q = rawQ?.trim() ?? "";
 
-  const where: Prisma.OrderWhereInput | undefined = orgId
-    ? {
-        organizationId: orgId,
-        ...(q
-          ? {
+  if (scope.mode === "none" && !scope.isPlatformAdmin) {
+    return <p className="text-sm text-[color:var(--muted)]">Ingen organisasjon tilknyttet.</p>;
+  }
+
+  if (scope.mode === "none" && scope.isPlatformAdmin) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-semibold">Ordrer / Support</h1>
+        <NoOrganizationPanel showCreateCta />
+      </div>
+    );
+  }
+
+  const orgFilter = organizationIdWhere(scope.organizationId);
+  const searchOr: Prisma.OrderWhereInput[] | undefined = q
+    ? [
+        { orderNumber: { contains: q, mode: "insensitive" } },
+        { customerEmail: { contains: q, mode: "insensitive" } },
+        { customerPhone: { contains: q, mode: "insensitive" } },
+        { customerFirstName: { contains: q, mode: "insensitive" } },
+        { customerLastName: { contains: q, mode: "insensitive" } },
+        { event: { name: { contains: q, mode: "insensitive" } } },
+        { tickets: { some: { publicId: { contains: q, mode: "insensitive" } } } },
+        {
+          payments: {
+            some: {
               OR: [
-                { orderNumber: { contains: q, mode: "insensitive" } },
-                { customerEmail: { contains: q, mode: "insensitive" } },
-                { customerPhone: { contains: q, mode: "insensitive" } },
-                { customerFirstName: { contains: q, mode: "insensitive" } },
-                { customerLastName: { contains: q, mode: "insensitive" } },
-                { event: { name: { contains: q, mode: "insensitive" } } },
-                { tickets: { some: { publicId: { contains: q, mode: "insensitive" } } } },
-                {
-                  payments: {
-                    some: {
-                      OR: [
-                        { providerPaymentId: { contains: q, mode: "insensitive" } },
-                        { providerSessionId: { contains: q, mode: "insensitive" } },
-                        { providerChargeId: { contains: q, mode: "insensitive" } },
-                      ],
-                    },
-                  },
-                },
+                { providerPaymentId: { contains: q, mode: "insensitive" } },
+                { providerSessionId: { contains: q, mode: "insensitive" } },
+                { providerChargeId: { contains: q, mode: "insensitive" } },
               ],
-            }
-          : {}),
-      }
+            },
+          },
+        },
+      ]
     : undefined;
 
-  const orders = where
-    ? await prisma.order.findMany({
-        where,
-        include: {
-          event: true,
-          tickets: true,
-          payments: { orderBy: { createdAt: "desc" }, take: 1 },
-        },
-        orderBy: { createdAt: "desc" },
-        take: q ? 50 : 100,
-      })
-    : [];
+  const where: Prisma.OrderWhereInput = {
+    ...orgFilter,
+    ...(searchOr ? { OR: searchOr } : {}),
+  };
+
+  const orders = await prisma.order.findMany({
+    where,
+    include: {
+      event: true,
+      organization: { select: { id: true, name: true } },
+      tickets: true,
+      payments: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+    orderBy: { createdAt: "desc" },
+    take: q ? 50 : 100,
+  });
+
+  const showOrg = scope.mode === "global";
 
   return (
     <div className="space-y-6">
@@ -71,6 +86,7 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
         <p className="mt-1 text-sm text-[color:var(--muted)]">
           Søk på ordrenummer, billett-ID, e-post, telefon, navn, arrangement eller
           betalingsreferanse.
+          {scope.mode === "global" ? " · Alle organisasjoner" : ""}
         </p>
       </div>
 
@@ -103,6 +119,7 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
             <tr>
               <th className="px-4 py-3">Ordrenr</th>
               <th className="px-4 py-3">Kunde</th>
+              {showOrg ? <th className="px-4 py-3">Organisasjon</th> : null}
               <th className="px-4 py-3">Event</th>
               <th className="px-4 py-3">Provider</th>
               <th className="px-4 py-3">Status</th>
@@ -112,7 +129,10 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
           <tbody>
             {orders.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-[color:var(--muted)]">
+                <td
+                  colSpan={showOrg ? 7 : 6}
+                  className="px-4 py-8 text-center text-[color:var(--muted)]"
+                >
                   {q ? "Ingen treff" : "Ingen ordrer"}
                 </td>
               </tr>
@@ -133,6 +153,9 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
                       {o.customerFirstName} {o.customerLastName}
                       <div className="text-xs text-[color:var(--muted)]">{o.customerEmail}</div>
                     </td>
+                    {showOrg ? (
+                      <td className="px-4 py-3 text-[color:var(--muted)]">{o.organization.name}</td>
+                    ) : null}
                     <td className="px-4 py-3">{o.event.name}</td>
                     <td className="px-4 py-3 text-xs">
                       {pay?.provider ?? "—"}
