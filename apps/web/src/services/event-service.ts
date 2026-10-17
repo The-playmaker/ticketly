@@ -98,6 +98,58 @@ export class EventService {
   }
 
   static async publish(id: string, actorId?: string) {
+    const { getEventPublishBlockers, formatPublishBlockedMessage } = await import(
+      "@/lib/publish/readiness"
+    );
+    const { resolvePaymentProviderType } = await import("@/lib/payments");
+    const { AppError } = await import("@/lib/api-error");
+    const { PaymentProviderType } = await import("@prisma/client");
+
+    const event = await prisma.event.findUniqueOrThrow({
+      where: { id },
+      include: {
+        organization: true,
+        sellerOrganization: true,
+        venue: true,
+        ticketTypes: true,
+      },
+    });
+
+    let paymentConfigured = false;
+    try {
+      const provider = resolvePaymentProviderType();
+      paymentConfigured =
+        provider === PaymentProviderType.NEXI ||
+        provider === PaymentProviderType.STRIPE ||
+        (provider === PaymentProviderType.MOCK && process.env.NODE_ENV !== "production");
+    } catch {
+      paymentConfigured = false;
+    }
+
+    // Org-level payment config also counts
+    const orgPay = await prisma.organizationPaymentConfiguration.findFirst({
+      where: {
+        organizationId: event.sellerOrganizationId ?? event.organizationId,
+        isActive: true,
+      },
+    });
+    if (orgPay) paymentConfigured = true;
+
+    const blockers = getEventPublishBlockers({
+      event,
+      organizer: event.organization,
+      seller: event.sellerOrganization ?? event.organization,
+      ticketTypes: event.ticketTypes,
+      venue: event.venue,
+      paymentConfigured,
+    });
+
+    if (blockers.length) {
+      throw new AppError("PUBLISH_BLOCKED", formatPublishBlockedMessage(blockers), 400, {
+        blockers,
+      });
+    }
+
     return this.update(
       id,
       { status: EventStatus.PUBLISHED, salesPausedAt: null, visibility: "PUBLIC" },

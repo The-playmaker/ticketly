@@ -235,9 +235,65 @@ export async function sendOrganizerInviteEmail(params: {
     from: from(),
     to: { email: params.to },
     subject: `Invitasjon til ${params.organizationName}`,
-    text: `Du er invitert som ${params.role} til ${params.organizationName}.\nAksepter: ${params.inviteUrl}`,
+    text: `Du er invitert som ${params.role} til ${params.organizationName}.\n\nSett passord og aksepter: ${params.inviteUrl}\n\nLenken er engangsbruk og utløper. Passord sendes aldri på e-post.`,
     html: `<h1>Invitasjon</h1>
 <p>Du er invitert som <strong>${params.role}</strong> til <strong>${params.organizationName}</strong>.</p>
-<p><a href="${params.inviteUrl}">Aksepter invitasjon</a></p>`,
+<p><a href="${params.inviteUrl}">Sett passord og aksepter invitasjon</a></p>
+<p>Lenken er engangsbruk og utløper. Passord sendes aldri på e-post.</p>`,
+  });
+}
+
+export async function sendPasswordSetupEmail(params: {
+  to: string;
+  setupUrl: string;
+  organizationName?: string;
+}) {
+  const provider = getEmailProvider();
+  const org = params.organizationName ? ` for ${params.organizationName}` : "";
+  await provider.send({
+    from: from(),
+    to: { email: params.to },
+    subject: `Sett passord${org} – Ticketly`,
+    text: `Sett passordet ditt${org}:\n${params.setupUrl}\n\nLenken er engangsbruk og utløper.`,
+    html: `<h1>Sett passord</h1>
+<p>Fullfør kontooppsett${org ? ` for <strong>${params.organizationName}</strong>` : ""}.</p>
+<p><a href="${params.setupUrl}">Velg passord</a></p>
+<p>Lenken er engangsbruk og utløper.</p>`,
+  });
+}
+
+export async function sendPasswordResetEmail(params: {
+  to: string;
+  resetUrl: string;
+  name?: string;
+}) {
+  const provider = getEmailProvider();
+  const hello = params.name ? `Hei ${params.name},` : "Hei,";
+  await provider.send({
+    from: from(),
+    to: { email: params.to, name: params.name },
+    subject: "Tilbakestill passord – Ticketly",
+    text: `${hello}\n\nTilbakestill passordet ditt her:\n${params.resetUrl}\n\nHvis du ikke ba om dette, kan du ignorere e-posten.`,
+    html: `<h1>Tilbakestill passord</h1>
+<p>${hello}</p>
+<p><a href="${params.resetUrl}">Velg nytt passord</a></p>
+<p>Hvis du ikke ba om dette, kan du ignorere e-posten.</p>`,
+  });
+}
+
+export async function sendAccountDisabledEmail(params: {
+  to: string;
+  name?: string;
+}) {
+  const provider = getEmailProvider();
+  const hello = params.name ? `Hei ${params.name},` : "Hei,";
+  await provider.send({
+    from: from(),
+    to: { email: params.to, name: params.name },
+    subject: "Konto deaktivert – Ticketly",
+    text: `${hello}\n\nKontoen din hos Ticketly er deaktivert. Kontakt administrator hvis dette er feil.`,
+    html: `<h1>Konto deaktivert</h1>
+<p>${hello}</p>
+<p>Kontoen din hos Ticketly er deaktivert. Kontakt administrator hvis dette er feil.</p>`,
   });
 }

@@ -8,12 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const showDemoCredentials =
+  process.env.NODE_ENV !== "production" &&
+  process.env.NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS === "true";
+
 export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/admin";
-  const [email, setEmail] = useState("organizer@example.com");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState(showDemoCredentials ? "organizer@example.com" : "");
+  const [password, setPassword] = useState(showDemoCredentials ? "password123" : "");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -46,13 +50,20 @@ export default function LoginForm() {
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div>
             <Label htmlFor="email">E-post</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div>
             <Label htmlFor="password">Passord</Label>
             <Input
               id="password"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -62,9 +73,16 @@ export default function LoginForm() {
             {loading ? "Logger inn…" : "Logg inn"}
           </Button>
         </form>
-        <p className="mt-4 text-xs text-zinc-500">
-          Demo: organizer@example.com / password123 · door@example.com · admin@example.com
+        <p className="mt-4 text-center text-xs text-zinc-500">
+          <Link href="/forgot-password" className="underline hover:text-zinc-300">
+            Glemt passord?
+          </Link>
         </p>
+        {showDemoCredentials ? (
+          <p className="mt-4 text-xs text-zinc-500">
+            Dev demo: organizer@example.com / password123 · door@example.com · admin@example.com
+          </p>
+        ) : null}
       </div>
     </div>
   );

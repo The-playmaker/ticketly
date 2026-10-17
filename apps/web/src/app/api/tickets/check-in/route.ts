@@ -3,19 +3,26 @@ import { checkInSchema, manualCheckInSchema } from "@/lib/validators";
 import { CheckInService } from "@/services/check-in-service";
 import { getOptionalSession } from "@/lib/auth/session";
 import { canScanTickets, AuthorizationError, type AuthUser } from "@/lib/auth/rbac";
+import { canAccessAssignedEvent } from "@/lib/auth/event-access";
 import { prisma } from "@/lib/db";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
 import { verifyMobileSession } from "@/app/api/mobile/auth/login/route";
 import { assertDeviceNotRevoked } from "@/lib/auth/org-access";
 import { jsonError } from "@/lib/api-error";
 
-async function resolveUser(req: Request): Promise<AuthUser> {
+async function resolveUser(
+  req: Request
+): Promise<AuthUser & { eventAssignments?: { eventId: string }[] }> {
   const mobileId = await verifyMobileSession(req.headers.get("authorization"));
   if (mobileId) {
     const user = await prisma.user.findUniqueOrThrow({
       where: { id: mobileId },
-      include: { memberships: { where: { isActive: true } } },
+      include: {
+        memberships: { where: { isActive: true } },
+        eventAssignments: { select: { eventId: true } },
+      },
     });
+    if (!user.isActive) throw new AuthorizationError("Unauthorized");
     return {
       id: user.id,
       email: user.email,
@@ -23,11 +30,16 @@ async function resolveUser(req: Request): Promise<AuthUser> {
       globalRole: user.globalRole,
       isActive: user.isActive,
       memberships: user.memberships,
+      eventAssignments: user.eventAssignments,
     };
   }
   const session = await getOptionalSession();
   if (!session) throw new AuthorizationError("Unauthorized");
-  return session;
+  const assignments = await prisma.eventAssignment.findMany({
+    where: { userId: session.id },
+    select: { eventId: true },
+  });
+  return { ...session, eventAssignments: assignments };
 }
 
 export async function POST(req: Request) {
@@ -47,7 +59,10 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Ugyldig data" }, { status: 400 });
       }
       const event = await prisma.event.findUniqueOrThrow({ where: { id: parsed.data.eventId } });
-      if (!canScanTickets(user, event.organizationId)) {
+      if (
+        !canScanTickets(user, event.organizationId) ||
+        !canAccessAssignedEvent(user, event)
+      ) {
         throw new AuthorizationError();
       }
       const result = await CheckInService.checkInByTicketId({
@@ -63,7 +78,10 @@ export async function POST(req: Request) {
     }
 
     const event = await prisma.event.findUniqueOrThrow({ where: { id: parsed.data.eventId } });
-    if (!canScanTickets(user, event.organizationId)) {
+    if (
+      !canScanTickets(user, event.organizationId) ||
+      !canAccessAssignedEvent(user, event)
+    ) {
       throw new AuthorizationError();
     }
 

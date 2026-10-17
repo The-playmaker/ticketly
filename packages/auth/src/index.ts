@@ -9,6 +9,8 @@ export type AuthUser = {
   memberships?: Pick<OrganizationMember, "organizationId" | "role" | "canRefund" | "isActive">[];
 };
 
+export const ORG_OWNER_ROLE = "ORGANIZER_ADMIN" as OrgRole;
+
 export function isSuperAdmin(user: AuthUser | null | undefined): boolean {
   return user?.globalRole === ("SUPER_ADMIN" as GlobalRole) && !!user.isActive;
 }
@@ -47,8 +49,26 @@ export function canScanTickets(user: AuthUser | null | undefined, organizationId
   ]);
 }
 
+export function canViewFinancials(user: AuthUser | null | undefined, organizationId: string) {
+  if (isSuperAdmin(user)) return true;
+  return hasOrgRole(user, organizationId, [
+    "ORGANIZER_ADMIN" as OrgRole,
+    "EVENT_MANAGER" as OrgRole,
+  ]);
+}
+
+export function canManageTeam(user: AuthUser | null | undefined, organizationId: string) {
+  return canManageOrganization(user, organizationId);
+}
+
 export function canManageDevices(user: AuthUser | null | undefined, organizationId: string) {
   return canManageOrganization(user, organizationId) || isSuperAdmin(user);
+}
+
+export function canAccessAdmin(user: AuthUser | null | undefined): boolean {
+  if (!user?.isActive) return false;
+  if (isSuperAdmin(user)) return true;
+  return user.memberships?.some((m) => m.isActive) ?? false;
 }
 
 export class AuthorizationError extends Error {

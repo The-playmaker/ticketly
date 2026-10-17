@@ -20,6 +20,20 @@ const prisma = new PrismaClient();
 const DEV_PASSWORD = "password123";
 
 async function main() {
+  const mode = (process.env.SEED_MODE ?? "none").toLowerCase().trim();
+  if (mode !== "development" && mode !== "demo") {
+    console.error(
+      "Seed refused: set SEED_MODE=development or SEED_MODE=demo to load demo data.\n" +
+        "Production must never auto-seed example.com users or password123 credentials."
+    );
+    process.exit(1);
+  }
+
+  console.warn("════════════════════════════════════════════════════════════");
+  console.warn("  DEVELOPMENT/DEMO DATA ONLY — NEVER USE IN PRODUCTION");
+  console.warn(`  SEED_MODE=${mode}`);
+  console.warn("════════════════════════════════════════════════════════════");
+
   console.log("Seeding Ticketly...");
 
   const passwordHash = await bcrypt.hash(DEV_PASSWORD, 12);
@@ -505,13 +519,14 @@ async function main() {
   }
 
   console.log("Seed complete.");
-  console.log("─── Development credentials (NOT for production) ───");
-  console.log(`  admin@example.com      / ${DEV_PASSWORD}  (SUPER_ADMIN)`);
-  console.log(`  organizer@example.com  / ${DEV_PASSWORD}  (ORGANIZER_ADMIN)`);
-  console.log(`  door@example.com       / ${DEV_PASSWORD}  (DOOR_STAFF)`);
-  console.log(`  customer@example.com   / ${DEV_PASSWORD}  (CUSTOMER)`);
-  console.log(`  Event: /events/friday-night`);
-  console.log(`  Promo: VIP20 (20%)`);
+  console.warn("─── DEVELOPMENT CREDENTIALS (NEVER FOR PRODUCTION) ───");
+  console.warn(`  admin@example.com      / ${DEV_PASSWORD}  (SUPER_ADMIN)`);
+  console.warn(`  organizer@example.com  / ${DEV_PASSWORD}  (ORGANIZER_ADMIN)`);
+  console.warn(`  door@example.com       / ${DEV_PASSWORD}  (DOOR_STAFF)`);
+  console.warn(`  customer@example.com   / ${DEV_PASSWORD}  (CUSTOMER)`);
+  console.warn(`  Event: /events/friday-night`);
+  console.warn(`  Promo: VIP20 (20%)`);
+  console.warn("════════════════════════════════════════════════════════════");
 }
 
 main()

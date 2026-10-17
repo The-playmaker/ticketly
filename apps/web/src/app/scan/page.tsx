@@ -3,24 +3,35 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { canScanTickets } from "@/lib/auth/rbac";
+import { filterEventsByAssignment } from "@/lib/auth/event-access";
 import { ScannerClient } from "@/components/scan/scanner-client";
 
 type Props = { searchParams: Promise<{ event?: string }> };
 
 export default async function ScanPage({ searchParams }: Props) {
   const session = await auth();
-  if (!session?.user) {
+  if (!session?.user?.id || session.user.isActive === false) {
     redirect("/login?callbackUrl=/scan");
   }
 
   const sp = await searchParams;
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    include: {
+      memberships: { where: { isActive: true } },
+      eventAssignments: { select: { eventId: true } },
+    },
+  });
+  if (!dbUser?.isActive) redirect("/login?callbackUrl=/scan");
+
   const user = {
-    id: session.user.id,
-    email: session.user.email,
-    name: session.user.name,
-    globalRole: session.user.globalRole,
-    isActive: true,
-    memberships: session.user.memberships,
+    id: dbUser.id,
+    email: dbUser.email,
+    name: dbUser.name,
+    globalRole: dbUser.globalRole,
+    isActive: dbUser.isActive,
+    memberships: dbUser.memberships,
+    eventAssignments: dbUser.eventAssignments,
   };
 
   const events = await prisma.event.findMany({
@@ -35,7 +46,8 @@ export default async function ScanPage({ searchParams }: Props) {
     take: 50,
   });
 
-  const accessible = events.filter((e) => canScanTickets(user, e.organizationId));
+  const scannable = events.filter((e) => canScanTickets(user, e.organizationId));
+  const accessible = filterEventsByAssignment(user, scannable);
   const selected = sp.event
     ? accessible.find((e) => e.id === sp.event || e.slug === sp.event)
     : accessible[0];

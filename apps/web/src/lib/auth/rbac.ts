@@ -14,6 +14,9 @@ export type AuthUser = {
   memberships?: Pick<OrganizationMember, "organizationId" | "role" | "canRefund" | "isActive">[];
 };
 
+/** Highest org role in this schema (acts as OWNER for last-admin protection). */
+export const ORG_OWNER_ROLE = OrgRole.ORGANIZER_ADMIN;
+
 export function isSuperAdmin(user: AuthUser | null | undefined): boolean {
   return user?.globalRole === GlobalRole.SUPER_ADMIN && !!user.isActive;
 }
@@ -51,6 +54,15 @@ export function canScanTickets(user: AuthUser | null | undefined, organizationId
   ]);
 }
 
+export function canViewFinancials(user: AuthUser | null | undefined, organizationId: string) {
+  if (isSuperAdmin(user)) return true;
+  return hasOrgRole(user, organizationId, [OrgRole.ORGANIZER_ADMIN, OrgRole.EVENT_MANAGER]);
+}
+
+export function canManageTeam(user: AuthUser | null | undefined, organizationId: string) {
+  return canManageOrganization(user, organizationId);
+}
+
 export function canRefund(
   user: AuthUser | null | undefined,
   organizationId: string,
@@ -60,7 +72,8 @@ export function canRefund(
   if (!orgAllowsRefunds) return false;
   const m = getOrgMembership(user, organizationId);
   if (!m) return false;
-  if (m.role === OrgRole.ORGANIZER_ADMIN) return m.canRefund || true; // admins default can if org allows
+  if (m.role === OrgRole.DOOR_STAFF) return false;
+  if (m.role === OrgRole.ORGANIZER_ADMIN) return true;
   return m.canRefund;
 }
 
@@ -68,6 +81,12 @@ export function canAccessAdmin(user: AuthUser | null | undefined): boolean {
   if (!user?.isActive) return false;
   if (isSuperAdmin(user)) return true;
   return (user.memberships?.some((m) => m.isActive) ?? false);
+}
+
+/** Door staff may use scanner / attendee lookup, not full org console. */
+export function canAccessOrgConsole(user: AuthUser | null | undefined, organizationId: string) {
+  if (isSuperAdmin(user)) return true;
+  return hasOrgRole(user, organizationId, [OrgRole.ORGANIZER_ADMIN, OrgRole.EVENT_MANAGER]);
 }
 
 export class AuthorizationError extends Error {

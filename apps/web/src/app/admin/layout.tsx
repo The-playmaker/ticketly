@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { canAccessAdmin, isSuperAdmin } from "@/lib/auth/rbac";
+import { isDoorStaffOnly } from "@/lib/auth/event-access";
 import { formatMoney } from "@/lib/utils";
 import { EventService } from "@/services/event-service";
 import { prisma } from "@/lib/db";
@@ -9,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
-const nav = [
+const fullNav = [
   { href: "/admin", label: "Oversikt" },
   { href: "/admin/events", label: "Arrangementer" },
   { href: "/admin/orders", label: "Ordrer / Support" },
@@ -17,24 +18,32 @@ const nav = [
   { href: "/admin/reports", label: "Analyse" },
   { href: "/admin/webhooks", label: "Webhooks" },
   { href: "/admin/settings", label: "Innstillinger" },
+  { href: "/admin/settings/team", label: "Team" },
+];
+
+const doorNav = [
+  { href: "/scan", label: "Skanner" },
+  { href: "/admin/events", label: "Mine events" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  if (!session?.user) redirect("/login?callbackUrl=/admin");
+  if (!session?.user?.id) redirect("/login?callbackUrl=/admin");
 
   const user = {
     id: session.user.id,
     email: session.user.email,
     name: session.user.name,
     globalRole: session.user.globalRole,
-    isActive: true,
+    isActive: session.user.isActive !== false,
     memberships: session.user.memberships,
   };
 
   if (!canAccessAdmin(user)) redirect("/");
 
   const platform = isSuperAdmin(user);
+  const doorOnly = isDoorStaffOnly(user);
+  const nav = doorOnly ? doorNav : fullNav;
 
   return (
     <div className="min-h-dvh bg-[color:var(--background)] text-foreground">
@@ -42,7 +51,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <aside className="hidden w-60 shrink-0 flex-col border-r border-[color:var(--outline)]/30 bg-[color:var(--surface-low)] md:flex">
           <div className="border-b border-[color:var(--outline)]/25 px-4 py-5">
             <Link
-              href="/admin"
+              href={doorOnly ? "/scan" : "/admin"}
               className="font-display text-sm font-semibold uppercase tracking-[0.16em] text-foreground"
             >
               Ticketly Admin
@@ -60,12 +69,26 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </Link>
             ))}
             {platform ? (
-              <Link
-                href="/admin/platform/payments/diagnostics"
-                className="rounded-md px-3 py-2 text-[color:var(--accent-soft)] transition hover:bg-[color:var(--surface-high)]"
-              >
-                Platform
-              </Link>
+              <>
+                <Link
+                  href="/admin/platform/users"
+                  className="rounded-md px-3 py-2 text-[color:var(--accent-soft)] transition hover:bg-[color:var(--surface-high)]"
+                >
+                  Plattformbrukere
+                </Link>
+                <Link
+                  href="/admin/platform/readiness"
+                  className="rounded-md px-3 py-2 text-[color:var(--accent-soft)] transition hover:bg-[color:var(--surface-high)]"
+                >
+                  Readiness
+                </Link>
+                <Link
+                  href="/admin/platform/payments/diagnostics"
+                  className="rounded-md px-3 py-2 text-[color:var(--accent-soft)] transition hover:bg-[color:var(--surface-high)]"
+                >
+                  Betaling
+                </Link>
+              </>
             ) : null}
             <div className="mt-auto space-y-2 pt-6">
               <Link
@@ -101,12 +124,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Badge variant="muted" className="hidden sm:inline-flex">
                 {session.user.email}
               </Badge>
-              <Link
-                href="/admin/events/new"
-                className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-semibold text-[color:var(--accent-foreground)]"
-              >
-                + Opprett
-              </Link>
+              {!doorOnly ? (
+                <Link
+                  href="/admin/events/new"
+                  className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-semibold text-[color:var(--accent-foreground)]"
+                >
+                  + Opprett
+                </Link>
+              ) : null}
             </div>
           </header>
 

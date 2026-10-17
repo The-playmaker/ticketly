@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { resolveOrgIdForUser } from "@/lib/admin/org-access";
+import { isDoorStaffOnly } from "@/lib/auth/event-access";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,15 @@ const TYPES = [
 
 export default async function AdminReportsPage() {
   const session = await auth();
+  const user = {
+    id: session!.user.id,
+    email: session!.user.email!,
+    globalRole: session!.user.globalRole,
+    isActive: session!.user.isActive !== false,
+    memberships: session!.user.memberships,
+  };
+  if (isDoorStaffOnly(user)) redirect("/scan");
+
   const orgId = await resolveOrgIdForUser(session!.user.id, session!.user.globalRole);
   const events = orgId
     ? await prisma.event.findMany({

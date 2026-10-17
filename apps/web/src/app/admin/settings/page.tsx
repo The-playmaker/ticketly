@@ -1,14 +1,27 @@
+import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { resolveOrgIdForUser } from "@/lib/admin/org-access";
 import { nexiConfigHealth, resolvePaymentProviderType } from "@/lib/payments";
+import { canManageOrganization, isSuperAdmin } from "@/lib/auth/rbac";
+import { SellerSettingsForm } from "@/components/admin/seller-settings-form";
 
 export default async function AdminSettingsPage() {
   const session = await auth();
-  const orgId = await resolveOrgIdForUser(session!.user.id, session!.user.globalRole);
+  const user = {
+    id: session!.user.id,
+    email: session!.user.email!,
+    globalRole: session!.user.globalRole,
+    isActive: session!.user.isActive !== false,
+    memberships: session!.user.memberships,
+  };
+  const orgId = await resolveOrgIdForUser(user.id, user.globalRole);
   const org = orgId
     ? await prisma.organization.findUnique({ where: { id: orgId } })
     : null;
+
+  const canEdit =
+    !!org && (canManageOrganization(user, org.id) || isSuperAdmin(user));
 
   const provider = (() => {
     try {
@@ -21,13 +34,27 @@ export default async function AdminSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Innstillinger</h1>
-        <p className="text-sm text-[color:var(--muted)]">Organisasjon og betalingskonfigurasjon</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Innstillinger</h1>
+          <p className="text-sm text-[color:var(--muted)]">
+            Organisasjon, selgerfelter og betaling
+          </p>
+        </div>
+        {canEdit ? (
+          <Link
+            href="/admin/settings/team"
+            className="rounded-md border border-[color:var(--outline)]/40 px-3 py-1.5 text-xs hover:bg-[color:var(--surface-high)]"
+          >
+            Team
+          </Link>
+        ) : null}
       </div>
 
       {!org ? (
         <p className="text-sm text-[color:var(--muted)]">Ingen organisasjon tilknyttet.</p>
+      ) : canEdit ? (
+        <SellerSettingsForm org={org} />
       ) : (
         <section className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5 text-sm">
           <h2 className="font-medium">Seller of record</h2>
@@ -39,22 +66,6 @@ export default async function AdminSettingsPage() {
             <div className="flex justify-between gap-4">
               <dt className="text-[color:var(--muted)]">Org.nr</dt>
               <dd>{org.organizationNumber ?? "—"}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-[color:var(--muted)]">Adresse</dt>
-              <dd className="text-right">
-                {[org.legalAddress, org.legalPostalCode, org.legalCity]
-                  .filter(Boolean)
-                  .join(", ") || "—"}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-[color:var(--muted)]">Kundeservice</dt>
-              <dd>{org.customerServiceEmail ?? org.contactEmail ?? "—"}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-[color:var(--muted)]">Vilkårsversjon</dt>
-              <dd>{org.termsVersion}</dd>
             </div>
           </dl>
         </section>

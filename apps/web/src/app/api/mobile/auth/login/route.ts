@@ -166,6 +166,10 @@ export async function POST(req: Request) {
         userAgent: req.headers.get("user-agent")?.slice(0, 200),
       },
     });
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastActiveAt: new Date() },
+    });
 
     return NextResponse.json({
       token: signMobileToken(user.id, jti, exp),

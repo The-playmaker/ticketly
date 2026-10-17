@@ -20,6 +20,13 @@ enum OrgRole {
   DOOR_STAFF
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
 enum EventStatus {
   DRAFT
   SCHEDULED
@@ -210,6 +217,7 @@ model User {
   passwordHash  String?
   globalRole    GlobalRole @default(CUSTOMER)
   isActive      Boolean   @default(true)
+  lastActiveAt  DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -233,6 +241,7 @@ model User {
 
   @@index([email])
   @@index([globalRole])
+  @@index([isActive])
 }
 
 model Account {
@@ -271,6 +280,21 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+/// Password set / reset tokens (invite accept + forgot password). Store hash only.
+model AuthActionToken {
+  id        String   @id @default(cuid())
+  userId    String?
+  email     String
+  purpose   String // PASSWORD_RESET | INVITE_PASSWORD_SETUP
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([email, purpose])
+  @@index([expiresAt])
 }
 
 // ─── Multi-tenant ────────────────────────────────────────────────────────────
@@ -369,21 +393,26 @@ model OrganizationMember {
 }
 
 model OrganizationInvitation {
-  id             String   @id @default(cuid())
+  id             String           @id @default(cuid())
   organizationId String
   email          String
   role           OrgRole
-  token          String   @unique
+  /// SHA-256 hash of the one-time invite token (never store raw token)
+  tokenHash      String           @unique
   invitedById    String?
+  status         InvitationStatus @default(PENDING)
+  /// Optional event IDs this invite grants access to (door staff / event managers)
+  restrictedEventIds String[]     @default([])
   expiresAt      DateTime
   acceptedAt     DateTime?
-  createdAt      DateTime @default(now())
+  revokedAt      DateTime?
+  createdAt      DateTime         @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([email])
-  @@index([token])
+  @@index([status, expiresAt])
 }
 
 model EventAssignment {

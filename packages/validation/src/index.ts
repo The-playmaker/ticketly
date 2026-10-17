@@ -1,17 +1,31 @@
 import { z } from "zod";
 
+/** Strong password: min 12 chars, no silly complexity rules. */
+export const strongPasswordSchema = z
+  .string()
+  .min(12, "Passordet må være minst 12 tegn");
+
 export const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  password: z.string().min(1),
 });
 
 export const registerSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: strongPasswordSchema,
   firstName: z.string().min(1).max(100),
   lastName: z.string().min(1).max(100),
   phone: z.string().optional(),
   marketingOptIn: z.boolean().optional().default(false),
+});
+
+export const setPasswordSchema = z.object({
+  token: z.string().min(16),
+  password: strongPasswordSchema,
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
 });
 
 export const checkoutContactSchema = z.object({
@@ -20,7 +34,7 @@ export const checkoutContactSchema = z.object({
   email: z.string().email(),
   phone: z.string().min(5).max(30).optional(),
   createAccount: z.boolean().optional(),
-  password: z.string().min(8).optional(),
+  password: strongPasswordSchema.optional(),
   promoCode: z.string().optional(),
   /** Explicit acceptance of purchase terms version shown at checkout */
   termsVersion: z.string().min(1),

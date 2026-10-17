@@ -7,6 +7,10 @@ export async function requireSession(): Promise<AuthUser> {
   if (!session?.user?.id) {
     throw new AuthorizationError("Unauthorized");
   }
+  const isActive = Boolean(session.user.isActive);
+  if (!isActive) {
+    throw new AuthorizationError("Unauthorized");
+  }
   return {
     id: session.user.id,
     email: session.user.email,
@@ -19,7 +23,7 @@ export async function requireSession(): Promise<AuthUser> {
 
 export async function getOptionalSession(): Promise<AuthUser | null> {
   const session = await auth();
-  if (!session?.user?.id) return null;
+  if (!session?.user?.id || !session.user.isActive) return null;
   return {
     id: session.user.id,
     email: session.user.email,

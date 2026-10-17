@@ -5,9 +5,14 @@ import { colors, spacing } from "@ticketly/ui";
 import { apiFetch } from "@/lib/api";
 import { saveSession } from "@/lib/secure-store";
 
+const showDemoCredentials =
+  typeof __DEV__ !== "undefined" &&
+  __DEV__ &&
+  process.env.EXPO_PUBLIC_SHOW_DEMO_CREDENTIALS === "true";
+
 export default function LoginScreen() {
-  const [email, setEmail] = useState("customer@example.com");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState(showDemoCredentials ? "customer@example.com" : "");
+  const [password, setPassword] = useState(showDemoCredentials ? "password123" : "");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -56,6 +61,9 @@ export default function LoginScreen() {
         <Text style={styles.btnText}>{loading ? "…" : "Logg inn"}</Text>
       </Pressable>
       <Text style={styles.hint}>Guest checkout støttes i kjøpsflyten uten konto.</Text>
+      {showDemoCredentials ? (
+        <Text style={styles.hint}>Dev demo: customer@example.com / password123</Text>
+      ) : null}
     </View>
   );
 }

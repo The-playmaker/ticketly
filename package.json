@@ -15,10 +15,16 @@
     "db:migrate": "npm run migrate -w @ticketly/database",
     "db:seed": "npm run seed -w @ticketly/database",
     "db:reset": "npm run reset -w @ticketly/database",
+    "admin:create": "tsx --env-file-if-exists=.env scripts/admin-create.ts",
+    "demo:cleanup": "tsx --env-file-if-exists=.env scripts/demo-cleanup.ts",
     "test": "npm run test -w @ticketly/web && npm run test -w @ticketly/ticketing --if-present",
     "test:e2e": "npm run test:e2e -w @ticketly/web",
     "typecheck": "npm run typecheck -w @ticketly/web && npm run typecheck -w @ticketly/ticketing && npm run typecheck -w @ticketly/mobile --if-present",
     "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "dotenv": "^18.0.5",
+    "tsx": "^4.23.15"
   },
   "engines": {
     "node": ">=22"
