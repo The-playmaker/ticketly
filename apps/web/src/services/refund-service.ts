@@ -83,7 +83,8 @@ export class RefundService {
     const payment = order.payments[0];
     let providerRefundId: string | undefined;
 
-    // Create PENDING refund first; only mark SUCCEEDED after provider confirms
+    // Create PENDING refund first; only mark SUCCEEDED after provider confirms.
+    // providerRefundId is @unique — webhook retries must not insert a second SUCCEEDED row.
     const pendingRefund = await prisma.refund.create({
       data: {
         orderId: order.id,
@@ -110,6 +111,23 @@ export class RefundService {
         });
         providerRefundId = result.providerRefundId;
 
+        // If provider returns an id we already recorded as SUCCEEDED, reuse that row
+        // (idempotent retry) instead of double-counting refund amount on the dashboard.
+        if (providerRefundId) {
+          const existing = await prisma.refund.findUnique({
+            where: { providerRefundId },
+          });
+          if (existing && existing.id !== pendingRefund.id) {
+            await prisma.refund.update({
+              where: { id: pendingRefund.id },
+              data: { status: RefundStatus.FAILED, reason: "duplicate_provider_refund_id" },
+            });
+            if (existing.status === RefundStatus.SUCCEEDED) {
+              return existing;
+            }
+          }
+        }
+
         // Stripe mock / sync providers may return SUCCEEDED immediately;
         // Nexi returns PENDING until payment.refund.completed — still apply
         // ticket state after provider accepted the refund operation (201).
@@ -130,6 +148,7 @@ export class RefundService {
       }
     }
 
+    // quantitySold = active sold inventory → decrement on refund (see inventory-service).
     const refund = await prisma.$transaction(async (tx) => {
       for (const ticket of ticketsToRefund) {
         await tx.ticket.update({

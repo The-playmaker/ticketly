@@ -930,7 +930,8 @@ model Refund {
   currency          String       @default("NOK")
   status            RefundStatus @default(PENDING)
   reason            String?
-  providerRefundId  String?
+  /// Provider refund id — unique when set so webhook retries cannot double-count amounts
+  providerRefundId  String?      @unique
   ticketIds         String[] // tickets included in this refund
   processedById     String?
   createdAt         DateTime     @default(now())

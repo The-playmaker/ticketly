@@ -4,6 +4,10 @@ import { canManageEvents, isSuperAdmin } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/db";
 import { jsonError, AppError } from "@/lib/api-error";
 import { InventoryService } from "@/services/inventory-service";
+import {
+  getEventFinancialTotals,
+  GROSS_SALES_PAYMENT_STATUSES,
+} from "@/lib/admin/event-financials";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -29,9 +33,16 @@ export async function GET(_req: Request, { params }: Props) {
     }
 
     const inventory = await InventoryService.getEventInventorySummary(id);
+    const financials = await getEventFinancialTotals(prisma, id);
 
     const recent = await prisma.order.findMany({
-      where: { eventId: id, paymentStatus: "PAID" },
+      where: {
+        eventId: id,
+        OR: [
+          { paidAt: { not: null } },
+          { paymentStatus: { in: GROSS_SALES_PAYMENT_STATUSES } },
+        ],
+      },
       orderBy: { paidAt: "desc" },
       take: 20,
       include: {
@@ -42,17 +53,17 @@ export async function GET(_req: Request, { params }: Props) {
     const checkedIn = await prisma.ticket.count({
       where: { eventId: id, status: "CHECKED_IN" },
     });
-    const refunded = await prisma.ticket.count({
-      where: { eventId: id, status: "REFUNDED" },
-    });
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const todayOrders = await prisma.order.findMany({
       where: {
         eventId: id,
-        paymentStatus: "PAID",
         paidAt: { gte: startOfDay },
+        OR: [
+          { paidAt: { not: null } },
+          { paymentStatus: { in: GROSS_SALES_PAYMENT_STATUSES } },
+        ],
       },
       select: { total: true },
     });
@@ -60,21 +71,9 @@ export async function GET(_req: Request, { params }: Props) {
     const pageViews = await prisma.analyticsEvent.count({
       where: { eventId: id, type: "PAGE_VIEW" },
     });
-    const paidCount = await prisma.order.count({
-      where: { eventId: id, paymentStatus: "PAID" },
-    });
     const checkoutStarts = await prisma.analyticsEvent.count({
       where: { eventId: id, type: "CHECKOUT_STARTED" },
     });
-
-    const gross = recent.length
-      ? (
-          await prisma.order.aggregate({
-            where: { eventId: id, paymentStatus: "PAID" },
-            _sum: { total: true, serviceFee: true },
-          })
-        )
-      : { _sum: { total: 0, serviceFee: 0 } };
 
     const [waitlistWaiting, topPromo, bundleSold, remindersScheduled] = await Promise.all([
       prisma.waitlistEntry.count({ where: { eventId: id, status: "WAITING" } }),
@@ -100,7 +99,8 @@ export async function GET(_req: Request, { params }: Props) {
     return NextResponse.json({
       inventory,
       checkedIn,
-      refunded,
+      /** @deprecated Prefer totals.refundedTicketCount — kept for older clients */
+      refunded: financials.refundedTicketCount,
       parity: {
         waitlistWaiting,
         promo: topPromo,
@@ -112,18 +112,27 @@ export async function GET(_req: Request, { params }: Props) {
         orders: todayOrders.length,
       },
       totals: {
-        grossRevenue: gross._sum.total ?? 0,
-        serviceFees: gross._sum.serviceFee ?? 0,
+        grossSales: financials.grossSales,
+        /** @deprecated Alias — use grossSales */
+        grossRevenue: financials.grossSales,
+        successfulRefundAmount: financials.successfulRefundAmount,
+        netRevenue: financials.netRevenue,
+        serviceFees: financials.serviceFees,
+        /** Active sold = quantitySold inventory (VALID/CHECKED_IN/TRANSFERRED). */
         ticketsSold: inventory.sold,
+        activeSoldTickets: financials.activeSoldTicketCount,
+        refundedTicketCount: financials.refundedTicketCount,
         available: inventory.available,
         reserved: inventory.reserved,
       },
       funnel: {
         pageViews,
         checkoutStarts,
-        paidOrders: paidCount,
+        paidOrders: financials.paidOrderCount,
         conversion:
-          pageViews > 0 ? Math.round((paidCount / pageViews) * 1000) / 10 : null,
+          pageViews > 0
+            ? Math.round((financials.paidOrderCount / pageViews) * 1000) / 10
+            : null,
       },
       feed: recent.map((o) => ({
         at: o.paidAt ?? o.createdAt,
@@ -134,6 +143,7 @@ export async function GET(_req: Request, { params }: Props) {
         })),
         total: o.total,
         currency: o.currency,
+        paymentStatus: o.paymentStatus,
       })),
       serverTime: new Date().toISOString(),
     });

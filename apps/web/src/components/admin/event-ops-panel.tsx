@@ -30,7 +30,17 @@ type LivePayload = {
   checkedIn: number;
   refunded: number;
   today: { revenue: number; orders: number };
-  totals: { grossRevenue: number; ticketsSold: number; available: number; reserved: number };
+  totals: {
+    grossSales: number;
+    grossRevenue?: number;
+    successfulRefundAmount: number;
+    netRevenue: number;
+    ticketsSold: number;
+    activeSoldTickets?: number;
+    refundedTicketCount: number;
+    available: number;
+    reserved: number;
+  };
   funnel: { pageViews: number; checkoutStarts: number; paidOrders: number; conversion: number | null };
   feed: { at: string; lines: { quantity: number; name: string; total: number }[]; total: number }[];
   parity?: {
@@ -178,12 +188,26 @@ export function EventOpsPanel({
       {live ? (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat label="Solgt" value={`${live.totals.ticketsSold} / ${live.inventory.capacity}`} />
-            <Stat label="Omsetning" value={formatMoney(live.totals.grossRevenue)} />
-            <Stat label="Tilgjengelig" value={String(live.totals.available)} />
+            <Stat
+              label="Brutto salg"
+              value={formatMoney(live.totals.grossSales ?? live.totals.grossRevenue ?? 0)}
+            />
+            <Stat
+              label="Refundert beløp"
+              value={formatMoney(live.totals.successfulRefundAmount ?? 0)}
+            />
+            <Stat label="Netto omsetning" value={formatMoney(live.totals.netRevenue ?? 0)} />
+            <Stat
+              label="Solgt / aktive billetter"
+              value={`${live.totals.activeSoldTickets ?? live.totals.ticketsSold} / ${live.inventory.capacity}`}
+            />
+            <Stat
+              label="Refunderte billetter"
+              value={String(live.totals.refundedTicketCount ?? live.refunded)}
+            />
             <Stat label="Reservert" value={String(live.totals.reserved)} />
+            <Stat label="Tilgjengelig" value={String(live.totals.available)} />
             <Stat label="Innsjekket" value={String(live.checkedIn)} />
-            <Stat label="Refundert" value={String(live.refunded)} />
             <Stat label="I dag" value={`${live.today.orders} ord. · ${formatMoney(live.today.revenue)}`} />
             <Stat
               label="Konvertering"

@@ -4,6 +4,10 @@ import { prisma } from "@/lib/db";
 import { requireEventAccess } from "@/lib/admin/org-access";
 import { formatMoney } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  getEventFinancialTotals,
+  GROSS_SALES_PAYMENT_STATUSES,
+} from "@/lib/admin/event-financials";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -17,32 +21,21 @@ export default async function EventAnalyticsPage({ params }: Props) {
     notFound();
   }
 
-  const [pageViews, checkoutStarts, paymentInitiated, paidOrders, revenue, utmRows] =
+  const [pageViews, checkoutStarts, paymentInitiated, financials, utmRows] =
     await Promise.all([
       prisma.analyticsEvent.count({ where: { eventId: id, type: "PAGE_VIEW" } }),
       prisma.analyticsEvent.count({ where: { eventId: id, type: "CHECKOUT_STARTED" } }),
       prisma.analyticsEvent.count({ where: { eventId: id, type: "PAYMENT_INITIATED" } }),
-      prisma.order.count({
-        where: {
-          eventId: id,
-          organizationId: event.organizationId,
-          paymentStatus: { in: ["PAID", "PARTIALLY_REFUNDED"] },
-        },
-      }),
-      prisma.order.aggregate({
-        where: {
-          eventId: id,
-          organizationId: event.organizationId,
-          paymentStatus: { in: ["PAID", "PARTIALLY_REFUNDED"] },
-        },
-        _sum: { total: true },
-      }),
+      getEventFinancialTotals(prisma, id),
       prisma.order.groupBy({
         by: ["utmSource"],
         where: {
           eventId: id,
           organizationId: event.organizationId,
-          paymentStatus: { in: ["PAID", "PARTIALLY_REFUNDED"] },
+          OR: [
+            { paidAt: { not: null } },
+            { paymentStatus: { in: [...GROSS_SALES_PAYMENT_STATUSES] } },
+          ],
           utmSource: { not: null },
         },
         _count: true,
@@ -51,21 +44,22 @@ export default async function EventAnalyticsPage({ params }: Props) {
     ]);
 
   const conversion =
-    pageViews > 0 ? Math.round((paidOrders / pageViews) * 1000) / 10 : null;
+    pageViews > 0 ? Math.round((financials.paidOrderCount / pageViews) * 1000) / 10 : null;
 
   const cards = [
     { label: "Sidevisninger", value: String(pageViews) },
     { label: "Checkout startet", value: String(checkoutStarts) },
     { label: "Betaling startet", value: String(paymentInitiated) },
-    { label: "Betalte ordrer", value: String(paidOrders) },
+    { label: "Betalte ordrer", value: String(financials.paidOrderCount) },
     {
       label: "Konvertering",
       value: conversion == null ? "Ikke tilgjengelig" : `${conversion}%`,
     },
-    {
-      label: "Omsetning",
-      value: formatMoney(revenue._sum.total ?? 0),
-    },
+    { label: "Brutto salg", value: formatMoney(financials.grossSales) },
+    { label: "Refundert beløp", value: formatMoney(financials.successfulRefundAmount) },
+    { label: "Netto omsetning", value: formatMoney(financials.netRevenue) },
+    { label: "Solgt / aktive billetter", value: String(financials.activeSoldTicketCount) },
+    { label: "Refunderte billetter", value: String(financials.refundedTicketCount) },
   ];
 
   return (

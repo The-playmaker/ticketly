@@ -15,6 +15,13 @@ Previously `markOrderPaid` committed payment state, then called `issueTicketsFor
 
 **DB invariant choice:** nullable `Order.ticketsFulfilledAt` set atomically with ticket inserts under the Order row lock. This is a fulfillment marker (not a unique ticket constraint). Row-level lock + re-check is the concurrency control; the timestamp makes “already fulfilled” explicit for ops/diagnostics and prevents re-entry even if tickets were manually removed incorrectly.
 
+### `quantitySold` invariant (inventory vs history)
+
+**Chosen:** `TicketType.quantitySold` tracks **active sold inventory** (VALID / CHECKED_IN / TRANSFERRED), not lifetime sales.
+
+- Fulfillment increments; refunds **decrement** so `available = released − sold − reserved` stays correct.
+- Brutto salg / historical volume use Orders (`paidAt` / ever-paid statuses) + SUCCEEDED Refunds — see [PAYMENTS.md](./PAYMENTS.md#event-financial-reporting-dashboard).
+
 Do **not** rely solely on Stripe `event.id` uniqueness for ticket issuance.
 
 ## Expected ticket count

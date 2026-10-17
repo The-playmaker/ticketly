@@ -43,7 +43,13 @@ export default async function AdminDashboardPage() {
   });
 
   const paidOrders = await prisma.order.findMany({
-    where: { ...orgFilter, paymentStatus: "PAID" },
+    where: {
+      ...orgFilter,
+      OR: [
+        { paidAt: { not: null } },
+        { paymentStatus: { in: ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"] } },
+      ],
+    },
     select: { total: true, paidAt: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   });
@@ -61,9 +67,11 @@ export default async function AdminDashboardPage() {
       : (scope.organizations.find((o) => o.id === scope.organizationId)?.name ?? "Organisasjon");
 
   const cards = [
-    { label: "Omsetning i dag", value: formatMoney(stats.revenueToday) },
-    { label: "Omsetning totalt", value: formatMoney(stats.revenueTotal) },
-    { label: "Solgte billetter", value: String(stats.ticketsSold) },
+    { label: "Brutto salg i dag", value: formatMoney(stats.revenueToday) },
+    { label: "Brutto salg", value: formatMoney(stats.grossSales ?? stats.revenueTotal) },
+    { label: "Refundert beløp", value: formatMoney(stats.successfulRefundAmount ?? stats.refundedAmount) },
+    { label: "Netto omsetning", value: formatMoney(stats.netRevenue ?? stats.revenueTotal - stats.refundedAmount) },
+    { label: "Solgt / aktive billetter", value: String(stats.ticketsSold) },
     { label: "Ordrer (betalt)", value: String(stats.orderCount) },
     {
       label: "Konvertering",
@@ -72,8 +80,7 @@ export default async function AdminDashboardPage() {
           ? "Ikke tilgjengelig"
           : `${stats.conversionPercent}%`,
     },
-    { label: "Aktive reservasjoner", value: String(stats.activeReservations) },
-    { label: "Refundert", value: formatMoney(stats.refundedAmount) },
+    { label: "Reservert", value: String(stats.activeReservations) },
     { label: "Feilede betalinger", value: String(stats.failedPayments) },
     { label: "Innsjekket", value: String(stats.checkedIn) },
     { label: "Kapasitet", value: `${stats.percentSold}% av ${stats.capacity}` },

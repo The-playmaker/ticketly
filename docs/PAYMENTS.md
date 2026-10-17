@@ -56,6 +56,30 @@ order status until PAID or timeout.
 - Local refund stays `PENDING` until the provider accepts the operation;
   ticket state updates after provider acceptance
 - Double-refund and over-refund are blocked against paid/captured amount
+- `Refund.providerRefundId` is **unique** when set — webhook retries must not
+  insert a second SUCCEEDED row for the same provider refund
+
+## Event financial reporting (dashboard)
+
+Per-event / org KPIs use explicit gross / refund / net — never “current PAID only”:
+
+| Metric | Source |
+|--------|--------|
+| **Brutto salg** (`grossSales`) | Sum of `Order.total` for orders that reached paid (`paidAt` set **or** status in PAID / PARTIALLY_REFUNDED / REFUNDED). Fully refunded orders stay in gross history. |
+| **Refundert beløp** (`successfulRefundAmount`) | Sum of `Refund.amount` where `status=SUCCEEDED` for the event/org. |
+| **Netto omsetning** (`netRevenue`) | `grossSales − successfulRefundAmount`. Partial refunds reduce net by the refunded amount only. |
+| **Solgt / aktive billetter** | Tickets in VALID / CHECKED_IN / TRANSFERRED (aligned with `TicketType.quantitySold`). |
+| **Refunderte billetter** | Count of `Ticket.status=REFUNDED`. |
+
+### `quantitySold` invariant
+
+**Chosen:** `TicketType.quantitySold` = **current active sold inventory**.
+
+- Incremented once on ticket fulfillment; **decremented on refund**.
+- Inventory availability stays `released − sold − reserved`.
+- Historical sales volume / brutto salg come from Orders + Refunds, not from `quantitySold`.
+
+See also comments on `getReleasedAvailable` / `RefundService.refundOrder`.
 
 ## Mock / production rule
 

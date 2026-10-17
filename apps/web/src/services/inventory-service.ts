@@ -3,6 +3,15 @@ import { prisma } from "@/lib/db";
 import { AppError } from "@/lib/api-error";
 import { writeAuditLog } from "@/lib/audit";
 
+/**
+ * INVARIANT — TicketType.quantitySold = current **active sold** inventory
+ * (tickets still VALID / CHECKED_IN / TRANSFERRED).
+ *
+ * Refunds decrement quantitySold so
+ *   available = released − sold − reserved
+ * stays correct. Do **not** treat quantitySold as historical sales volume;
+ * use Ticket counts / Order items / financial totals for that.
+ */
 export function getReleasedAvailable(tt: {
   quantityReleased: number;
   quantitySold: number;

@@ -9,6 +9,10 @@ import { slugify } from "@/lib/utils";
 import { writeAuditLog } from "@/lib/audit";
 import { AppError } from "@/lib/api-error";
 import { sendEventCancelledEmail } from "@/lib/email/templates";
+import {
+  getEventFinancialTotals,
+  getOrgFinancialTotals,
+} from "@/lib/admin/event-financials";
 import { RefundService } from "@/services/refund-service";
 
 export class EventService {
@@ -441,16 +445,9 @@ export class EventService {
       include: { ticketTypes: true },
     });
 
-    const paidOrders = await prisma.order.findMany({
-      where: { eventId, paymentStatus: { in: [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED] } },
-    });
-
+    const financials = await getEventFinancialTotals(prisma, eventId);
+    // quantitySold = active sold inventory (refunds decrement) — not historical volume
     const sold = event.ticketTypes.reduce((s, t) => s + t.quantitySold, 0);
-    const revenue = paidOrders.reduce((s, o) => s + o.total - (o.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED ? 0 : 0), 0);
-    const refunded = await prisma.refund.aggregate({
-      where: { order: { eventId }, status: "SUCCEEDED" },
-      _sum: { amount: true },
-    });
     const checkedIn = await prisma.ticket.count({
       where: { eventId, status: "CHECKED_IN" },
     });
@@ -470,9 +467,17 @@ export class EventService {
       capacity: event.capacity,
       percentSold: event.capacity > 0 ? Math.round((sold / event.capacity) * 100) : 0,
       checkedIn,
-      revenue,
-      refunded: refunded._sum.amount ?? 0,
-      averageOrderValue: paidOrders.length ? Math.round(revenue / paidOrders.length) : 0,
+      /** Brutto salg — includes later-refunded orders */
+      revenue: financials.grossSales,
+      grossSales: financials.grossSales,
+      refunded: financials.successfulRefundAmount,
+      successfulRefundAmount: financials.successfulRefundAmount,
+      netRevenue: financials.netRevenue,
+      refundedTicketCount: financials.refundedTicketCount,
+      activeSoldTicketCount: financials.activeSoldTicketCount,
+      averageOrderValue: financials.paidOrderCount
+        ? Math.round(financials.grossSales / financials.paidOrderCount)
+        : 0,
       recentCheckIns,
       byTicketType: event.ticketTypes.map((t) => ({
         id: t.id,
@@ -506,13 +511,16 @@ export class EventService {
       select: { total: true, createdAt: true, paidAt: true, paymentStatus: true },
     });
 
-    const paid = orders.filter(
+    // Ever-paid = reached capture (incl. later refunded). Do NOT filter to current PAID only.
+    const everPaid = orders.filter(
       (o) =>
+        o.paidAt != null ||
         o.paymentStatus === PaymentStatus.PAID ||
-        o.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED
+        o.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED ||
+        o.paymentStatus === PaymentStatus.REFUNDED
     );
-    const revenueTotal = paid.reduce((s, o) => s + o.total, 0);
-    const revenueToday = paid
+    const financials = await getOrgFinancialTotals(prisma, organizationId);
+    const revenueToday = everPaid
       .filter((o) => (o.paidAt ?? o.createdAt) >= startOfDay)
       .reduce((s, o) => s + o.total, 0);
 
@@ -536,7 +544,6 @@ export class EventService {
 
     const refundsAgg = await prisma.refund.aggregate({
       where: { order: orgFilter, status: "SUCCEEDED" },
-      _sum: { amount: true },
       _count: true,
     });
 
@@ -549,7 +556,9 @@ export class EventService {
       where: { type: "CHECKOUT_STARTED", event: eventOrgFilter },
     });
     const conversion =
-      pageViews > 0 ? Math.round((paid.length / pageViews) * 1000) / 10 : null;
+      pageViews > 0
+        ? Math.round((financials.paidOrderCount / pageViews) * 1000) / 10
+        : null;
 
     const events = await prisma.event.findMany({
       where: eventOrgFilter,
@@ -563,15 +572,21 @@ export class EventService {
 
     return {
       revenueToday,
-      revenueTotal,
+      /** Brutto salg (gross) — includes refunded orders' original totals */
+      revenueTotal: financials.grossSales,
+      grossSales: financials.grossSales,
+      netRevenue: financials.netRevenue,
       ticketsSold,
       checkedIn,
       capacity,
       percentSold: capacity > 0 ? Math.round((sold / capacity) * 100) : 0,
-      averageOrderValue: paid.length ? Math.round(revenueTotal / paid.length) : 0,
-      orderCount: paid.length,
+      averageOrderValue: financials.paidOrderCount
+        ? Math.round(financials.grossSales / financials.paidOrderCount)
+        : 0,
+      orderCount: financials.paidOrderCount,
       activeReservations,
-      refundedAmount: refundsAgg._sum.amount ?? 0,
+      refundedAmount: financials.successfulRefundAmount,
+      successfulRefundAmount: financials.successfulRefundAmount,
       refundCount: refundsAgg._count,
       failedPayments,
       pageViews,
