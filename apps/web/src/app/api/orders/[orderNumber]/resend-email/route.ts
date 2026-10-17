@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
 import { AppError, jsonError } from "@/lib/api-error";
 import { sendOrderConfirmationEmail, sendTicketDeliveryEmail } from "@/lib/email/templates";
+import { formatEventDateTime } from "@/lib/time";
 import { timingSafeEqual } from "crypto";
 
 type Ctx = { params: Promise<{ orderNumber: string }> };
@@ -57,13 +58,17 @@ export async function POST(req: Request, ctx: Ctx) {
     const appUrl = process.env.APP_URL ?? "http://localhost:3456";
     const ticketsUrl = `${appUrl}/orders/${order.orderNumber}?t=${order.accessToken}`;
     const org = order.event.organization;
+    const eventWhen = formatEventDateTime(order.event.startsAt, order.event.timezone);
 
+    // Resend only re-delivers email — never issues additional tickets.
     const confirm = await sendOrderConfirmationEmail({
       to: order.customerEmail,
       customerName: `${order.customerFirstName} ${order.customerLastName}`,
       orderNumber: order.orderNumber,
       eventName: order.event.name,
+      eventWhen,
       venue: order.event.venue?.name ?? order.event.city ?? undefined,
+      ageLimit: order.event.ageLimit,
       quantity: order.tickets.length,
       total: order.total,
       currency: order.currency,
@@ -79,8 +84,10 @@ export async function POST(req: Request, ctx: Ctx) {
       to: order.customerEmail,
       customerName: `${order.customerFirstName} ${order.customerLastName}`,
       eventName: order.event.name,
+      eventWhen,
       venue: order.event.venue?.name ?? order.event.city ?? undefined,
       ageLimit: order.event.ageLimit,
+      orderNumber: order.orderNumber,
       ticketsUrl,
       supportEmail: org.customerServiceEmail ?? org.contactEmail,
       supportPhone: org.customerServicePhone,

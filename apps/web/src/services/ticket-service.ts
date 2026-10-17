@@ -15,6 +15,7 @@ import {
   resolveRawTicketToken,
 } from "@/lib/tickets/token";
 import { sendOrderConfirmationEmail, sendTicketDeliveryEmail } from "@/lib/email/templates";
+import { formatEventDateTime } from "@/lib/time";
 import { assertTicketTransition } from "@/services/ticket-state-machine";
 import { writeAuditLog } from "@/lib/audit";
 import { AppError } from "@/lib/api-error";
@@ -126,13 +127,16 @@ export class TicketService {
     const ticketsUrl = `${appUrl}/orders/${order.orderNumber}?t=${order.accessToken}`;
     // Email failure must never invalidate paid order / issued tickets
     try {
+      const eventWhen = formatEventDateTime(order.event.startsAt, order.event.timezone);
       const org = order.event.organization;
       await sendOrderConfirmationEmail({
         to: order.customerEmail,
         customerName: `${order.customerFirstName} ${order.customerLastName}`,
         orderNumber: order.orderNumber,
         eventName: order.event.name,
+        eventWhen,
         venue: order.event.venue?.name ?? order.event.city ?? undefined,
+        ageLimit: order.event.ageLimit,
         quantity: tickets.length,
         total: order.total,
         currency: order.currency,
@@ -148,8 +152,10 @@ export class TicketService {
         to: order.customerEmail,
         customerName: `${order.customerFirstName} ${order.customerLastName}`,
         eventName: order.event.name,
+        eventWhen,
         venue: order.event.venue?.name ?? order.event.city ?? undefined,
         ageLimit: order.event.ageLimit,
+        orderNumber: order.orderNumber,
         ticketsUrl,
         supportEmail: org?.customerServiceEmail ?? org?.contactEmail,
         supportPhone: org?.customerServicePhone,

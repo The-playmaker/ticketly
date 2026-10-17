@@ -53,6 +53,7 @@ export default async function MyTicketsPage() {
                     startsAt: t.event.startsAt.toISOString(),
                     timezone: t.event.timezone,
                     venue: t.event.venue?.name ?? t.event.city ?? "",
+                    ageLimit: t.event.ageLimit,
                   }}
                   orderNumber={t.order.orderNumber}
                 />

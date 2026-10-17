@@ -1,12 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { SiteHeader } from "@/components/layout/site-header";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OrderService } from "@/services/order-service";
 import { formatMoney } from "@/lib/utils";
 import { formatEventDateTime } from "@/lib/time";
-import { TicketQrCard } from "@/components/tickets/ticket-qr-card";
+import { TicketCarousel } from "@/components/tickets/ticket-carousel";
 import { PaymentStatusPoller } from "@/components/orders/payment-status-poller";
 import { ResendOrderEmailButton } from "@/components/orders/resend-order-email-button";
 import { getOptionalSession } from "@/lib/auth/session";
@@ -43,14 +42,31 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   const isPaid = order.paymentStatus === "PAID";
   const pending = order.paymentStatus === "PENDING";
 
+  const viewableTickets = order.tickets.flatMap((ticket) => {
+    const raw = TicketService.getDisplayToken(ticket);
+    if (!raw) return [];
+    return [
+      {
+        publicId: ticket.publicId,
+        secureToken: raw,
+        accessToken: order.accessToken,
+        holderName: ticket.holderName,
+        status: ticket.status,
+        ticketTypeName: ticket.ticketType.name,
+      },
+    ];
+  });
+
   return (
     <div>
       <SiteHeader />
-      <main className="mx-auto max-w-2xl px-4 py-12">
+      <main className="mx-auto max-w-2xl px-4 py-12 max-[390px]:px-3">
         {isPaid ? (
           <>
             <Badge variant="success">Betalt</Badge>
-            <h1 className="mt-3 font-display text-4xl text-white">Billettene dine er klare</h1>
+            <h1 className="mt-3 font-display text-4xl text-white max-[390px]:text-3xl">
+              Billettene dine er klare
+            </h1>
             <p className="mt-2 text-zinc-400">
               Ordrenummer <span className="font-mono text-zinc-200">{order.orderNumber}</span>
             </p>
@@ -118,50 +134,30 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           ) : null}
         </div>
 
-        {isPaid && order.tickets.length > 0 && canViewTickets ? (
+        {isPaid && viewableTickets.length > 0 && canViewTickets ? (
           <div className="mt-10 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="font-display text-2xl">Dine billetter</h2>
-              <Button asChild variant="secondary" size="sm">
-                <Link
-                  href={`/api/tickets/${order.tickets[0]!.publicId}/pdf?t=${order.accessToken}`}
-                >
-                  Last ned PDF
-                </Link>
-              </Button>
-            </div>
-            {order.tickets.map((ticket) => {
-              const raw = TicketService.getDisplayToken(ticket);
-              if (!raw) return null;
-              return (
-                <TicketQrCard
-                  key={ticket.id}
-                  ticket={{
-                    publicId: ticket.publicId,
-                    secureToken: raw,
-                    accessToken: order.accessToken,
-                    holderName: ticket.holderName,
-                    status: ticket.status,
-                    ticketTypeName: ticket.ticketType.name,
-                  }}
-                  event={{
-                    name: order.event.name,
-                    startsAt: order.event.startsAt.toISOString(),
-                    timezone: order.event.timezone,
-                    venue: order.event.venue?.name ?? order.event.city ?? "",
-                    ageLimit: order.event.ageLimit,
-                  }}
-                  orderNumber={order.orderNumber}
-                />
-              );
-            })}
+            <TicketCarousel
+              tickets={viewableTickets}
+              event={{
+                name: order.event.name,
+                startsAt: order.event.startsAt.toISOString(),
+                timezone: order.event.timezone,
+                venue: order.event.venue?.name ?? order.event.city ?? "",
+                ageLimit: order.event.ageLimit,
+              }}
+              orderNumber={order.orderNumber}
+            />
             {hasAccessToken ? (
-              <ResendOrderEmailButton orderNumber={order.orderNumber} accessToken={order.accessToken} />
+              <ResendOrderEmailButton
+                orderNumber={order.orderNumber}
+                accessToken={order.accessToken}
+              />
             ) : null}
           </div>
         ) : isPaid && order.tickets.length > 0 ? (
           <div className="mt-10 rounded-2xl border border-amber-900/50 bg-amber-950/30 p-5 text-sm text-amber-100">
-            Billetter er utstedt. Bruk lenken fra e-posten (eller logg inn som kjøper) for å vise QR-koder.
+            Billetter er utstedt. Bruk lenken fra e-posten (eller logg inn som kjøper) for å vise
+            QR-koder.
           </div>
         ) : null}
 
