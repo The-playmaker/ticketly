@@ -78,11 +78,12 @@ describe("blob URL trust boundaries", () => {
 
 describe("cover cache bust", () => {
   it("appends v query from updatedAt", () => {
+    const when = new Date("2026-10-17T12:00:00.000Z");
     const busted = withCoverCacheBust(
       "https://abc.public.blob.vercel-storage.com/events/e1/cover.jpg",
-      new Date("2026-10-17T12:00:00.000Z")
+      when
     );
-    expect(busted).toContain("v=1760702400000");
+    expect(busted).toContain(`v=${when.getTime()}`);
   });
 
   it("returns null for missing url", () => {
