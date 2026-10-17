@@ -13,6 +13,9 @@ type ScanResult = {
     holderName: string | null;
     ticketType: string;
     checkedInAt?: string | null;
+    ageLimit?: number | null;
+    requireIdCheck?: boolean;
+    accessNote?: string | null;
   };
   previousCheckInAt?: string | null;
 };
@@ -247,21 +250,46 @@ export function ScannerClient({
           className={`px-4 py-8 text-center ${resultStyles[result.result] ?? "bg-[color:var(--surface-high)]"}`}
           onClick={() => setResult(null)}
         >
-          <p className="font-display text-3xl tracking-wide">{result.message}</p>
-          {result.ticket ? (
-            <div className="mt-3 space-y-1 text-sm text-white/90">
-              <p>{result.ticket.holderName}</p>
-              <p>{result.ticket.ticketType}</p>
-              {result.previousCheckInAt || result.ticket.checkedInAt ? (
+          <p className="font-display text-4xl font-bold tracking-wide">{result.message}</p>
+          {result.result === "SUCCESS" && result.ticket ? (
+            <div className="mx-auto mt-5 max-w-sm space-y-2 text-left text-sm text-white">
+              {result.ticket.requireIdCheck || result.ticket.ageLimit != null ? (
+                <div className="rounded-lg bg-black/25 px-3 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-white/70">
+                    Alderskrav
+                  </p>
+                  <p className="text-lg font-semibold">
+                    {result.ticket.ageLimit != null ? `${result.ticket.ageLimit}+` : "—"}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-amber-200">
+                    Kontroller legitimasjon
+                  </p>
+                </div>
+              ) : null}
+              <p>
+                <span className="text-white/70">Navn:</span> {result.ticket.holderName ?? "—"}
+              </p>
+              <p>
+                <span className="text-white/70">Billettype:</span> {result.ticket.ticketType}
+              </p>
+              {result.ticket.accessNote ? (
                 <p>
-                  Innsjekket{" "}
-                  {formatEventTime(
-                    result.previousCheckInAt ?? result.ticket.checkedInAt!,
-                    "Europe/Oslo"
-                  )}
+                  <span className="text-white/70">Merknad:</span> {result.ticket.accessNote}
                 </p>
               ) : null}
             </div>
+          ) : null}
+          {result.result === "ALREADY_USED" ? (
+            <p className="mt-3 text-sm text-white/90">
+              Tidligere skannet{" "}
+              {formatEventTime(
+                result.previousCheckInAt ?? result.ticket?.checkedInAt ?? new Date().toISOString(),
+                "Europe/Oslo"
+              )}
+            </p>
+          ) : null}
+          {result.result !== "SUCCESS" && result.ticket?.holderName ? (
+            <p className="mt-3 text-sm text-white/80">{result.ticket.holderName}</p>
           ) : null}
           <p className="mt-4 text-xs text-white/70">Trykk for å scanne neste</p>
         </div>

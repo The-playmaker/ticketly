@@ -109,6 +109,8 @@ export async function createOrderSnapshot(orderId: string) {
           currency: order.currency,
           termsVersion: order.termsVersion,
           termsAcceptedAt: order.termsAcceptedAt,
+          privacyVersion: order.privacyVersion,
+          refundPolicyVersion: order.refundPolicyVersion,
           refundPolicyType: order.refundPolicyType,
           marketingOptIn: order.marketingOptIn,
         },

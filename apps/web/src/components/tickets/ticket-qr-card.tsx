@@ -21,6 +21,7 @@ type Props = {
     startsAt: string;
     timezone: string;
     venue: string;
+    ageLimit?: number | null;
   };
   orderNumber: string;
 };
@@ -91,6 +92,15 @@ export function TicketQrCard({ ticket, event, orderNumber }: Props) {
             <br />
             <span className="font-medium">{ticket.holderName}</span>
           </p>
+          {event.ageLimit != null ? (
+            <p>
+              <span className="text-[color:var(--muted)]">Alderskrav</span>
+              <br />
+              <span className="font-medium">
+                {event.ageLimit}+ · Gyldig legitimasjon kreves
+              </span>
+            </p>
+          ) : null}
           <p>
             <span className="text-[color:var(--muted)]">Ordre</span>
             <br />

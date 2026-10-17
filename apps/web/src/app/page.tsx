@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/layout/site-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { EventCard } from "@/components/events/event-card";
 import { Button } from "@/components/ui/button";
 import { EventService } from "@/services/event-service";
@@ -80,16 +81,7 @@ export default async function HomePage() {
           </div>
         </section>
       </main>
-      <footer className="border-t border-[color:var(--outline)]/25 py-10">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 text-sm text-[color:var(--muted)] sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap gap-4">
-            <span>Kjøpsvilkår</span>
-            <span>Personvern</span>
-            <span>Refusjonspolicy</span>
-          </div>
-          <p>Levert av TitanSystems · Ticketly</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

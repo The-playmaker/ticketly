@@ -5,10 +5,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney } from "@/lib/utils";
+import { LEGAL_VERSIONS } from "@/lib/legal/versions";
 
 const schema = z.object({
   firstName: z.string().min(1, "Påkrevd"),
@@ -17,6 +19,9 @@ const schema = z.object({
   phone: z.string().optional(),
   promoCode: z.string().optional(),
   createAccount: z.boolean().optional(),
+  termsAccepted: z.literal(true, { error: "Du må godta vilkårene" }),
+  ageConfirmed: z.boolean().optional(),
+  marketingOptIn: z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -27,12 +32,19 @@ export function CheckoutForm({
   sessionId,
   items,
   estimatedTotal,
+  ageLimit,
+  seller,
 }: {
   eventId: string;
   eventName: string;
   sessionId: string;
   items: { ticketTypeId: string; quantity: number }[];
   estimatedTotal: number;
+  ageLimit?: number | null;
+  seller?: {
+    legalName: string;
+    organizationNumber?: string | null;
+  } | null;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -41,7 +53,17 @@ export function CheckoutForm({
   const [promoDiscount, setPromoDiscount] = useState(0);
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(
+      schema.superRefine((val, ctx) => {
+        if (ageLimit != null && ageLimit > 0 && val.ageConfirmed !== true) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["ageConfirmed"],
+            message: "Bekreft alderskravet",
+          });
+        }
+      })
+    ),
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -49,6 +71,9 @@ export function CheckoutForm({
       phone: "",
       promoCode: "",
       createAccount: false,
+      termsAccepted: undefined as unknown as true,
+      ageConfirmed: false,
+      marketingOptIn: false,
     },
   });
 
@@ -83,7 +108,18 @@ export function CheckoutForm({
           eventId,
           sessionId,
           items,
-          ...values,
+          firstName: values.firstName,
+          lastName: values.lastName,
+          email: values.email,
+          phone: values.phone,
+          promoCode: values.promoCode,
+          createAccount: values.createAccount,
+          termsAccepted: true,
+          termsVersion: LEGAL_VERSIONS.terms,
+          privacyVersion: LEGAL_VERSIONS.privacy,
+          refundPolicyVersion: LEGAL_VERSIONS.refundPolicy,
+          ageConfirmed: ageLimit != null ? Boolean(values.ageConfirmed) : undefined,
+          marketingOptIn: Boolean(values.marketingOptIn),
           utmSource: params.get("utm_source") ?? undefined,
           utmMedium: params.get("utm_medium") ?? undefined,
           utmCampaign: params.get("utm_campaign") ?? undefined,
@@ -100,20 +136,18 @@ export function CheckoutForm({
         throw new Error(msg);
       }
 
-      // Free / hosted redirect
       if (data.integrationType === "HostedPaymentPage" && data.checkoutUrl && !data.checkoutKey) {
         window.location.assign(data.checkoutUrl);
         return;
       }
 
-      // Nexi EmbeddedCheckout — stay in Ticketly payment layout
       if (data.paymentId && data.checkoutKey) {
-        const params = new URLSearchParams({
+        const q = new URLSearchParams({
           paymentId: data.paymentId,
           orderNumber: data.orderNumber,
           t: data.accessToken,
         });
-        router.push(`/checkout/payment?${params.toString()}`);
+        router.push(`/checkout/payment?${q.toString()}`);
         return;
       }
 
@@ -149,7 +183,18 @@ export function CheckoutForm({
             </span>
           ) : null}
         </p>
-        <p className="text-xs text-[color:var(--muted)]">Serviceavgift beregnes i neste steg</p>
+        {ageLimit != null ? (
+          <p className="mt-2 text-xs text-[color:var(--accent-soft)]">
+            {ageLimit}+ · Gyldig legitimasjon kreves
+          </p>
+        ) : null}
+        {seller?.legalName ? (
+          <p className="mt-2 text-xs text-[color:var(--muted)]">
+            Selger: {seller.legalName}
+            {seller.organizationNumber ? ` · Org.nr. ${seller.organizationNumber}` : ""}
+          </p>
+        ) : null}
+        <p className="mt-1 text-xs text-[color:var(--muted)]">Serviceavgift beregnes i neste steg</p>
       </div>
 
       {step === 1 ? (
@@ -199,14 +244,67 @@ export function CheckoutForm({
             </Button>
           </div>
 
+          {ageLimit != null && ageLimit > 0 ? (
+            <label className="flex items-start gap-3 rounded-lg border border-[color:var(--outline)]/30 bg-zinc-950/40 p-3 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1"
+                {...form.register("ageConfirmed")}
+              />
+              <span>
+                <span className="font-medium text-zinc-100">
+                  Jeg bekrefter at billettbrukeren oppfyller arrangementets aldersgrense ({ageLimit}+).
+                </span>
+                <span className="mt-1 block text-xs text-[color:var(--muted)]">
+                  Gyldig legitimasjon kan bli krevd ved inngang. Dette er ikke en identitetskontroll.
+                </span>
+              </span>
+            </label>
+          ) : null}
+
+          <label className="flex items-start gap-3 text-sm">
+            <input type="checkbox" className="mt-1" {...form.register("termsAccepted")} />
+            <span className="text-zinc-300">
+              Ved å fullføre kjøpet godtar du{" "}
+              <Link href="/terms" className="text-[color:var(--accent-soft)] hover:underline" target="_blank">
+                Kjøpsvilkår
+              </Link>{" "}
+              og{" "}
+              <Link
+                href="/refund-policy"
+                className="text-[color:var(--accent-soft)] hover:underline"
+                target="_blank"
+              >
+                Refusjonspolicy
+              </Link>{" "}
+              og bekrefter at du har lest{" "}
+              <Link href="/privacy" className="text-[color:var(--accent-soft)] hover:underline" target="_blank">
+                Personvernerklæringen
+              </Link>
+              .
+            </span>
+          </label>
+
+          <label className="flex items-start gap-3 text-sm text-zinc-400">
+            <input type="checkbox" className="mt-1" {...form.register("marketingOptIn")} />
+            <span>
+              Ja, jeg vil motta nyheter og tilbud (valgfritt). Du kan melde deg av når som helst.
+            </span>
+          </label>
+
           {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          {form.formState.errors.termsAccepted ? (
+            <p className="text-sm text-red-400">{form.formState.errors.termsAccepted.message}</p>
+          ) : null}
+          {form.formState.errors.ageConfirmed ? (
+            <p className="text-sm text-red-400">{form.formState.errors.ageConfirmed.message}</p>
+          ) : null}
 
           <Button className="w-full" size="lg" type="submit" disabled={loading}>
             {loading ? "Forbereder betaling…" : "Gå til betaling"}
           </Button>
           <p className="text-center text-xs text-[color:var(--muted)]">
-            Guest checkout — konto er ikke påkrevd. Betaling bekreftes via sikker webhook, ikke
-            success-URL alene.
+            Guest checkout — konto er ikke påkrevd. Vi bekrefter betalingen før billettene utstedes.
           </p>
         </form>
       ) : null}

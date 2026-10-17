@@ -21,8 +21,12 @@ const bodySchema = checkoutContactSchema
       )
       .min(1)
       .max(20),
-    termsAccepted: z.boolean().optional(),
+    termsAccepted: z.literal(true),
     termsVersion: z.string().max(64).optional(),
+    privacyVersion: z.string().max(64).optional(),
+    refundPolicyVersion: z.string().max(64).optional(),
+    ageConfirmed: z.boolean().optional(),
+    marketingOptIn: z.boolean().optional(),
     utmSource: z.string().max(100).optional(),
     utmMedium: z.string().max(100).optional(),
     utmCampaign: z.string().max(100).optional(),
@@ -66,6 +70,18 @@ export async function POST(req: Request) {
       throw new AppError("VALIDATION_ERROR", "Ugyldig data", 400, parsed.error.flatten());
     }
 
+    const eventForAge = await prisma.event.findUnique({
+      where: { id: parsed.data.eventId },
+      select: { ageLimit: true },
+    });
+    if (
+      eventForAge?.ageLimit != null &&
+      eventForAge.ageLimit > 0 &&
+      parsed.data.ageConfirmed !== true
+    ) {
+      throw new AppError("AGE_CONFIRMATION_REQUIRED", "Bekreft alderskravet", 400);
+    }
+
     const order = await OrderService.createPendingOrder({
       eventId: parsed.data.eventId,
       sessionId: parsed.data.sessionId,
@@ -79,6 +95,10 @@ export async function POST(req: Request) {
       promoCode: parsed.data.promoCode,
       termsAccepted: parsed.data.termsAccepted,
       termsVersion: parsed.data.termsVersion,
+      privacyVersion: parsed.data.privacyVersion,
+      refundPolicyVersion: parsed.data.refundPolicyVersion,
+      marketingOptIn: parsed.data.marketingOptIn,
+      ageConfirmed: parsed.data.ageConfirmed,
       attribution: {
         utmSource: parsed.data.utmSource,
         utmMedium: parsed.data.utmMedium,

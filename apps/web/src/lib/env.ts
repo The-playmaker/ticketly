@@ -29,6 +29,8 @@ const serverSchema = z.object({
   OFFLINE_BUNDLE_SECRET: z.string().min(16).optional(),
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
   EMAIL_PROVIDER: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
   NODE_ENV: z.enum(["development", "test", "production"]).optional(),
 });
 
@@ -125,6 +127,17 @@ export function validateServerEnv(env: NodeJS.ProcessEnv = process.env): ServerE
       }
     } else {
       throw new Error(`Unsupported PAYMENT_PROVIDER=${provider} in production`);
+    }
+
+    const emailProvider = (data.EMAIL_PROVIDER ?? "console").toLowerCase().trim();
+    if (emailProvider === "console") {
+      console.warn(
+        "[env] EMAIL_PROVIDER=console in production — transactional email is BLOCKED for launch until a real provider (e.g. resend) is configured"
+      );
+    } else if (emailProvider === "resend") {
+      if (!data.RESEND_API_KEY?.trim() || !data.EMAIL_FROM?.trim()) {
+        throw new Error("RESEND_API_KEY and EMAIL_FROM required when EMAIL_PROVIDER=resend");
+      }
     }
   }
 

@@ -70,7 +70,7 @@ export function checkoutStateCopy(state: CheckoutUiState): {
     case "WAITING_CONFIRMATION":
       return {
         title: "Vi bekrefter betalingen",
-        body: "Success-siden er ikke betalingsbevis. Vi venter på bekreftelse fra betalingsleverandør.",
+        body: "Dette tar vanligvis bare et øyeblikk. Vi venter fortsatt på bekreftelse fra betalingsleverandøren.",
       };
     case "PAID":
       return {
@@ -79,7 +79,7 @@ export function checkoutStateCopy(state: CheckoutUiState): {
       };
     case "FAILED":
       return {
-        title: "Betalingen feilet",
+        title: "Betalingen gikk ikke gjennom",
         body: "Prøv igjen eller velg en annen betalingsmetode. Reservasjonen kan fortsatt være gyldig.",
       };
     case "RESERVATION_EXPIRED":

@@ -18,9 +18,32 @@ export type CheckInResponse = {
     holderName: string | null;
     ticketType: string;
     checkedInAt?: Date | null;
+    ageLimit?: number | null;
+    requireIdCheck?: boolean;
+    accessNote?: string | null;
   };
   previousCheckInAt?: Date | null;
 };
+
+function ticketDisplay(ticket: {
+  publicId: string;
+  holderName: string | null;
+  ticketType: { name: string; description?: string | null };
+  event: { ageLimit?: number | null };
+  checkedInAt?: Date | null;
+}) {
+  const ageLimit = ticket.event.ageLimit ?? null;
+  const desc = ticket.ticketType.description?.trim() || null;
+  return {
+    publicId: ticket.publicId,
+    holderName: ticket.holderName,
+    ticketType: ticket.ticketType.name,
+    checkedInAt: ticket.checkedInAt ?? null,
+    ageLimit,
+    requireIdCheck: ageLimit != null && ageLimit > 0,
+    accessNote: desc,
+  };
+}
 
 export class CheckInService {
   /**
@@ -100,11 +123,7 @@ export class CheckInService {
         return {
           result: CheckInResult.WRONG_EVENT,
           message: "FEIL ARRANGEMENT",
-          ticket: {
-            publicId: ticket.publicId,
-            holderName: ticket.holderName,
-            ticketType: ticket.ticketType.name,
-          },
+          ticket: ticketDisplay(ticket),
         };
       }
 
@@ -121,12 +140,26 @@ export class CheckInService {
         });
         return {
           result: CheckInResult.EVENT_CANCELLED,
-          message: "ARRANGEMENT KANSELLERT",
-          ticket: {
-            publicId: ticket.publicId,
-            holderName: ticket.holderName,
-            ticketType: ticket.ticketType.name,
+          message: "KANSELLERT",
+          ticket: ticketDisplay(ticket),
+        };
+      }
+
+      if (ticket.status === TicketStatus.TRANSFERRED) {
+        await tx.checkIn.create({
+          data: {
+            ticketId: ticket.id,
+            eventId: input.eventId,
+            result: CheckInResult.INVALID,
+            checkedInBy: input.checkedInBy,
+            deviceId: input.deviceId,
+            isManual: input.isManual ?? false,
           },
+        });
+        return {
+          result: CheckInResult.INVALID,
+          message: "OVERFØRT",
+          ticket: ticketDisplay(ticket),
         };
       }
 
@@ -147,12 +180,8 @@ export class CheckInService {
         });
         return {
           result,
-          message: ticket.status === TicketStatus.REFUNDED ? "REFUNDERT BILLETT" : "KANSELLERT BILLETT",
-          ticket: {
-            publicId: ticket.publicId,
-            holderName: ticket.holderName,
-            ticketType: ticket.ticketType.name,
-          },
+          message: ticket.status === TicketStatus.REFUNDED ? "REFUNDERT" : "KANSELLERT",
+          ticket: ticketDisplay(ticket),
         };
       }
 
@@ -173,9 +202,7 @@ export class CheckInService {
           message: "ALLEREDE BRUKT",
           previousCheckInAt: prev,
           ticket: {
-            publicId: ticket.publicId,
-            holderName: ticket.holderName,
-            ticketType: ticket.ticketType.name,
+            ...ticketDisplay(ticket),
             checkedInAt: prev,
           },
         };
@@ -232,11 +259,9 @@ export class CheckInService {
 
       return {
         result: CheckInResult.SUCCESS,
-        message: "GYLDIG BILLETT",
+        message: "GYLDIG",
         ticket: {
-          publicId: ticket.publicId,
-          holderName: ticket.holderName,
-          ticketType: ticket.ticketType.name,
+          ...ticketDisplay(ticket),
           checkedInAt: now,
         },
       };
@@ -272,26 +297,51 @@ export class CheckInService {
       });
 
       if (locked.eventId !== input.eventId) {
-        return { result: CheckInResult.WRONG_EVENT, message: "FEIL ARRANGEMENT" };
+        return {
+          result: CheckInResult.WRONG_EVENT,
+          message: "FEIL ARRANGEMENT",
+          ticket: ticketDisplay(locked),
+        };
       }
       if (locked.event.status === EventStatus.CANCELLED) {
-        return { result: CheckInResult.EVENT_CANCELLED, message: "ARRANGEMENT KANSELLERT" };
+        return {
+          result: CheckInResult.EVENT_CANCELLED,
+          message: "KANSELLERT",
+          ticket: ticketDisplay(locked),
+        };
+      }
+      if (locked.status === TicketStatus.TRANSFERRED) {
+        return {
+          result: CheckInResult.INVALID,
+          message: "OVERFØRT",
+          ticket: ticketDisplay(locked),
+        };
       }
       if (locked.status === TicketStatus.REFUNDED) {
-        return { result: CheckInResult.REFUNDED, message: "REFUNDERT BILLETT" };
+        return {
+          result: CheckInResult.REFUNDED,
+          message: "REFUNDERT",
+          ticket: ticketDisplay(locked),
+        };
       }
       if (locked.status === TicketStatus.CANCELLED) {
-        return { result: CheckInResult.CANCELLED, message: "KANSELLERT BILLETT" };
+        return {
+          result: CheckInResult.CANCELLED,
+          message: "KANSELLERT",
+          ticket: ticketDisplay(locked),
+        };
       }
       if (locked.status === TicketStatus.CHECKED_IN) {
+        const prev = locked.checkIns[0]?.checkedInAt ?? locked.checkedInAt;
         return {
           result: CheckInResult.ALREADY_USED,
           message: "ALLEREDE BRUKT",
-          previousCheckInAt: locked.checkIns[0]?.checkedInAt ?? locked.checkedInAt,
+          previousCheckInAt: prev,
+          ticket: { ...ticketDisplay(locked), checkedInAt: prev },
         };
       }
       if (locked.status !== TicketStatus.VALID) {
-        return { result: CheckInResult.INVALID, message: "UGYLDIG BILLETT" };
+        return { result: CheckInResult.INVALID, message: "UGYLDIG" };
       }
 
       assertTicketTransition(locked.status, TicketStatus.CHECKED_IN);
@@ -326,13 +376,8 @@ export class CheckInService {
 
       return {
         result: CheckInResult.SUCCESS,
-        message: "GYLDIG BILLETT",
-        ticket: {
-          publicId: locked.publicId,
-          holderName: locked.holderName,
-          ticketType: locked.ticketType.name,
-          checkedInAt: now,
-        },
+        message: "GYLDIG",
+        ticket: { ...ticketDisplay(locked), checkedInAt: now },
       };
     });
   }

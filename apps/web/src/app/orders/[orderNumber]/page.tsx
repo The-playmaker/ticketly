@@ -8,6 +8,7 @@ import { formatMoney } from "@/lib/utils";
 import { formatEventDateTime } from "@/lib/time";
 import { TicketQrCard } from "@/components/tickets/ticket-qr-card";
 import { PaymentStatusPoller } from "@/components/orders/payment-status-poller";
+import { ResendOrderEmailButton } from "@/components/orders/resend-order-email-button";
 import { getOptionalSession } from "@/lib/auth/session";
 import { TicketService } from "@/services/ticket-service";
 import { timingSafeEqual } from "crypto";
@@ -72,11 +73,11 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           </>
         ) : pending ? (
           <>
-            <Badge variant="warning">Venter på bekreftelse</Badge>
-            <h1 className="mt-3 font-display text-3xl">Vi bekrefter betalingen…</h1>
-            <p className="mt-2 text-zinc-400">
-              Success-siden er ikke betalingsbevis. Vi venter på bekreftet status fra
-              betalingsleverandør via webhook.
+            <Badge variant="warning">Betalingen behandles</Badge>
+            <h1 className="mt-3 font-display text-3xl">Vi bekrefter betalingen</h1>
+            <p className="mt-2 text-zinc-400">Dette tar vanligvis bare et øyeblikk.</p>
+            <p className="mt-1 text-sm text-zinc-500">
+              Vi venter fortsatt på bekreftelse fra betalingsleverandøren.
             </p>
             {hasAccessToken ? (
               <PaymentStatusPoller
@@ -88,7 +89,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           </>
         ) : (
           <>
-            <Badge variant="danger">{order.paymentStatus}</Badge>
+            <Badge variant="danger">Betalingen gikk ikke gjennom</Badge>
             <h1 className="mt-3 font-display text-3xl">Ordre {order.orderNumber}</h1>
           </>
         )}
@@ -100,10 +101,21 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             {formatEventDateTime(order.event.startsAt, order.event.timezone)} ·{" "}
             {order.event.venue?.name ?? order.event.city}
           </p>
+          {order.event.ageLimit != null ? (
+            <p className="mt-2 text-sm text-[color:var(--accent-soft)]">
+              {order.event.ageLimit}+ · Gyldig legitimasjon kreves
+            </p>
+          ) : null}
           <p className="mt-4 text-sm text-[color:var(--muted)]">Totalt</p>
           <p className="text-xl font-semibold text-[color:var(--accent-soft)]">
             {formatMoney(order.total, order.currency)}
           </p>
+          {isPaid ? (
+            <p className="mt-4 text-sm text-zinc-400">
+              Billetter og kvittering er sendt til:{" "}
+              <span className="text-zinc-200">{order.customerEmail}</span>
+            </p>
+          ) : null}
         </div>
 
         {isPaid && order.tickets.length > 0 && canViewTickets ? (
@@ -137,17 +149,54 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
                     startsAt: order.event.startsAt.toISOString(),
                     timezone: order.event.timezone,
                     venue: order.event.venue?.name ?? order.event.city ?? "",
+                    ageLimit: order.event.ageLimit,
                   }}
                   orderNumber={order.orderNumber}
                 />
               );
             })}
+            {hasAccessToken ? (
+              <ResendOrderEmailButton orderNumber={order.orderNumber} accessToken={order.accessToken} />
+            ) : null}
           </div>
         ) : isPaid && order.tickets.length > 0 ? (
           <div className="mt-10 rounded-2xl border border-amber-900/50 bg-amber-950/30 p-5 text-sm text-amber-100">
             Billetter er utstedt. Bruk lenken fra e-posten (eller logg inn som kjøper) for å vise QR-koder.
           </div>
         ) : null}
+
+        <div className="mt-10 border-t border-[color:var(--outline)]/25 pt-6 text-sm text-[color:var(--muted)]">
+          <p className="font-medium text-zinc-400">Support</p>
+          <p className="mt-1">
+            {(order.event.organization.customerServiceEmail ??
+              order.event.organization.contactEmail) && (
+              <>
+                E-post:{" "}
+                <a
+                  className="text-[color:var(--accent-soft)] hover:underline"
+                  href={`mailto:${order.event.organization.customerServiceEmail ?? order.event.organization.contactEmail}`}
+                >
+                  {order.event.organization.customerServiceEmail ??
+                    order.event.organization.contactEmail}
+                </a>
+              </>
+            )}
+          </p>
+          {order.event.organization.customerServicePhone ? (
+            <p>Telefon: {order.event.organization.customerServicePhone}</p>
+          ) : null}
+          <p className="mt-3 flex flex-wrap gap-3">
+            <Link href="/terms" className="hover:text-foreground">
+              Kjøpsvilkår
+            </Link>
+            <Link href="/privacy" className="hover:text-foreground">
+              Personvern
+            </Link>
+            <Link href="/refund-policy" className="hover:text-foreground">
+              Refusjon
+            </Link>
+          </p>
+        </div>
       </main>
     </div>
   );

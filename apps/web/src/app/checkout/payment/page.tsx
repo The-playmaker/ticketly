@@ -166,7 +166,15 @@ export default async function CheckoutPaymentPage({ searchParams }: Props) {
               <p className="mt-2">
                 Ved å betale godtar du{" "}
                 <a className="text-[color:var(--accent)] underline" href="/terms">
-                  vilkårene
+                  Kjøpsvilkår
+                </a>
+                ,{" "}
+                <a className="text-[color:var(--accent)] underline" href="/refund-policy">
+                  Refusjonspolicy
+                </a>{" "}
+                og bekrefter at du har lest{" "}
+                <a className="text-[color:var(--accent)] underline" href="/privacy">
+                  Personvernerklæringen
                 </a>
                 .
               </p>

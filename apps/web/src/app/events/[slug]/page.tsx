@@ -111,7 +111,7 @@ export default async function EventDetailPage({ params }: Props) {
               {event.ageLimit ? (
                 <>
                   <span>·</span>
-                  <Badge variant="muted">{event.ageLimit}+</Badge>
+                  <Badge variant="muted">{event.ageLimit}+ · Gyldig legitimasjon kreves</Badge>
                 </>
               ) : null}
             </div>

@@ -1,10 +1,29 @@
 # Launch Status — Ticketly
 
-Strict readiness for **real ticket sales**. Build success alone does **not** mean payment production is ready.
+Strict readiness for **real ticket sales**. Build success alone does **not** mean production is ready.
 
 Statuses: **READY** | **PARTIAL** | **BLOCKED** | **OPTIONAL AFTER LAUNCH** | **MANUAL CONFIG REQUIRED**
 
-Related: [EVENTBRITE_PARITY.md](./EVENTBRITE_PARITY.md) · [NEXI_SANDBOX_VALIDATION.md](./NEXI_SANDBOX_VALIDATION.md) · [LAUNCH_CHECKLIST.md](./LAUNCH_CHECKLIST.md)
+Related: [EVENTBRITE_PARITY.md](./EVENTBRITE_PARITY.md) · [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md) · [LAUNCH_CHECKLIST.md](./LAUNCH_CHECKLIST.md)
+
+**Internal note:** Final commercial legal review of Kjøpsvilkår / Personvern / Refusjonspolicy is recommended before live sales. Do not show this note on customer pages.
+
+---
+
+## Production hardening summary
+
+| Area | Status | Notes |
+|------|--------|-------|
+| **LEGAL TERMS** | **READY** (copy) | `/terms` — Kjøpsvilkår with dynamic seller model; versioned via `LEGAL_VERSIONS.terms` |
+| **PRIVACY** | **READY** (copy) | `/privacy` — Personvernerklæring; controller split platform vs organizer |
+| **REFUND POLICY** | **READY** (copy) | `/refund-policy` — covers mind-change, cancel, move, used/transferred tickets |
+| **AGE / ID** | **READY** (code) | Dynamic `{ageLimit}+ · Gyldig legitimasjon kreves`; checkout ack; scanner ID check |
+| **EMAIL DELIVERY** | **BLOCKED** | Code supports `resend`; production still blocked until `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` + `EMAIL_FROM` |
+| **PAYMENTS** | **PARTIAL** | Dual provider READY in code; live keys / public webhook **MANUAL CONFIG** |
+| **SCANNER** | **READY** (code) | Validity → ID/age → name → type → notes; clear INVALID states |
+| **TICKETS** | **READY** (code) | Once-only issue; email failure does not invalidate tickets |
+| **SECURITY** | **READY** (code) | No raw QR/webhook jargon on customer UI; secrets stay server-side |
+| **SUPPORT** | **READY** (code) | Order support contact from org fields; resend email rate-limited |
 
 ---
 
@@ -16,66 +35,20 @@ Related: [EVENTBRITE_PARITY.md](./EVENTBRITE_PARITY.md) · [NEXI_SANDBOX_VALIDAT
 | Recommended first sales (while Nexi onboards) | `PAYMENT_PROVIDER=stripe` |
 | Long-term primary target | `PAYMENT_PROVIDER=nexi` |
 
-**Nexi Checkout:** ONBOARDING / TEST (code READY; live keys & public webhook not verified here)
-
-**Stripe:** TEST / READY for sales when production keys + webhook configured (independent of Nexi)
-
-When Stripe is active and verified: **Ticketly: READY FOR SALES USING STRIPE**
-
-Switching to Nexi later does **not** change historical Stripe orders.
-
 ---
 
-## Capability report (this phase)
+## Capability report
 
 | Area | Status | Notes |
 |------|--------|-------|
-| **PAYMENTS** | **PARTIAL** | Dual provider architecture READY. Nexi sandbox live E2E **BLOCKED** without TEST keys. Stripe production-usable when keys/webhook set. No auto-failover. |
-| **PROMO** | **READY** | Backend pricing, FOR UPDATE usage limits, admin Marketing / Promo Codes UI. |
-| **WAITLIST** | **READY** | Join / invite / claim / expire; sold-out CTA; admin invite next 10/25/custom. |
-| **BUNDLES** | **PARTIAL** | `admissionCount` + `isBundle` → N individual QR tickets. Table packages later. |
-| **REMINDERS** | **PARTIAL** | 24h/3h jobs + cron; organizer toggles; ESP delivery webhooks optional. |
-| **EXPORTS** | **READY** | CSV/XLSX for orders, tickets, attendees, guestlist, check-ins, refunds, promos. Org-scoped. |
-| **SUPPORT** | **READY** | Org-wide search + order detail (payment, tickets, transfers, notifications, audit). Masked provider refs. |
-| **EVENT SERIES** | **PARTIAL** | `EventSeries` model + duplicate event. Recurring generation UI optional after launch. |
-
----
-
-## Payment providers (detail)
-
-### Nexi Checkout
-
-| Criterion | Status |
-|-----------|--------|
-| Code + webhook idempotency | READY |
-| Sandbox live payment | BLOCKED (no TEST keys in this environment) |
-| Production merchant | ONBOARDING |
-| Mark READY when | All sandbox READY criteria in checklist pass |
-
-### Stripe (backup / temporary primary)
-
-| Criterion | Status |
-|-----------|--------|
-| `StripePaymentProvider` + mock | READY |
-| Webhook `POST /api/payments/stripe/webhook` | READY (signature + unique event id) |
-| Provider persisted on Payment | READY |
-| Refunds use stored provider | READY (proven in tests after default → Nexi) |
-| Production keys | MANUAL CONFIG REQUIRED |
-
-**STRIPE BACKUP checklist**
-
-- [ ] Correct legal business Stripe account
-- [ ] Business verification complete
-- [ ] Production API keys configured
-- [ ] Production webhook configured (`/api/payments/stripe/webhook`)
-- [ ] Correct bank settlement account
-- [ ] Statement descriptor reviewed
-- [ ] Test payment completed
-- [ ] Refund tested
-- [ ] QR generated
-- [ ] Refunded QR rejected
-
-Stripe may be marked **READY** independently of Nexi.
+| **PAYMENTS** | **PARTIAL** | Dual provider architecture READY. Live keys & public webhook required. |
+| **PROMO** | **READY** | Backend + admin |
+| **WAITLIST** | **READY** | Join / invite / claim |
+| **BUNDLES** | **PARTIAL** | `admissionCount` / `isBundle` |
+| **REMINDERS** | **PARTIAL** | Cron jobs; ESP delivery optional |
+| **EXPORTS** | **READY** | CSV/XLSX |
+| **SUPPORT** | **READY** | Org search + order detail |
+| **EVENT SERIES** | **PARTIAL** | Model + duplicate |
 
 ---
 
@@ -83,31 +56,32 @@ Stripe may be marked **READY** independently of Nexi.
 
 | Area | Status | Notes |
 |------|--------|-------|
-| **Database** | **READY** | Migrations include Eventbrite parity (`EventSeries`, waitlist, bundles, reminders). |
-| **Auth** | **MANUAL CONFIG REQUIRED** | Production `AUTH_SECRET` on Vercel. |
-| **Webhook (Nexi public)** | **BLOCKED** | Idempotency READY in code/tests; public HTTPS not proven. |
-| **Email** | **BLOCKED** | Still `EMAIL_PROVIDER=console` until ESP configured. |
-| **Ticket issuing** | **READY** | Once-only; bundles multiply by `admissionCount`. |
-| **QR / Scanner** | **READY** (code) | Live after-payment depends on payment provider smoke. |
-| **Refund** | **READY** (code) | Uses payment.provider; live provider refund pending keys. |
-| **Admin** | **READY** | Promos, waitlist, support search, dual-provider diagnostics, exports. |
-| **Vercel** | **MANUAL CONFIG REQUIRED** | Deploy + env + webhooks. |
+| **Database** | **READY** | Migrations include Eventbrite parity |
+| **Auth** | **MANUAL CONFIG REQUIRED** | Production `AUTH_SECRET` |
+| **Webhook (public HTTPS)** | **BLOCKED** until Preview/Production URL + provider endpoint configured |
+| **Email** | **BLOCKED** | `EMAIL_PROVIDER=console` forbidden for launch; use Resend |
+| **Ticket issuing** | **READY** | Independent of email success |
+| **QR / Scanner** | **READY** (code) | Age/ID hierarchy on success |
+| **Refund** | **READY** (code) | Uses stored payment.provider |
+| **Vercel** | **MANUAL CONFIG REQUIRED** | Root `apps/web`; Preview env + staging DB |
 
 ---
 
-## Launch priority
+## Do not mark PRODUCTION LAUNCH READY if
 
-**P0** — Stripe production fallback · Nexi remains primary target  
-**P1** — Promo · Waitlist · Exports · Support lookup  
-**P2** — Reminders · Bundles · Event series / duplicate  
-
-Do not delay sales launch for P2.
+- Real email provider not configured (`EMAIL_PROVIDER=console`)
+- Payment provider account not live-enabled / webhooks not public
+- Legal seller fields missing on organizations that sell
+- `/terms`, `/privacy`, `/refund-policy` missing (now present)
+- Database migrations pending on staging/production
+- Staging/production webhook secrets unset
 
 ---
 
 ## Absolute rules
 
-1. Never change payment provider for an existing payment/order.
-2. Never auto-failover mid-payment from Nexi → Stripe.
-3. Browser redirect alone never marks an order paid.
-4. Mock payments forbidden in production.
+- No mid-payment provider switch
+- Redirect ≠ paid
+- Mock payments forbidden in production
+- Email failure must not invalidate paid tickets
+- Do not hardcode seller company names globally

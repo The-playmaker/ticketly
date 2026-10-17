@@ -14,7 +14,7 @@ import {
   hashTicketToken,
   resolveRawTicketToken,
 } from "@/lib/tickets/token";
-import { sendOrderConfirmationEmail } from "@/lib/email/templates";
+import { sendOrderConfirmationEmail, sendTicketDeliveryEmail } from "@/lib/email/templates";
 import { assertTicketTransition } from "@/services/ticket-state-machine";
 import { writeAuditLog } from "@/lib/audit";
 import { AppError } from "@/lib/api-error";
@@ -23,7 +23,11 @@ export class TicketService {
   static async issueTicketsForPaidOrder(orderId: string) {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { items: true, event: true, tickets: true },
+      include: {
+        items: true,
+        tickets: true,
+        event: { include: { organization: true, venue: true } },
+      },
     });
 
     if (!order) throw new AppError("ORDER_NOT_FOUND", "Order not found", 404);
@@ -119,18 +123,41 @@ export class TicketService {
     });
 
     const appUrl = process.env.APP_URL ?? "http://localhost:3456";
+    const ticketsUrl = `${appUrl}/orders/${order.orderNumber}?t=${order.accessToken}`;
+    // Email failure must never invalidate paid order / issued tickets
     try {
+      const org = order.event.organization;
       await sendOrderConfirmationEmail({
         to: order.customerEmail,
         customerName: `${order.customerFirstName} ${order.customerLastName}`,
         orderNumber: order.orderNumber,
         eventName: order.event.name,
+        venue: order.event.venue?.name ?? order.event.city ?? undefined,
+        quantity: tickets.length,
         total: order.total,
         currency: order.currency,
-        ticketsUrl: `${appUrl}/orders/${order.orderNumber}?t=${order.accessToken}`,
+        sellerName: org?.legalName ?? org?.name,
+        ticketsUrl,
+        supportEmail: org?.customerServiceEmail ?? org?.contactEmail,
+        supportPhone: org?.customerServicePhone,
+        orderId: order.id,
+        eventId: order.eventId,
+        userId: order.customerId ?? undefined,
+      });
+      await sendTicketDeliveryEmail({
+        to: order.customerEmail,
+        customerName: `${order.customerFirstName} ${order.customerLastName}`,
+        eventName: order.event.name,
+        venue: order.event.venue?.name ?? order.event.city ?? undefined,
+        ageLimit: order.event.ageLimit,
+        ticketsUrl,
+        supportEmail: org?.customerServiceEmail ?? org?.contactEmail,
+        supportPhone: org?.customerServicePhone,
+        orderId: order.id,
+        eventId: order.eventId,
       });
     } catch (err) {
-      console.error("Failed to send order confirmation email", err);
+      console.error("Failed to send order/ticket email", err);
     }
 
     return tickets;

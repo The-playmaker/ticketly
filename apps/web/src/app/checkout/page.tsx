@@ -33,6 +33,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
     where: { slug: params.event },
     include: {
       organization: true,
+      sellerOrganization: true,
       ticketTypes: { include: { priceTiers: true } },
     },
   });
@@ -44,6 +45,8 @@ export default async function CheckoutPage({ searchParams }: Props) {
     ticketTypes: event.ticketTypes,
     items,
   });
+
+  const sellerOrg = event.sellerOrganization ?? event.organization;
 
   return (
     <div>
@@ -60,6 +63,11 @@ export default async function CheckoutPage({ searchParams }: Props) {
             sessionId={params.session}
             items={items}
             estimatedTotal={pricing.total}
+            ageLimit={event.ageLimit}
+            seller={{
+              legalName: sellerOrg.legalName ?? sellerOrg.name,
+              organizationNumber: sellerOrg.organizationNumber,
+            }}
           />
         </div>
       </main>

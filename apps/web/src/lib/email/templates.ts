@@ -1,33 +1,147 @@
 import { getEmailProvider } from "./provider";
 import { formatMoney } from "@/lib/utils";
+import { NotificationService } from "@/services/notification-service";
 
 const from = () => ({
   email: process.env.EMAIL_FROM ?? "noreply@ticketly.local",
   name: "Ticketly",
 });
 
+function supportBlock(supportEmail?: string | null, supportPhone?: string | null) {
+  const lines = [];
+  if (supportEmail) lines.push(`E-post: ${supportEmail}`);
+  if (supportPhone) lines.push(`Telefon: ${supportPhone}`);
+  if (!lines.length) return "Kontakt support via ordresiden hvis du trenger hjelp.";
+  return lines.join("\n");
+}
+
 export async function sendOrderConfirmationEmail(params: {
   to: string;
   customerName: string;
   orderNumber: string;
   eventName: string;
+  eventWhen?: string;
+  venue?: string;
+  quantity?: number;
   total: number;
   currency: string;
+  sellerName?: string;
   ticketsUrl: string;
+  supportEmail?: string | null;
+  supportPhone?: string | null;
+  orderId?: string;
+  eventId?: string;
+  userId?: string;
 }) {
+  const subject = `Ordrebekreftelse – ${params.eventName}`;
+  const text = `Takk for kjøpet, ${params.customerName}!
+
+Ordrenummer: ${params.orderNumber}
+Arrangement: ${params.eventName}
+${params.eventWhen ? `Tid: ${params.eventWhen}\n` : ""}${params.venue ? `Sted: ${params.venue}\n` : ""}${
+    params.quantity != null ? `Antall billetter: ${params.quantity}\n` : ""
+  }Totalt: ${formatMoney(params.total, params.currency)}
+${params.sellerName ? `Selger: ${params.sellerName}\n` : ""}
+Se billetter: ${params.ticketsUrl}
+
+${supportBlock(params.supportEmail, params.supportPhone)}`;
+
+  const html = `<h1>Ordrebekreftelse</h1>
+<p>Hei ${params.customerName},</p>
+<p>Takk for kjøpet.</p>
+<ul>
+<li>Ordrenummer: <strong>${params.orderNumber}</strong></li>
+<li>Arrangement: <strong>${params.eventName}</strong></li>
+${params.eventWhen ? `<li>Tid: ${params.eventWhen}</li>` : ""}
+${params.venue ? `<li>Sted: ${params.venue}</li>` : ""}
+${params.quantity != null ? `<li>Antall: ${params.quantity}</li>` : ""}
+<li>Totalt: <strong>${formatMoney(params.total, params.currency)}</strong></li>
+${params.sellerName ? `<li>Selger: ${params.sellerName}</li>` : ""}
+</ul>
+<p><a href="${params.ticketsUrl}">Vis billetter</a></p>
+<p>${supportBlock(params.supportEmail, params.supportPhone).replace(/\n/g, "<br/>")}</p>`;
+
+  if (params.orderId) {
+    return NotificationService.logAndSend({
+      to: params.to,
+      toName: params.customerName,
+      subject,
+      html,
+      text,
+      orderId: params.orderId,
+      eventId: params.eventId,
+      userId: params.userId,
+    });
+  }
+
   const provider = getEmailProvider();
   await provider.send({
     from: from(),
     to: { email: params.to, name: params.customerName },
-    subject: `Ordrebekreftelse ${params.orderNumber} – ${params.eventName}`,
-    text: `Takk for kjøpet, ${params.customerName}!\n\nOrdrenummer: ${params.orderNumber}\nArrangement: ${params.eventName}\nTotalt: ${formatMoney(params.total, params.currency)}\n\nSe billettene dine: ${params.ticketsUrl}`,
-    html: `<h1>Takk for kjøpet!</h1>
-<p>Hei ${params.customerName},</p>
-<p>Ordrenummer: <strong>${params.orderNumber}</strong></p>
-<p>Arrangement: <strong>${params.eventName}</strong></p>
-<p>Totalt: <strong>${formatMoney(params.total, params.currency)}</strong></p>
-<p><a href="${params.ticketsUrl}">Vis billetter</a></p>`,
+    subject,
+    text,
+    html,
   });
+  return { ok: true as const };
+}
+
+export async function sendTicketDeliveryEmail(params: {
+  to: string;
+  customerName: string;
+  eventName: string;
+  eventWhen?: string;
+  venue?: string;
+  ageLimit?: number | null;
+  ticketsUrl: string;
+  supportEmail?: string | null;
+  supportPhone?: string | null;
+  orderId?: string;
+  eventId?: string;
+}) {
+  const subject = `Dine billetter til ${params.eventName}`;
+  const ageLine =
+    params.ageLimit != null
+      ? `${params.ageLimit}+ · Gyldig legitimasjon kan bli krevd ved inngang.`
+      : null;
+  const text = `Hei ${params.customerName},
+
+Her er billettene dine til ${params.eventName}.
+${params.eventWhen ? `Tid: ${params.eventWhen}\n` : ""}${params.venue ? `Sted: ${params.venue}\n` : ""}${
+    ageLine ? `${ageLine}\n` : ""
+  }
+Åpne billetter: ${params.ticketsUrl}
+
+${supportBlock(params.supportEmail, params.supportPhone)}`;
+
+  const html = `<h1>Dine billetter</h1>
+<p>Hei ${params.customerName},</p>
+<p>Billettene dine til <strong>${params.eventName}</strong> er klare.</p>
+${params.eventWhen ? `<p>Tid: ${params.eventWhen}</p>` : ""}
+${params.venue ? `<p>Sted: ${params.venue}</p>` : ""}
+${ageLine ? `<p><strong>${ageLine}</strong></p>` : ""}
+<p><a href="${params.ticketsUrl}">Vis billetter</a></p>
+<p>${supportBlock(params.supportEmail, params.supportPhone).replace(/\n/g, "<br/>")}</p>`;
+
+  if (params.orderId) {
+    return NotificationService.logAndSend({
+      to: params.to,
+      toName: params.customerName,
+      subject,
+      html,
+      text,
+      orderId: params.orderId,
+      eventId: params.eventId,
+    });
+  }
+
+  await getEmailProvider().send({
+    from: from(),
+    to: { email: params.to, name: params.customerName },
+    subject,
+    text,
+    html,
+  });
+  return { ok: true as const };
 }
 
 export async function sendTicketTransferEmail(params: {
@@ -35,16 +149,22 @@ export async function sendTicketTransferEmail(params: {
   toName: string;
   eventName: string;
   ticketUrl: string;
+  ageLimit?: number | null;
 }) {
   const provider = getEmailProvider();
+  const age =
+    params.ageLimit != null
+      ? `\nAlderskrav: ${params.ageLimit}+ · Gyldig legitimasjon kan bli krevd.`
+      : "";
   await provider.send({
     from: from(),
     to: { email: params.to, name: params.toName },
     subject: `Du har mottatt en billett til ${params.eventName}`,
-    text: `Hei ${params.toName},\n\nDu har mottatt en billett til ${params.eventName}.\nÅpne billetten: ${params.ticketUrl}`,
+    text: `Hei ${params.toName},\n\nDu har mottatt en billett til ${params.eventName}.${age}\nÅpne billetten: ${params.ticketUrl}`,
     html: `<h1>Du har mottatt en billett</h1>
 <p>Hei ${params.toName},</p>
 <p>Du har mottatt en billett til <strong>${params.eventName}</strong>.</p>
+${params.ageLimit != null ? `<p>${params.ageLimit}+ · Gyldig legitimasjon kan bli krevd.</p>` : ""}
 <p><a href="${params.ticketUrl}">Åpne billett</a></p>`,
   });
 }
@@ -55,16 +175,35 @@ export async function sendRefundEmail(params: {
   orderNumber: string;
   amount: number;
   currency: string;
+  orderId?: string;
+  eventId?: string;
 }) {
-  const provider = getEmailProvider();
-  await provider.send({
+  const subject = `Refusjon for ordre ${params.orderNumber}`;
+  const text = `Hei ${params.customerName},\n\nVi har startet refusjon på ${formatMoney(params.amount, params.currency)} for ordre ${params.orderNumber}.\nTilbakebetaling sendes til samme betalingsmåte der dette er mulig.`;
+  const html = `<h1>Refusjon</h1><p>Hei ${params.customerName},</p>
+<p>Vi har startet refusjon på <strong>${formatMoney(params.amount, params.currency)}</strong> for ordre <strong>${params.orderNumber}</strong>.</p>
+<p>Tilbakebetaling sendes til samme betalingsmåte der dette er mulig.</p>`;
+
+  if (params.orderId) {
+    return NotificationService.logAndSend({
+      to: params.to,
+      toName: params.customerName,
+      subject,
+      html,
+      text,
+      orderId: params.orderId,
+      eventId: params.eventId,
+    });
+  }
+
+  await getEmailProvider().send({
     from: from(),
     to: { email: params.to, name: params.customerName },
-    subject: `Refusjon for ordre ${params.orderNumber}`,
-    text: `Hei ${params.customerName},\n\nVi har refundert ${formatMoney(params.amount, params.currency)} for ordre ${params.orderNumber}.`,
-    html: `<h1>Refusjon</h1><p>Hei ${params.customerName},</p>
-<p>Vi har refundert <strong>${formatMoney(params.amount, params.currency)}</strong> for ordre <strong>${params.orderNumber}</strong>.</p>`,
+    subject,
+    text,
+    html,
   });
+  return { ok: true as const };
 }
 
 export async function sendEventCancelledEmail(params: {

@@ -158,6 +158,10 @@ export class OrderService {
     promoCode?: string;
     termsAccepted?: boolean;
     termsVersion?: string;
+    privacyVersion?: string;
+    refundPolicyVersion?: string;
+    marketingOptIn?: boolean;
+    ageConfirmed?: boolean;
     attribution?: {
       utmSource?: string;
       utmMedium?: string;
@@ -172,7 +176,7 @@ export class OrderService {
       quantity: i.quantity,
     }));
 
-    if (input.termsAccepted === false) {
+    if (input.termsAccepted !== true) {
       throw new AppError("TERMS_REQUIRED", "Du må godta vilkårene", 400);
     }
 
@@ -312,6 +316,9 @@ export class OrderService {
           reservationSessionId: input.sessionId,
           termsVersion,
           termsAcceptedAt: new Date(),
+          privacyVersion: input.privacyVersion,
+          refundPolicyVersion: input.refundPolicyVersion,
+          marketingOptIn: Boolean(input.marketingOptIn),
           utmSource: input.attribution?.utmSource?.slice(0, 100),
           utmMedium: input.attribution?.utmMedium?.slice(0, 100),
           utmCampaign: input.attribution?.utmCampaign?.slice(0, 100),

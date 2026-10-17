@@ -790,6 +790,8 @@ model Order {
   reservationSessionId String?
   termsVersion         String?
   termsAcceptedAt      DateTime?
+  privacyVersion       String?
+  refundPolicyVersion  String?
   refundPolicyType     RefundPolicyType?
   marketingOptIn       Boolean       @default(false) // NEVER auto-set from purchase alone
   /// Unguessable token required to view QR / PDF for guest checkout
