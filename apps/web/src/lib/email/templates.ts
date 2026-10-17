@@ -64,6 +64,7 @@ export async function sendOrderConfirmationEmail(params: {
   orderId?: string;
   eventId?: string;
   userId?: string;
+  coverImageUrl?: string | null;
 }) {
   const subject = `Ordrebekreftelse – ${params.eventName}`;
   const ageLine =
@@ -117,6 +118,7 @@ ${detailListHtml([
     supportEmail: params.supportEmail,
     supportPhone: params.supportPhone,
     sellerName: params.sellerName,
+    coverImageUrl: params.coverImageUrl,
   });
 
   return deliver({
@@ -144,6 +146,7 @@ export async function sendTicketDeliveryEmail(params: {
   supportPhone?: string | null;
   orderId?: string;
   eventId?: string;
+  coverImageUrl?: string | null;
 }) {
   const subject = `Billettene dine – ${params.eventName}`;
   const ageLine =
@@ -185,6 +188,7 @@ ${detailListHtml([
     cta: { href: params.ticketsUrl, label: "Vis billetter" },
     supportEmail: params.supportEmail,
     supportPhone: params.supportPhone,
+    coverImageUrl: params.coverImageUrl,
   });
 
   return deliver({

@@ -76,7 +76,7 @@ Set these on the Vercel project for the **Preview** environment. Do not commit s
 |----------|--------|
 | `UPSTASH_REDIS_REST_URL` | Upstash REST URL; in-memory rate limit if unset |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash REST token |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob for event images |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob read-write token for event cover uploads (server-only; required for admin image upload) |
 | `RESERVATION_TTL_MINUTES` | Default `10` |
 | `PAYMENT_GRACE_MINUTES` | Default `15` |
 | `TERMS_VERSION` | e.g. `2026-10` |

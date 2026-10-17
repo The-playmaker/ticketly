@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const links = [
   { suffix: "", label: "Oversikt" },
+  { suffix: "/edit", label: "Rediger" },
   { suffix: "/orders", label: "Ordrer" },
   { suffix: "/attendees", label: "Deltakere" },
   { suffix: "/waitlist", label: "Venteliste" },

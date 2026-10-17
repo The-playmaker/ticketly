@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { EventService } from "@/services/event-service";
 import { formatEventDate, formatEventTime } from "@/lib/time";
 import { formatMoney } from "@/lib/utils";
+import { withCoverCacheBust } from "@/lib/media/cover-url";
 import { getAvailableQuantity, resolveUnitPrice } from "@/services/reservation-service";
 import { TicketSelector } from "@/components/checkout/ticket-selector";
 import { WaitlistJoinForm } from "@/components/checkout/waitlist-join-form";
@@ -25,7 +26,8 @@ export async function generateMetadata({ params }: Props) {
     `${event.name} – billetter via Ticketly`;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "http://localhost:3456";
   const url = `${appUrl.replace(/\/$/, "")}/events/${event.slug}`;
-  const images = event.coverImageUrl ? [{ url: event.coverImageUrl }] : undefined;
+  const cover = withCoverCacheBust(event.coverImageUrl, event.updatedAt);
+  const images = cover ? [{ url: cover, width: 1200, height: 630 }] : undefined;
   const robots =
     event.visibility === "PUBLIC" && event.status === "PUBLISHED"
       ? { index: true, follow: true }
@@ -46,7 +48,7 @@ export async function generateMetadata({ params }: Props) {
       card: "summary_large_image",
       title,
       description,
-      images: event.coverImageUrl ? [event.coverImageUrl] : undefined,
+      images: cover ? [cover] : undefined,
     },
   };
 }
@@ -55,6 +57,7 @@ export default async function EventDetailPage({ params }: Props) {
   const { slug } = await params;
   const event = await EventService.getBySlug(slug);
   if (!event) notFound();
+  const cover = withCoverCacheBust(event.coverImageUrl, event.updatedAt);
 
   const salesPaused = Boolean(event.salesPausedAt) || event.status === "PAUSED";
   const soldOutDisplay = event.soldOutDisplay;
@@ -87,11 +90,11 @@ export default async function EventDetailPage({ params }: Props) {
       <TrackPageView eventId={event.id} organizationId={event.organizationId} />
       <SiteHeader />
       <main>
-        <div className="relative h-[42vh] min-h-[280px] w-full overflow-hidden border-b border-[color:var(--outline)]/30">
-          {event.coverImageUrl ? (
-            <Image src={event.coverImageUrl} alt={event.name} fill className="object-cover" priority />
+        <div className="relative aspect-[16/9] max-h-[52vh] min-h-[240px] w-full overflow-hidden border-b border-[color:var(--outline)]/30 sm:max-h-[560px]">
+          {cover ? (
+            <Image src={cover} alt={event.name} fill className="object-cover" priority sizes="100vw" />
           ) : (
-            <div className="h-full bg-zinc-900" />
+            <div className="h-full bg-[color:var(--surface-high)]" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/50 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 mx-auto max-w-6xl px-4 pb-8">

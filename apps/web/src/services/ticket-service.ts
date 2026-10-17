@@ -16,6 +16,7 @@ import {
 } from "@/lib/tickets/token";
 import { sendOrderConfirmationEmail, sendTicketDeliveryEmail } from "@/lib/email/templates";
 import { formatEventDateTime } from "@/lib/time";
+import { withCoverCacheBust } from "@/lib/media/cover-url";
 import { assertTicketTransition } from "@/services/ticket-state-machine";
 import { writeAuditLog } from "@/lib/audit";
 import { AppError } from "@/lib/api-error";
@@ -130,6 +131,10 @@ export class TicketService {
     try {
       const eventWhen = formatEventDateTime(order.event.startsAt, order.event.timezone);
       const org = order.event.organization;
+      const coverImageUrl = withCoverCacheBust(
+        order.event.coverImageUrl,
+        order.event.updatedAt
+      );
       await sendOrderConfirmationEmail({
         to: order.customerEmail,
         customerName: `${order.customerFirstName} ${order.customerLastName}`,
@@ -148,6 +153,7 @@ export class TicketService {
         orderId: order.id,
         eventId: order.eventId,
         userId: order.customerId ?? undefined,
+        coverImageUrl,
       });
       await sendTicketDeliveryEmail({
         to: order.customerEmail,
@@ -162,6 +168,7 @@ export class TicketService {
         supportPhone: org?.customerServicePhone,
         orderId: order.id,
         eventId: order.eventId,
+        coverImageUrl,
       });
     } catch (err) {
       secureLogError("Failed to send order/ticket email", err);

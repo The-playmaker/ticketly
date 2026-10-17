@@ -139,6 +139,9 @@ export function CreateEventWizard({ organizationId, defaultServiceFee, currency 
               onChange={(e) => set("coverImageUrl", e.target.value)}
               placeholder="https://..."
             />
+            <p className="mt-1 text-xs text-zinc-500">
+              Etter opprettelse kan du laste opp cover fra enheten under «Rediger arrangement».
+            </p>
           </div>
           <Button type="button" onClick={() => setStep(2)} disabled={!form.name.trim()}>
             Neste

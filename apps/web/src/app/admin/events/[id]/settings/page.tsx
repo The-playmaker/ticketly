@@ -7,6 +7,7 @@ import { eventInventorySnapshot, inventorySnapshot } from "@/services/inventory-
 import { DuplicateEventButton } from "@/components/admin/duplicate-event-button";
 import { EventParitySettingsForm } from "@/components/admin/event-parity-settings-form";
 import { EventOwnershipForm } from "@/components/admin/event-ownership-form";
+import { EditEventLink } from "@/components/admin/edit-event-link";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -54,6 +55,13 @@ export default async function EventSettingsPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-[color:var(--muted)]">
+          Full redigering av tittel, billetter, cover og mer.
+        </p>
+        <EditEventLink eventId={full.id} />
+      </div>
+
       <section className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5 text-sm">
         <h2 className="font-medium">Arrangement</h2>
         <dl className="mt-3 grid gap-2 sm:grid-cols-2">

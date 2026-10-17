@@ -145,6 +145,21 @@ export async function requireEventAccess(eventId: string) {
   return { session, user, event };
 }
 
+/**
+ * Event create/edit/cover upload — organizer admins / event managers / SUPER_ADMIN.
+ * Door staff can scan (requireEventAccess) but cannot mutate event metadata or images.
+ */
+export async function requireEventManageAccess(eventId: string) {
+  const { session, user, event } = await requireEventAccess(eventId);
+  if (isSuperAdmin(user)) {
+    return { session, user, event };
+  }
+  if (!canManageEvents(user, event.organizationId)) {
+    throw new AppError("FORBIDDEN", "Ingen tilgang til å redigere arrangementet", 403);
+  }
+  return { session, user, event };
+}
+
 export async function requireOrgAdmin(organizationId: string) {
   const session = await requireAdminSession();
   const user = sessionUser(session);

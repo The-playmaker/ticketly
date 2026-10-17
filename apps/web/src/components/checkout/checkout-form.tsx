@@ -33,6 +33,7 @@ export function CheckoutForm({
   items,
   estimatedTotal,
   ageLimit,
+  coverImageUrl,
   seller,
 }: {
   eventId: string;
@@ -41,11 +42,14 @@ export function CheckoutForm({
   items: { ticketTypeId: string; quantity: number }[];
   estimatedTotal: number;
   ageLimit?: number | null;
+  /** Cache-busted cover URL shown on parent; kept for component consumers/tests. */
+  coverImageUrl?: string | null;
   seller?: {
     legalName: string;
     organizationNumber?: string | null;
   } | null;
 }) {
+  void coverImageUrl;
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loading, setLoading] = useState(false);

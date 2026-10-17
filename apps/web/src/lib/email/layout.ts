@@ -54,6 +54,8 @@ export function wrapEmailHtml(params: {
   supportEmail?: string | null;
   supportPhone?: string | null;
   sellerName?: string | null;
+  /** Optional event cover shown above the title band (ticket / order mail). */
+  coverImageUrl?: string | null;
 }): string {
   const links = emailLegalLinks();
   const supportHtml = supportLinesText(params.supportEmail, params.supportPhone)
@@ -77,6 +79,15 @@ export function wrapEmailHtml(params: {
       ? `<p style="margin:0 0 8px;font-size:13px;color:${COLORS.muted};">Selger: ${escapeHtml(params.sellerName)}</p>`
       : "";
 
+  const coverBlock =
+    params.coverImageUrl != null && params.coverImageUrl.trim()
+      ? `<tr>
+            <td style="padding:0;line-height:0;font-size:0;">
+              <img src="${escapeHtml(params.coverImageUrl)}" alt="" width="560" style="display:block;width:100%;max-width:560px;height:auto;border:0;"/>
+            </td>
+          </tr>`
+      : "";
+
   return `<!DOCTYPE html>
 <html lang="nb">
 <head>
@@ -93,6 +104,7 @@ export function wrapEmailHtml(params: {
     <tr>
       <td align="center" style="padding:24px 12px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:${COLORS.surface};border:1px solid ${COLORS.outline};border-radius:12px;overflow:hidden;">
+          ${coverBlock}
           <tr>
             <td style="background:${COLORS.surfaceHigh};padding:20px 32px;border-bottom:3px solid ${COLORS.accent};">
               <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:${COLORS.accent};font-weight:700;">

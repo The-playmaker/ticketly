@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { formatEventDateTime } from "@/lib/time";
 import { formatMoney } from "@/lib/utils";
+import { withCoverCacheBust } from "@/lib/media/cover-url";
 import { getAvailableQuantity, resolveUnitPrice } from "@/services/reservation-service";
 import type { Event, Organization, TicketPriceTier, TicketType, Venue } from "@prisma/client";
 
@@ -26,15 +27,18 @@ export function EventCard({ event }: EventCardProps) {
       return avail > 0 && avail <= Math.max(10, Math.floor(t.quantityReleased * 0.1));
     });
 
+  const cover = withCoverCacheBust(event.coverImageUrl, event.updatedAt);
+
   return (
     <Link
       href={`/events/${event.slug}`}
       className="group relative block overflow-hidden rounded-lg border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] transition hover:border-[color:var(--accent)]/50"
+      data-testid="event-card"
     >
-      <div className="relative aspect-[16/10] overflow-hidden bg-[color:var(--surface-high)]">
-        {event.coverImageUrl ? (
+      <div className="relative aspect-[16/9] overflow-hidden bg-[color:var(--surface-high)]">
+        {cover ? (
           <Image
-            src={event.coverImageUrl}
+            src={cover}
             alt={event.name}
             fill
             className="object-cover transition duration-500 group-hover:scale-105"
