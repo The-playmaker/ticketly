@@ -35,6 +35,35 @@ const nextConfig: NextConfig = {
         },
       ],
     },
+    // Access-token URLs and ticket credentials must not leak via Referer
+    {
+      source: "/orders/:path*",
+      headers: [
+        { key: "Referrer-Policy", value: "no-referrer" },
+        { key: "Cache-Control", value: "private, no-store" },
+      ],
+    },
+    {
+      source: "/my/tickets",
+      headers: [
+        { key: "Referrer-Policy", value: "no-referrer" },
+        { key: "Cache-Control", value: "private, no-store" },
+      ],
+    },
+    {
+      source: "/t/:path*",
+      headers: [
+        { key: "Referrer-Policy", value: "no-referrer" },
+        { key: "Cache-Control", value: "private, no-store" },
+      ],
+    },
+    {
+      source: "/api/tickets/:path*",
+      headers: [
+        { key: "Referrer-Policy", value: "no-referrer" },
+        { key: "Cache-Control", value: "private, no-store" },
+      ],
+    },
   ],
 };
 

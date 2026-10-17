@@ -57,12 +57,32 @@ export async function GET(req: Request, { params }: Props) {
 
   const status = getTicketStatusPresentation(ticket.status);
   const rawToken = resolveRawTicketToken(ticket);
-  const canShowQr = Boolean(rawToken) && !status.qrDisabled;
+  // Dynamic QR events must not embed long-lived static secrets in printable PDFs
+  const dynamicMode = ticket.event.qrMode === "DYNAMIC_QR";
+  const canShowQr = Boolean(rawToken) && !status.qrDisabled && !dynamicMode;
+
+  if (dynamicMode && !status.qrDisabled) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "DYNAMIC_QR_PDF_UNSUPPORTED",
+          message: "PDF med QR er utilgjengelig for dynamisk QR — bruk app/live QR",
+        },
+      },
+      {
+        status: 409,
+        headers: { "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer" },
+      }
+    );
+  }
 
   if (!rawToken && !status.qrDisabled) {
     return NextResponse.json(
       { error: { code: "TOKEN_UNAVAILABLE", message: "QR utilgjengelig" } },
-      { status: 409 }
+      {
+        status: 409,
+        headers: { "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer" },
+      }
     );
   }
 

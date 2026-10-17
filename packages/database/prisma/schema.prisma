@@ -97,6 +97,12 @@ enum TicketStatus {
   RESERVED
 }
 
+/// Door QR presentation mode. Production default remains STATIC_QR until DYNAMIC_QR lifecycle is complete.
+enum TicketQrMode {
+  STATIC_QR
+  DYNAMIC_QR
+}
+
 enum DiscountType {
   PERCENTAGE
   FIXED
@@ -481,6 +487,10 @@ model Event {
   lowStockThreshold    Int             @default(10)
   soldOutDisplay       SoldOutDisplayMode @default(SOLD_OUT)
   allowTransfer        Boolean         @default(false)
+  /// QR credential mode — STATIC_QR is production default; DYNAMIC_QR requires ENABLE_DYNAMIC_QR=true
+  qrMode               TicketQrMode    @default(STATIC_QR)
+  /// Short-lived dynamic QR TTL in seconds (clamped 15–120 at runtime)
+  dynamicQrTtlSeconds  Int             @default(30)
   serviceFee           Int?
   serviceFeeMode       ServiceFeeMode?
   currency             String          @default("NOK")

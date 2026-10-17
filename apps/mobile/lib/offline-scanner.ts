@@ -117,6 +117,13 @@ export async function offlineLookup(
   if (bundle.eventId !== eventId) {
     return { result: "WRONG_EVENT", message: "FEIL ARRANGEMENT" };
   }
+  // Never treat dynamic QR as static offline — no insecure fallback
+  if (tokenOrUrl.includes("dqr.v1") || tokenOrUrl.includes("/t/dqr/")) {
+    return {
+      result: "INVALID",
+      message: "DYNAMISK QR KREVER ONLINE",
+    };
+  }
   const match = tokenOrUrl.match(/\/t\/verify\/([^/?#]+)/);
   const token = match?.[1] ?? tokenOrUrl;
   const tokenHash = await hashToken(token);

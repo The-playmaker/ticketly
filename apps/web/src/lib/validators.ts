@@ -102,7 +102,9 @@ export const manualCheckInSchema = z.object({
   ticketId: z.string().min(1),
   eventId: z.string().min(1),
   deviceId: z.string().optional(),
-  note: z.string().optional(),
+  note: z.string().max(500).optional(),
+  /** Elevated re-entry when ticket already checked in */
+  forceOverride: z.boolean().optional(),
 });
 
 export const guestListSchema = z.object({
@@ -119,6 +121,12 @@ export const transferTicketSchema = z.object({
   ticketId: z.string(),
   toName: z.string().min(1),
   toEmail: z.string().email(),
+});
+
+export const mintDynamicQrSchema = z.object({
+  ticketId: z.string().min(1),
+  /** Order access token — alternative to logged-in holder session */
+  accessToken: z.string().min(32).optional(),
 });
 
 export const refundSchema = z.object({

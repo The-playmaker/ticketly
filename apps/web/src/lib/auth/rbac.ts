@@ -54,6 +54,14 @@ export function canScanTickets(user: AuthUser | null | undefined, organizationId
   ]);
 }
 
+/** Force re-entry / override of ALREADY_USED — not available to door staff alone. */
+export function canForceCheckInOverride(
+  user: AuthUser | null | undefined,
+  organizationId: string
+) {
+  return hasOrgRole(user, organizationId, [OrgRole.ORGANIZER_ADMIN, OrgRole.EVENT_MANAGER]);
+}
+
 export function canViewFinancials(user: AuthUser | null | undefined, organizationId: string) {
   if (isSuperAdmin(user)) return true;
   return hasOrgRole(user, organizationId, [OrgRole.ORGANIZER_ADMIN, OrgRole.EVENT_MANAGER]);

@@ -8,7 +8,15 @@ import {
   type AuthUser,
 } from "@/lib/auth/rbac";
 import { generateSecureToken, generatePublicTicketId } from "@/lib/tickets/token";
-import { GlobalRole, OrgRole, ServiceFeeMode, type Organization, type Event, type PromoCode } from "@prisma/client";
+import {
+  GlobalRole,
+  OrgRole,
+  ServiceFeeMode,
+  TicketQrMode,
+  type Organization,
+  type Event,
+  type PromoCode,
+} from "@prisma/client";
 
 function mockOrg(overrides: Partial<Organization> = {}): Organization {
   return {
@@ -77,6 +85,8 @@ function mockEvent(overrides: Partial<Event> = {}): Event {
     lowStockThreshold: 10,
     soldOutDisplay: "SOLD_OUT",
     allowTransfer: true,
+    qrMode: TicketQrMode.STATIC_QR,
+    dynamicQrTtlSeconds: 30,
     serviceFee: 2000,
     serviceFeeMode: ServiceFeeMode.ON_TOP,
     currency: "NOK",

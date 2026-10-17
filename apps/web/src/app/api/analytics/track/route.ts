@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import {
+  isSensitiveTicketPath,
+  sanitizeAnalyticsPath,
+  sanitizeAnalyticsReferrer,
+} from "@/lib/security/sensitive-path";
 
 const schema = z.object({
   type: z.enum([
@@ -35,6 +40,10 @@ export async function POST(req: Request) {
 
   try {
     const body = schema.parse(await req.json());
+    // Never store ticket / order-access URLs (credentials in query) in analytics
+    if (isSensitiveTicketPath(body.path)) {
+      return NextResponse.json({ ok: true, skipped: true });
+    }
     await prisma.analyticsEvent.create({
       data: {
         type: body.type,
@@ -42,8 +51,8 @@ export async function POST(req: Request) {
         organizationId: body.organizationId,
         sessionId: body.sessionId,
         orderId: body.orderId,
-        path: body.path,
-        referrer: body.referrer?.slice(0, 500),
+        path: sanitizeAnalyticsPath(body.path),
+        referrer: sanitizeAnalyticsReferrer(body.referrer),
         utmSource: body.utmSource,
         utmMedium: body.utmMedium,
         utmCampaign: body.utmCampaign,

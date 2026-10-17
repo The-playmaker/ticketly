@@ -18,6 +18,8 @@ type ScanResult = {
     accessNote?: string | null;
   };
   previousCheckInAt?: string | null;
+  previousDeviceId?: string | null;
+  previousCheckedInByName?: string | null;
 };
 
 const resultStyles: Record<string, string> = {
@@ -52,6 +54,8 @@ export function ScannerClient({
   >([]);
   const [busy, setBusy] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [overrideTicketId, setOverrideTicketId] = useState<string | null>(null);
+  const [overrideReason, setOverrideReason] = useState("");
   const scannerRef = useRef<{ stop: () => Promise<void> } | null>(null);
   const lastToken = useRef<string>("");
 
@@ -128,16 +132,34 @@ export function ScannerClient({
     if (res.ok) setSearchResults(data.results ?? []);
   }
 
-  async function manualCheckIn(ticketId: string) {
+  async function manualCheckIn(ticketId: string, opts?: { forceOverride?: boolean; note?: string }) {
     setBusy(true);
     try {
       const res = await fetch("/api/tickets/check-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticketId, eventId, deviceId: "web-scanner" }),
+        body: JSON.stringify({
+          ticketId,
+          eventId,
+          deviceId: "web-scanner",
+          forceOverride: opts?.forceOverride,
+          note: opts?.note,
+        }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setResult({
+          result: "INVALID",
+          message:
+            typeof data.error === "object"
+              ? data.error?.message ?? "UGYLDIG"
+              : data.error ?? "UGYLDIG",
+        });
+        return;
+      }
       setResult(data);
+      setOverrideTicketId(null);
+      setOverrideReason("");
     } finally {
       setBusy(false);
     }
@@ -230,13 +252,36 @@ export function ScannerClient({
                         {r.ticketType} · {r.publicId} · {r.status}
                       </p>
                     </div>
-                    <Button
-                      size="sm"
-                      disabled={busy || r.status === "CHECKED_IN"}
-                      onClick={() => manualCheckIn(r.id)}
-                    >
-                      Check-in
-                    </Button>
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        size="sm"
+                        disabled={busy || r.status === "CHECKED_IN"}
+                        onClick={() => void manualCheckIn(r.id)}
+                      >
+                        Check-in
+                      </Button>
+                      {r.status === "CHECKED_IN" ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={busy}
+                          onClick={() => {
+                            setOverrideTicketId(r.id);
+                            setResult({
+                              result: "ALREADY_USED",
+                              message: "ALLEREDE BRUKT",
+                              ticket: {
+                                publicId: r.publicId,
+                                holderName: r.holderName,
+                                ticketType: r.ticketType,
+                              },
+                            });
+                          }}
+                        >
+                          Override…
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
                 </li>
               ))}
@@ -262,7 +307,7 @@ export function ScannerClient({
                     {result.ticket.ageLimit != null ? `${result.ticket.ageLimit}+` : "—"}
                   </p>
                   <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-amber-200">
-                    Kontroller legitimasjon
+                    KONTROLLER LEGITIMASJON
                   </p>
                 </div>
               ) : null}
@@ -274,19 +319,51 @@ export function ScannerClient({
               </p>
               {result.ticket.accessNote ? (
                 <p>
-                  <span className="text-white/70">Merknad:</span> {result.ticket.accessNote}
+                  <span className="text-white/70">Sone / merknad:</span> {result.ticket.accessNote}
                 </p>
               ) : null}
             </div>
           ) : null}
           {result.result === "ALREADY_USED" ? (
-            <p className="mt-3 text-sm text-white/90">
-              Tidligere skannet{" "}
-              {formatEventTime(
-                result.previousCheckInAt ?? result.ticket?.checkedInAt ?? new Date().toISOString(),
-                "Europe/Oslo"
-              )}
-            </p>
+            <div className="mx-auto mt-3 max-w-sm space-y-2 text-sm text-white/90">
+              <p>
+                Tidligere skannet{" "}
+                {formatEventTime(
+                  result.previousCheckInAt ??
+                    result.ticket?.checkedInAt ??
+                    new Date().toISOString(),
+                  "Europe/Oslo"
+                )}
+              </p>
+              {result.previousDeviceId || result.previousCheckedInByName ? (
+                <p className="text-white/80">
+                  Forrige scanner: {result.previousCheckedInByName ?? "—"}
+                  {result.previousDeviceId ? ` · ${result.previousDeviceId}` : ""}
+                </p>
+              ) : null}
+              {overrideTicketId ? (
+                <div className="space-y-2 text-left" onClick={(e) => e.stopPropagation()}>
+                  <Input
+                    value={overrideReason}
+                    onChange={(e) => setOverrideReason(e.target.value)}
+                    placeholder="Begrunnelse for override (påkrevd)"
+                    className="bg-white text-zinc-900"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={busy || overrideReason.trim().length < 3}
+                    onClick={() =>
+                      void manualCheckIn(overrideTicketId, {
+                        forceOverride: true,
+                        note: overrideReason.trim(),
+                      })
+                    }
+                  >
+                    Bekreft override
+                  </Button>
+                </div>
+              ) : null}
+            </div>
           ) : null}
           {result.result !== "SUCCESS" && result.ticket?.holderName ? (
             <p className="mt-3 text-sm text-white/80">{result.ticket.holderName}</p>

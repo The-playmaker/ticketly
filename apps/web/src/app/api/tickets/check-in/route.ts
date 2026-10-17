@@ -2,13 +2,19 @@ import { NextResponse } from "next/server";
 import { checkInSchema, manualCheckInSchema } from "@/lib/validators";
 import { CheckInService } from "@/services/check-in-service";
 import { getOptionalSession } from "@/lib/auth/session";
-import { canScanTickets, AuthorizationError, type AuthUser } from "@/lib/auth/rbac";
+import {
+  canForceCheckInOverride,
+  canScanTickets,
+  AuthorizationError,
+  type AuthUser,
+} from "@/lib/auth/rbac";
 import { canAccessAssignedEvent } from "@/lib/auth/event-access";
 import { prisma } from "@/lib/db";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
 import { verifyMobileSession } from "@/app/api/mobile/auth/login/route";
 import { assertDeviceNotRevoked } from "@/lib/auth/org-access";
 import { jsonError } from "@/lib/api-error";
+import { looksLikeDynamicQrCredential } from "@/lib/tickets/dynamic-qr";
 
 async function resolveUser(
   req: Request
@@ -65,6 +71,21 @@ export async function POST(req: Request) {
       ) {
         throw new AuthorizationError();
       }
+
+      if (parsed.data.forceOverride) {
+        if (!canForceCheckInOverride(user, event.organizationId)) {
+          throw new AuthorizationError("Override krever høyere tilgang");
+        }
+        if (!parsed.data.note?.trim()) {
+          return NextResponse.json(
+            { error: { code: "REASON_REQUIRED", message: "Begrunnelse kreves for override" } },
+            { status: 400 }
+          );
+        }
+      }
+
+      await assertDeviceNotRevoked(parsed.data.deviceId);
+
       const result = await CheckInService.checkInByTicketId({
         ...parsed.data,
         checkedInBy: user.id,
@@ -85,10 +106,15 @@ export async function POST(req: Request) {
       throw new AuthorizationError();
     }
 
-    // Accept full URL or raw token from QR
+    // Accept full URL or raw token from QR — never log the raw credential
     const raw = parsed.data.token;
-    const match = raw.match(/\/t\/verify\/([^/?#]+)/);
-    const token = match?.[1] ?? raw;
+    let token = raw;
+    if (looksLikeDynamicQrCredential(raw)) {
+      token = raw;
+    } else {
+      const match = raw.match(/\/t\/verify\/([^/?#]+)/);
+      token = match?.[1] ?? raw;
+    }
 
     await assertDeviceNotRevoked(parsed.data.deviceId);
 

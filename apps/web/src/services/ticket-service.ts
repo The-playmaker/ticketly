@@ -19,6 +19,7 @@ import { formatEventDateTime } from "@/lib/time";
 import { assertTicketTransition } from "@/services/ticket-state-machine";
 import { writeAuditLog } from "@/lib/audit";
 import { AppError } from "@/lib/api-error";
+import { secureLogError } from "@/lib/security/redact";
 
 export class TicketService {
   static async issueTicketsForPaidOrder(orderId: string) {
@@ -163,7 +164,7 @@ export class TicketService {
         eventId: order.eventId,
       });
     } catch (err) {
-      console.error("Failed to send order/ticket email", err);
+      secureLogError("Failed to send order/ticket email", err);
     }
 
     return tickets;

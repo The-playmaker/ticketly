@@ -1,6 +1,12 @@
 import { createHash, createHmac, randomBytes, createCipheriv, createDecipheriv } from "crypto";
 import type { OfflineTicketEntry, OfflineCheckInPayload, ScanResultCode } from "@ticketly/shared-types";
-import { prisma, CheckInResult, OfflineSyncStatus, TicketStatus } from "@ticketly/database";
+import {
+  prisma,
+  CheckInResult,
+  OfflineSyncStatus,
+  TicketStatus,
+  TicketQrMode,
+} from "@ticketly/database";
 
 /**
  * Offline scanner design
@@ -71,6 +77,13 @@ export class OfflineScannerService {
         },
       },
     });
+
+    // Dynamic QR events cannot be validated securely offline — refuse bundle.
+    if (event.qrMode === TicketQrMode.DYNAMIC_QR) {
+      throw new Error(
+        "OFFLINE_BUNDLE_UNSUPPORTED: Dynamic QR events require online scanners (no static fallback)"
+      );
+    }
 
     const entries: OfflineTicketEntry[] = event.tickets
       .map((t): OfflineTicketEntry | null => {
