@@ -52,7 +52,17 @@ export default async function AdminSettingsPage() {
       </div>
 
       {!org ? (
-        <p className="text-sm text-[color:var(--muted)]">Ingen organisasjon tilknyttet.</p>
+        <div className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5 text-sm">
+          <p className="text-[color:var(--muted)]">Ingen organisasjon tilknyttet.</p>
+          {isSuperAdmin(user) ? (
+            <Link
+              href="/admin/platform/organizations/new"
+              className="mt-4 inline-flex rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-semibold text-[color:var(--accent-foreground)]"
+            >
+              Opprett organisasjon
+            </Link>
+          ) : null}
+        </div>
       ) : canEdit ? (
         <SellerSettingsForm org={org} />
       ) : (

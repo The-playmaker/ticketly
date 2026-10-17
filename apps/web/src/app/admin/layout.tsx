@@ -71,6 +71,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             {platform ? (
               <>
                 <Link
+                  href="/admin/platform/organizations"
+                  className="rounded-md px-3 py-2 text-[color:var(--accent-soft)] transition hover:bg-[color:var(--surface-high)]"
+                >
+                  Organisasjoner
+                </Link>
+                <Link
                   href="/admin/platform/users"
                   className="rounded-md px-3 py-2 text-[color:var(--accent-soft)] transition hover:bg-[color:var(--surface-high)]"
                 >
