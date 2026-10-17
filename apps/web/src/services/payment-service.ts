@@ -531,6 +531,8 @@ export class PaymentService {
     const order = await prisma.order.findUnique({ where: { id: input.orderId } });
     if (!order) throw new AppError("ORDER_NOT_FOUND", "Order not found", 404);
 
+    // Already paid (e.g. duplicate Stripe event with different event id): still run
+    // issuance — TicketService serializes on Order FOR UPDATE and is exactly-once.
     if (order.paymentStatus === PaymentStatus.PAID && !order.paymentAnomaly) {
       await TicketService.issueTicketsForPaidOrder(order.id);
       return order;
@@ -685,6 +687,8 @@ export class PaymentService {
       });
     });
 
+    // Issuance locks Order FOR UPDATE in its own transaction (not solely Stripe event-id
+    // idempotency). Safe under concurrent session.completed + payment_intent.succeeded.
     await TicketService.issueTicketsForPaidOrder(order.id);
     try {
       await createOrderSnapshot(order.id);

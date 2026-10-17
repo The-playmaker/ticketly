@@ -838,6 +838,8 @@ model Order {
   paymentAnomaly       Boolean       @default(false)
   paymentAnomalyReason String?
   paidAt               DateTime?
+  /// Set atomically when tickets are issued — exactly-once fulfillment marker (with Order FOR UPDATE)
+  ticketsFulfilledAt   DateTime?
   cancelledAt          DateTime?
   /// Privacy-conscious traffic attribution (optional; from landing/checkout)
   utmSource            String?

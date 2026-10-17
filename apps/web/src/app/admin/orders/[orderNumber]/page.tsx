@@ -6,6 +6,7 @@ import { formatMoney } from "@/lib/utils";
 import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { organizationIdWhere } from "@/lib/admin/org-context";
 import { isSuperAdmin } from "@/lib/auth/rbac";
+import { expectedTicketCountForItems } from "@/lib/tickets/expected-count";
 
 function providerLabel(provider: string) {
   switch (provider) {
@@ -52,7 +53,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
     },
     include: {
       event: true,
-      items: true,
+      items: { include: { ticketType: true } },
       tickets: true,
       payments: { orderBy: { createdAt: "asc" } },
       refunds: { orderBy: { createdAt: "asc" } },
@@ -99,6 +100,14 @@ export default async function AdminOrderDetailPage({ params }: Props) {
           orderBy: { transferredAt: "desc" },
         })
       : [];
+
+  const expectedTickets = expectedTicketCountForItems(
+    order.items.map((i) => ({
+      quantity: i.quantity,
+      admissionCount: i.ticketType.admissionCount,
+    }))
+  );
+  const ticketCountMismatch = order.tickets.length !== expectedTickets;
 
   return (
     <div className="space-y-8">
@@ -197,6 +206,24 @@ export default async function AdminOrderDetailPage({ params }: Props) {
 
       <section className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5">
         <h2 className="text-sm font-medium text-[color:var(--muted)]">Billetter</h2>
+        <p className="mt-2 text-sm text-[color:var(--muted)]">
+          Utstedt {order.tickets.length} / forventet {expectedTickets}
+          {order.ticketsFulfilledAt
+            ? ` · fulfilled ${order.ticketsFulfilledAt.toISOString()}`
+            : " · ikke markert fulfilled"}
+        </p>
+        {ticketCountMismatch ? (
+          <p className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+            Avvik: billettantall matcher ikke forventet (quantity × admissionCount). Ikke slett
+            automatisk — se docs/TICKET_FULFILLMENT.md og kjør fulfillment-mismatch script dry-run.
+            {order.items.map((i) => (
+              <span key={i.id} className="mt-1 block text-xs">
+                {i.name}: qty={i.quantity}, isBundle={String(i.ticketType.isBundle)},
+                admissionCount={i.ticketType.admissionCount}
+              </span>
+            ))}
+          </p>
+        ) : null}
         <ul className="mt-3 divide-y divide-[color:var(--outline)]/20 text-sm">
           {order.tickets.map((t) => (
             <li key={t.id} className="flex justify-between py-2">
