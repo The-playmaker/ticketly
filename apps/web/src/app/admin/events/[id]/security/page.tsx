@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { requireEventAccess } from "@/lib/admin/org-access";
+import { isSuperAdmin } from "@/lib/auth/rbac";
 import { FraudDiagnosticsService } from "@/services/fraud-diagnostics-service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EventTestResetForm } from "@/components/admin/event-test-reset-form";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -10,11 +12,14 @@ export default async function EventSecurityPage({ params }: Props) {
   const { id } = await params;
   await auth();
   let event;
+  let user;
   try {
-    ({ event } = await requireEventAccess(id));
+    ({ event, user } = await requireEventAccess(id));
   } catch {
     notFound();
   }
+
+  const platformAdmin = isSuperAdmin(user);
 
   const diag = await FraudDiagnosticsService.forEvent(id, 24);
 
@@ -88,6 +93,8 @@ export default async function EventSecurityPage({ params }: Props) {
           )}
         </ul>
       </section>
+
+      {platformAdmin ? <EventTestResetForm eventId={id} /> : null}
 
       <section className="space-y-2">
         <h3 className="text-sm font-semibold text-zinc-800">Deaktiverte enheter med aktivitet</h3>

@@ -28,4 +28,6 @@ In `NODE_ENV=production` the script exits unless you also pass `--allow-producti
 
 Prefer disabling staff in `/admin/platform/users` when you only need to lock accounts.
 
+To clear **sales/test rows for one event** (orders, tickets, inventory counters) without deleting the event, use the SUPER_ADMIN **Nullstill testdata** flow — see [EVENT_TEST_DATA_RESET.md](./EVENT_TEST_DATA_RESET.md).
+
 See also [PRODUCTION_USERS.md](./PRODUCTION_USERS.md).

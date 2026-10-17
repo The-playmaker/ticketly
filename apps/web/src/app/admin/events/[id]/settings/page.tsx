@@ -7,6 +7,7 @@ import { eventInventorySnapshot, inventorySnapshot } from "@/services/inventory-
 import { DuplicateEventButton } from "@/components/admin/duplicate-event-button";
 import { EventParitySettingsForm } from "@/components/admin/event-parity-settings-form";
 import { EventOwnershipForm } from "@/components/admin/event-ownership-form";
+import { EventTestResetForm } from "@/components/admin/event-test-reset-form";
 import { EditEventLink } from "@/components/admin/edit-event-link";
 
 type Props = { params: Promise<{ id: string }> };
@@ -103,12 +104,15 @@ export default async function EventSettingsPage({ params }: Props) {
       />
 
       {platformAdmin ? (
-        <EventOwnershipForm
-          eventId={full.id}
-          organizationId={full.organizationId}
-          sellerOrganizationId={full.sellerOrganizationId}
-          organizations={activeOrganizations}
-        />
+        <>
+          <EventOwnershipForm
+            eventId={full.id}
+            organizationId={full.organizationId}
+            sellerOrganizationId={full.sellerOrganizationId}
+            organizations={activeOrganizations}
+          />
+          <EventTestResetForm eventId={full.id} />
+        </>
       ) : (
         <section className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5 text-sm">
           <h2 className="font-medium">Selger (seller of record)</h2>
