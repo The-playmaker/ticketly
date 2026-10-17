@@ -7,6 +7,7 @@ import {
 import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/utils";
 import { writeAuditLog } from "@/lib/audit";
+import { AppError } from "@/lib/api-error";
 import { sendEventCancelledEmail } from "@/lib/email/templates";
 import { RefundService } from "@/services/refund-service";
 
@@ -95,6 +96,94 @@ export class EventService {
       metadata: data as object,
     });
     return event;
+  }
+
+  /**
+   * SUPER_ADMIN ownership transfer.
+   * Updates Event.organizationId / Event.sellerOrganizationId only.
+   * Does not rewrite historical Order.*OrganizationId, OrderSnapshot, tickets, or payments.
+   */
+  static async updateOwnership(
+    id: string,
+    input: { organizationId: string; sellerOrganizationId: string },
+    actorId: string
+  ) {
+    const event = await prisma.event.findUnique({ where: { id } });
+    if (!event) throw new AppError("NOT_FOUND", "Arrangement ikke funnet", 404);
+
+    const [organizer, seller] = await Promise.all([
+      prisma.organization.findUnique({ where: { id: input.organizationId } }),
+      prisma.organization.findUnique({ where: { id: input.sellerOrganizationId } }),
+    ]);
+
+    if (!organizer || !organizer.isActive) {
+      throw new AppError(
+        "INACTIVE_ORGANIZATION",
+        "Organisator må være en eksisterende aktiv organisasjon",
+        400
+      );
+    }
+    if (!seller || !seller.isActive) {
+      throw new AppError(
+        "INACTIVE_ORGANIZATION",
+        "Juridisk selger må være en eksisterende aktiv organisasjon",
+        400
+      );
+    }
+
+    if (
+      event.organizationId === input.organizationId &&
+      event.sellerOrganizationId === input.sellerOrganizationId
+    ) {
+      return prisma.event.findUniqueOrThrow({
+        where: { id },
+        include: { organization: true, sellerOrganization: true },
+      });
+    }
+
+    if (input.organizationId !== event.organizationId) {
+      const slugConflict = await prisma.event.findFirst({
+        where: {
+          organizationId: input.organizationId,
+          slug: event.slug,
+          NOT: { id },
+        },
+        select: { id: true },
+      });
+      if (slugConflict) {
+        throw new AppError(
+          "SLUG_CONFLICT",
+          "Målorganisasjonen har allerede et arrangement med samme slug",
+          409
+        );
+      }
+    }
+
+    const updated = await prisma.event.update({
+      where: { id },
+      data: {
+        organizationId: input.organizationId,
+        sellerOrganizationId: input.sellerOrganizationId,
+      },
+      include: { organization: true, sellerOrganization: true },
+    });
+
+    await writeAuditLog({
+      actorId,
+      organizationId: updated.organizationId,
+      action: "EVENT_ORGANIZATION_CHANGED",
+      entityType: "Event",
+      entityId: updated.id,
+      metadata: {
+        oldOrganizationId: event.organizationId,
+        newOrganizationId: updated.organizationId,
+        oldSellerOrganizationId: event.sellerOrganizationId,
+        newSellerOrganizationId: updated.sellerOrganizationId,
+        slug: updated.slug,
+      },
+    });
+
+    return updated;
   }
 
   static async publish(id: string, actorId?: string) {

@@ -2,9 +2,11 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { requireEventAccess } from "@/lib/admin/org-access";
+import { isSuperAdmin } from "@/lib/auth/rbac";
 import { eventInventorySnapshot, inventorySnapshot } from "@/services/inventory-service";
 import { DuplicateEventButton } from "@/components/admin/duplicate-event-button";
 import { EventParitySettingsForm } from "@/components/admin/event-parity-settings-form";
+import { EventOwnershipForm } from "@/components/admin/event-ownership-form";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -12,8 +14,9 @@ export default async function EventSettingsPage({ params }: Props) {
   const { id } = await params;
   await auth();
   let event;
+  let user;
   try {
-    ({ event } = await requireEventAccess(id));
+    ({ event, user } = await requireEventAccess(id));
   } catch {
     notFound();
   }
@@ -28,6 +31,15 @@ export default async function EventSettingsPage({ params }: Props) {
     },
   });
 
+  const platformAdmin = isSuperAdmin(user);
+  const activeOrganizations = platformAdmin
+    ? await prisma.organization.findMany({
+        where: { isActive: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, legalName: true, isActive: true },
+      })
+    : [];
+
   const inv = eventInventorySnapshot(
     full.capacity,
     full.ticketTypes.map((t) => ({
@@ -37,6 +49,8 @@ export default async function EventSettingsPage({ params }: Props) {
       quantityReserved: t.quantityReserved,
     }))
   );
+
+  const seller = full.sellerOrganization ?? full.organization;
 
   return (
     <div className="space-y-6">
@@ -80,16 +94,23 @@ export default async function EventSettingsPage({ params }: Props) {
         reminder3hEnabled={full.reminder3hEnabled}
       />
 
-      <section className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5 text-sm">
-        <h2 className="font-medium">Selger (seller of record)</h2>
-        <p className="mt-2">
-          {(full.sellerOrganization ?? full.organization).legalName ??
-            (full.sellerOrganization ?? full.organization).name}
-        </p>
-        <p className="text-[color:var(--muted)]">
-          Org.nr {(full.sellerOrganization ?? full.organization).organizationNumber ?? "—"}
-        </p>
-      </section>
+      {platformAdmin ? (
+        <EventOwnershipForm
+          eventId={full.id}
+          organizationId={full.organizationId}
+          sellerOrganizationId={full.sellerOrganizationId}
+          organizations={activeOrganizations}
+        />
+      ) : (
+        <section className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5 text-sm">
+          <h2 className="font-medium">Selger (seller of record)</h2>
+          <p className="mt-2">{seller.legalName ?? seller.name}</p>
+          <p className="text-[color:var(--muted)]">Org.nr {seller.organizationNumber ?? "—"}</p>
+          <p className="mt-2 text-xs text-[color:var(--muted)]">
+            Organisator: {full.organization.name}
+          </p>
+        </section>
+      )}
 
       <section className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5 text-sm">
         <h2 className="font-medium">Inventory</h2>
