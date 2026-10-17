@@ -1,89 +1,126 @@
-import { EventStatus, PaymentStatus, type Prisma } from "@prisma/client";
+import { PaymentStatus, TicketStatus, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { AppError } from "@/lib/api-error";
 import { writeAuditLog } from "@/lib/audit";
 import {
+  EMERGENCY_EVENT_RESET_CONFIRMATION,
   EVENT_TEST_DATA_RESET_ACTION,
   PRODUCTION_EVENT_RESET_CONFIRMATION,
   TEST_EVENT_RESET_CONFIRMATION,
+  UNSETTLED_FINANCIAL_STATUSES,
   type EventTestResetCounts,
   type EventTestResetResult,
-  type ProductionGateResult,
+  type SafetyGateResult,
 } from "@/lib/admin/event-test-reset";
 
 export {
+  EMERGENCY_EVENT_RESET_CONFIRMATION,
   EVENT_TEST_DATA_RESET_ACTION,
   PRODUCTION_EVENT_RESET_CONFIRMATION,
   TEST_EVENT_RESET_CONFIRMATION,
+  UNSETTLED_FINANCIAL_STATUSES,
 };
-export type { EventTestResetCounts, EventTestResetResult, ProductionGateResult };
+export type { EventTestResetCounts, EventTestResetResult, SafetyGateResult };
+/** @deprecated Use SafetyGateResult */
+export type { SafetyGateResult as ProductionGateResult };
 
-const PAID_STATUSES: PaymentStatus[] = [
-  PaymentStatus.PAID,
-  PaymentStatus.PARTIALLY_REFUNDED,
-  PaymentStatus.REFUNDED,
-  PaymentStatus.AUTHORIZED,
-];
+const UNSETTLED: PaymentStatus[] = UNSETTLED_FINANCIAL_STATUSES.map(
+  (s) => PaymentStatus[s as keyof typeof PaymentStatus]
+);
 
-/** Statuses treated as “live” for the production gate (schema has no LIVE enum). */
-const LIVE_STATUSES: EventStatus[] = [
-  EventStatus.PUBLISHED,
-  EventStatus.PAUSED,
-  EventStatus.SOLD_OUT,
-];
-
-const TEST_EMAIL_DOMAIN_SUFFIXES = ["@example.com", "@test.local", "@ticketly.test"];
-const TEST_EMAIL_LOCAL_MARKERS = ["test+", "demo+", "seed+"];
-
-function isProductionOverrideEnvEnabled(): boolean {
+function isEmergencyOverrideEnvEnabled(): boolean {
   return process.env.ALLOW_PRODUCTION_EVENT_RESET === "true";
 }
 
 /**
- * Known test / seed customer markers — not treated as real production buyers.
+ * Primary safety gate: all financial orders must be fully refunded.
+ * Does not issue refunds — Stripe remains source of record.
+ *
+ * Emergency bypass (documented, off by default):
+ * ALLOW_PRODUCTION_EVENT_RESET=true + allowEmergencyOverride +
+ * emergencyConfirmation === EMERGENCY_EVENT_RESET_CONFIRMATION
  */
-export function isTestCustomerEmail(email: string): boolean {
-  const normalized = email.trim().toLowerCase();
-  if (!normalized) return false;
-  if (TEST_EMAIL_DOMAIN_SUFFIXES.some((s) => normalized.endsWith(s))) return true;
-  const local = normalized.split("@")[0] ?? "";
-  return TEST_EMAIL_LOCAL_MARKERS.some((m) => local.startsWith(m));
-}
-
-export function evaluateProductionGate(input: {
-  eventStatus: EventStatus;
-  paidRevenueOre: number;
-  realCustomerPaidOrderCount: number;
-  allowProductionOverride?: boolean;
-  productionConfirmation?: string;
-}): ProductionGateResult {
+export function evaluateFinancialSafetyGate(input: {
+  unsettledByStatus: Partial<Record<string, number>>;
+  allowEmergencyOverride?: boolean;
+  emergencyConfirmation?: string;
+}): SafetyGateResult {
   const reasons: string[] = [];
+  let unsettledTotal = 0;
 
-  if (input.realCustomerPaidOrderCount > 0) {
-    reasons.push(
-      `${input.realCustomerPaidOrderCount} betalt(e) ordre med ekte kundee-post (ikke @example.com / kjente testmarkører)`
-    );
+  for (const status of UNSETTLED_FINANCIAL_STATUSES) {
+    const n = input.unsettledByStatus[status] ?? 0;
+    if (n > 0) {
+      unsettledTotal += n;
+      reasons.push(`${n} ordre med status ${status}`);
+    }
   }
 
-  const isLive = LIVE_STATUSES.includes(input.eventStatus);
-  if (isLive && input.paidRevenueOre > 0) {
-    reasons.push(
-      `Arrangementstatus ${input.eventStatus} (live) med betalt omsetning ${input.paidRevenueOre} øre`
-    );
+  // Catch any unexpected non-terminal financial statuses not in the known list
+  for (const [status, n] of Object.entries(input.unsettledByStatus)) {
+    if (
+      n &&
+      n > 0 &&
+      !(UNSETTLED_FINANCIAL_STATUSES as readonly string[]).includes(status)
+    ) {
+      unsettledTotal += n;
+      reasons.push(`${n} økonomisk uavklart(e) ordre med status ${status}`);
+    }
   }
 
-  const overrideAvailable = isProductionOverrideEnvEnabled();
+  if (unsettledTotal > 0 && reasons.length === 0) {
+    reasons.push(`${unsettledTotal} økonomisk uavklart(e) ordre`);
+  }
+
+  const overrideAvailable = isEmergencyOverrideEnvEnabled();
   const overrideOk =
-    Boolean(input.allowProductionOverride) &&
+    Boolean(input.allowEmergencyOverride) &&
     overrideAvailable &&
-    input.productionConfirmation === PRODUCTION_EVENT_RESET_CONFIRMATION;
+    input.emergencyConfirmation === EMERGENCY_EVENT_RESET_CONFIRMATION;
 
   return {
     blocked: reasons.length > 0 && !overrideOk,
     reasons,
+    unsettledByStatus: input.unsettledByStatus,
     overrideAvailable,
-    requiresProductionConfirmation: reasons.length > 0,
+    requiresEmergencyConfirmation: reasons.length > 0,
   };
+}
+
+/** @deprecated Use evaluateFinancialSafetyGate */
+export function evaluateProductionGate(input: {
+  unsettledByStatus?: Partial<Record<string, number>>;
+  eventStatus?: unknown;
+  paidRevenueOre?: number;
+  realCustomerPaidOrderCount?: number;
+  allowProductionOverride?: boolean;
+  productionConfirmation?: string;
+  allowEmergencyOverride?: boolean;
+  emergencyConfirmation?: string;
+}): SafetyGateResult {
+  if (input.unsettledByStatus) {
+    return evaluateFinancialSafetyGate({
+      unsettledByStatus: input.unsettledByStatus,
+      allowEmergencyOverride:
+        input.allowEmergencyOverride ?? input.allowProductionOverride,
+      emergencyConfirmation:
+        input.emergencyConfirmation ?? input.productionConfirmation,
+    });
+  }
+  // Legacy shape → treat paid real customers / live revenue as unsettled PAID
+  const unsettledByStatus: Partial<Record<string, number>> = {};
+  const paidLike =
+    (input.realCustomerPaidOrderCount ?? 0) > 0 || (input.paidRevenueOre ?? 0) > 0
+      ? Math.max(input.realCustomerPaidOrderCount ?? 0, input.paidRevenueOre ? 1 : 0)
+      : 0;
+  if (paidLike > 0) unsettledByStatus.PAID = paidLike;
+  return evaluateFinancialSafetyGate({
+    unsettledByStatus,
+    allowEmergencyOverride:
+      input.allowEmergencyOverride ?? input.allowProductionOverride,
+    emergencyConfirmation:
+      input.emergencyConfirmation ?? input.productionConfirmation,
+  });
 }
 
 async function collectCounts(eventId: string): Promise<EventTestResetCounts> {
@@ -91,16 +128,15 @@ async function collectCounts(eventId: string): Promise<EventTestResetCounts> {
     where: { eventId },
     select: {
       id: true,
-      total: true,
       paymentStatus: true,
-      customerEmail: true,
+      promoCodeId: true,
     },
   });
   const orderIds = orders.map((o) => o.id);
 
   const tickets = await prisma.ticket.findMany({
     where: { eventId },
-    select: { id: true },
+    select: { id: true, status: true, checkedInAt: true },
   });
   const ticketIds = tickets.map((t) => t.id);
 
@@ -115,6 +151,8 @@ async function collectCounts(eventId: string): Promise<EventTestResetCounts> {
     analyticsEvents,
     orderSnapshots,
     walletPasses,
+    waitlistEntries,
+    reminderJobs,
     ticketTypes,
   ] = await Promise.all([
     orderIds.length
@@ -144,6 +182,8 @@ async function collectCounts(eventId: string): Promise<EventTestResetCounts> {
     ticketIds.length
       ? prisma.walletPass.count({ where: { ticketId: { in: ticketIds } } })
       : Promise.resolve(0),
+    prisma.waitlistEntry.count({ where: { eventId } }),
+    prisma.eventReminderJob.count({ where: { eventId } }),
     prisma.ticketType.findMany({
       where: { eventId },
       select: {
@@ -159,17 +199,24 @@ async function collectCounts(eventId: string): Promise<EventTestResetCounts> {
     }),
   ]);
 
-  const paidOrders = orders.filter((o) => PAID_STATUSES.includes(o.paymentStatus));
-  const paidRevenueOre = paidOrders.reduce((sum, o) => sum + o.total, 0);
-  const realCustomerPaidOrderCount = paidOrders.filter(
-    (o) => !isTestCustomerEmail(o.customerEmail)
+  const paidOrders = orders.filter((o) => o.paymentStatus === PaymentStatus.PAID).length;
+  const refundedOrders = orders.filter(
+    (o) => o.paymentStatus === PaymentStatus.REFUNDED
   ).length;
+  const unsettledOrders = orders.filter((o) => UNSETTLED.includes(o.paymentStatus)).length;
 
   return {
     orders: orders.length,
+    paidOrders,
+    refundedOrders,
+    unsettledOrders,
     payments,
     refunds,
     tickets: tickets.length,
+    refundedTickets: tickets.filter((t) => t.status === TicketStatus.REFUNDED).length,
+    checkedInTickets: tickets.filter(
+      (t) => t.status === TicketStatus.CHECKED_IN || t.checkedInAt != null
+    ).length,
     reservations,
     checkIns,
     offlineCheckIns,
@@ -178,22 +225,36 @@ async function collectCounts(eventId: string): Promise<EventTestResetCounts> {
     analyticsEvents,
     orderSnapshots,
     walletPasses,
+    waitlistEntries,
+    reminderJobs,
+    promoUsages: orders.filter((o) => o.promoCodeId != null).length,
     ticketTypes,
-    paidRevenueOre,
-    realCustomerPaidOrderCount,
   };
+}
+
+function unsettledByStatusFromOrders(
+  orders: Array<{ paymentStatus: PaymentStatus }>
+): Partial<Record<string, number>> {
+  const map: Partial<Record<string, number>> = {};
+  for (const o of orders) {
+    if (UNSETTLED.includes(o.paymentStatus)) {
+      map[o.paymentStatus] = (map[o.paymentStatus] ?? 0) + 1;
+    }
+  }
+  return map;
 }
 
 type Tx = Prisma.TransactionClient;
 
 /**
  * Delete dependent sales/test rows for one event in safe FK order, then zero sold/reserved.
- * Preserves Event, TicketType allocation/price/config, and unrelated events/orgs.
+ * Preserves Event, TicketType allocation/price/config, Stripe externally, and unrelated events/orgs.
+ * Does not issue refunds.
  */
 async function deleteEventSalesData(tx: Tx, eventId: string) {
   const orders = await tx.order.findMany({
     where: { eventId },
-    select: { id: true },
+    select: { id: true, promoCodeId: true },
   });
   const orderIds = orders.map((o) => o.id);
 
@@ -202,6 +263,14 @@ async function deleteEventSalesData(tx: Tx, eventId: string) {
     select: { id: true },
   });
   const ticketIds = tickets.map((t) => t.id);
+
+  // Promo usage counters attributable to these orders (do not delete PromoCode rows)
+  const promoDecrements = new Map<string, number>();
+  for (const o of orders) {
+    if (o.promoCodeId) {
+      promoDecrements.set(o.promoCodeId, (promoDecrements.get(o.promoCodeId) ?? 0) + 1);
+    }
+  }
 
   await tx.checkIn.deleteMany({ where: { eventId } });
   await tx.offlineCheckIn.deleteMany({ where: { eventId } });
@@ -229,12 +298,26 @@ async function deleteEventSalesData(tx: Tx, eventId: string) {
     },
   });
 
+  await tx.eventReminderJob.deleteMany({ where: { eventId } });
   await tx.ticketReservation.deleteMany({ where: { eventId } });
   await tx.analyticsEvent.deleteMany({ where: { eventId } });
+  await tx.waitlistEntry.deleteMany({ where: { eventId } });
 
   if (orderIds.length) {
     await tx.orderItem.deleteMany({ where: { orderId: { in: orderIds } } });
     await tx.order.deleteMany({ where: { id: { in: orderIds } } });
+  }
+
+  for (const [promoCodeId, decrement] of promoDecrements) {
+    const promo = await tx.promoCode.findUnique({
+      where: { id: promoCodeId },
+      select: { usedCount: true },
+    });
+    if (!promo) continue;
+    await tx.promoCode.update({
+      where: { id: promoCodeId },
+      data: { usedCount: Math.max(0, promo.usedCount - decrement) },
+    });
   }
 
   await tx.ticketType.updateMany({
@@ -243,49 +326,85 @@ async function deleteEventSalesData(tx: Tx, eventId: string) {
   });
 }
 
+function toResult(input: {
+  dryRun: boolean;
+  event: { id: string; name: string; status: string; organizationId: string };
+  organizationName: string;
+  counts: EventTestResetCounts;
+  safetyGate: SafetyGateResult;
+  deleted?: EventTestResetCounts;
+}): EventTestResetResult {
+  return {
+    dryRun: input.dryRun,
+    eventId: input.event.id,
+    eventName: input.event.name,
+    eventStatus: input.event.status,
+    organizationId: input.event.organizationId,
+    organizationName: input.organizationName,
+    counts: input.counts,
+    safetyGate: input.safetyGate,
+    productionGate: input.safetyGate,
+    deleted: input.deleted,
+    preserved: {
+      event: true,
+      quantityTotal: true,
+      quantityReleased: true,
+      price: true,
+      eventConfig: true,
+      stripeExternal: true,
+    },
+  };
+}
+
 export const EventTestResetService = {
   TEST_EVENT_RESET_CONFIRMATION,
+  EMERGENCY_EVENT_RESET_CONFIRMATION,
   PRODUCTION_EVENT_RESET_CONFIRMATION,
   EVENT_TEST_DATA_RESET_ACTION,
-  isTestCustomerEmail,
+  evaluateFinancialSafetyGate,
   evaluateProductionGate,
 
   async preview(eventId: string): Promise<EventTestResetResult> {
     const event = await prisma.event.findUnique({
       where: { id: eventId },
-      select: { id: true, name: true, status: true },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        organizationId: true,
+        organization: { select: { name: true } },
+      },
     });
     if (!event) throw new AppError("NOT_FOUND", "Arrangement ikke funnet", 404);
 
+    const orders = await prisma.order.findMany({
+      where: { eventId },
+      select: { paymentStatus: true },
+    });
     const counts = await collectCounts(eventId);
-    const productionGate = evaluateProductionGate({
-      eventStatus: event.status,
-      paidRevenueOre: counts.paidRevenueOre,
-      realCustomerPaidOrderCount: counts.realCustomerPaidOrderCount,
+    const safetyGate = evaluateFinancialSafetyGate({
+      unsettledByStatus: unsettledByStatusFromOrders(orders),
     });
 
-    return {
+    return toResult({
       dryRun: true,
-      eventId: event.id,
-      eventName: event.name,
-      eventStatus: event.status,
+      event: event,
+      organizationName: event.organization.name,
       counts,
-      productionGate,
-      preserved: {
-        event: true,
-        quantityTotal: true,
-        quantityReleased: true,
-        price: true,
-        eventConfig: true,
-      },
-    };
+      safetyGate,
+    });
   },
 
   async reset(input: {
     eventId: string;
     actorId: string;
-    dryRun: boolean;
+    dryRun?: boolean;
     confirmation?: string;
+    /** Preferred body field name from API: confirm */
+    confirm?: string;
+    allowEmergencyOverride?: boolean;
+    emergencyConfirmation?: string;
+    /** @deprecated aliases */
     allowProductionOverride?: boolean;
     productionConfirmation?: string;
     ipAddress?: string | null;
@@ -294,7 +413,8 @@ export const EventTestResetService = {
       return this.preview(input.eventId);
     }
 
-    if (input.confirmation !== TEST_EVENT_RESET_CONFIRMATION) {
+    const confirmation = input.confirm ?? input.confirmation;
+    if (confirmation !== TEST_EVENT_RESET_CONFIRMATION) {
       throw new AppError(
         "CONFIRMATION_REQUIRED",
         `Bekreftelse mangler eller er feil. Skriv nøyaktig: ${TEST_EVENT_RESET_CONFIRMATION}`,
@@ -309,25 +429,43 @@ export const EventTestResetService = {
         name: true,
         status: true,
         organizationId: true,
+        organization: { select: { name: true } },
       },
     });
     if (!event) throw new AppError("NOT_FOUND", "Arrangement ikke funnet", 404);
 
+    const ordersBefore = await prisma.order.findMany({
+      where: { eventId: event.id },
+      select: { paymentStatus: true },
+    });
     const countsBefore = await collectCounts(event.id);
-    const productionGate = evaluateProductionGate({
-      eventStatus: event.status,
-      paidRevenueOre: countsBefore.paidRevenueOre,
-      realCustomerPaidOrderCount: countsBefore.realCustomerPaidOrderCount,
-      allowProductionOverride: input.allowProductionOverride,
-      productionConfirmation: input.productionConfirmation,
+    const ticketTypesBefore = countsBefore.ticketTypes.map((t) => ({
+      id: t.id,
+      name: t.name,
+      quantitySold: t.quantitySold,
+      quantityReserved: t.quantityReserved,
+      quantityReleased: t.quantityReleased,
+      quantityTotal: t.quantityTotal,
+      price: t.price,
+    }));
+
+    const safetyGate = evaluateFinancialSafetyGate({
+      unsettledByStatus: unsettledByStatusFromOrders(ordersBefore),
+      allowEmergencyOverride:
+        input.allowEmergencyOverride ?? input.allowProductionOverride,
+      emergencyConfirmation:
+        input.emergencyConfirmation ?? input.productionConfirmation,
     });
 
-    if (productionGate.blocked) {
+    if (safetyGate.blocked) {
       throw new AppError(
-        "PRODUCTION_EVENT_RESET_BLOCKED",
-        `Nullstilling blokkert: ${productionGate.reasons.join("; ")}. ` +
-          `Sett ALLOW_PRODUCTION_EVENT_RESET=true, send allowProductionOverride=true, ` +
-          `og bekreft med «${PRODUCTION_EVENT_RESET_CONFIRMATION}».`,
+        "EVENT_RESET_BLOCKED_UNREFUNDED",
+        `Nullstilling blokkert: alle økonomiske ordre må være fullt refundert først. ` +
+          `${safetyGate.reasons.join("; ")}. ` +
+          `Reset utsteder ikke refusjoner — gjennomfør refusjon i Stripe/admin først. ` +
+          (safetyGate.overrideAvailable
+            ? `Nødoverstyring: send allowEmergencyOverride=true og emergencyConfirmation «${EMERGENCY_EVENT_RESET_CONFIRMATION}» (krever ALLOW_PRODUCTION_EVENT_RESET=true).`
+            : `Nødoverstyring er ikke aktivert (ALLOW_PRODUCTION_EVENT_RESET).`),
         409
       );
     }
@@ -337,6 +475,20 @@ export const EventTestResetService = {
     });
 
     const countsAfter = await collectCounts(event.id);
+    const ticketTypesAfter = countsAfter.ticketTypes.map((t) => ({
+      id: t.id,
+      name: t.name,
+      quantitySold: t.quantitySold,
+      quantityReserved: t.quantityReserved,
+      quantityReleased: t.quantityReleased,
+      quantityTotal: t.quantityTotal,
+      price: t.price,
+    }));
+
+    const emergencyOverrideUsed = Boolean(
+      safetyGate.requiresEmergencyConfirmation &&
+        (input.allowEmergencyOverride ?? input.allowProductionOverride)
+    );
 
     await writeAuditLog({
       actorId: input.actorId,
@@ -346,42 +498,32 @@ export const EventTestResetService = {
       entityId: event.id,
       ipAddress: input.ipAddress,
       metadata: {
+        eventId: event.id,
         eventName: event.name,
+        actorId: input.actorId,
+        timestamp: new Date().toISOString(),
         deleted: countsBefore,
+        countsDeleted: countsBefore,
+        ticketTypeCountersBefore: ticketTypesBefore,
+        ticketTypeCountersAfter: ticketTypesAfter,
         after: {
           orders: countsAfter.orders,
           tickets: countsAfter.tickets,
           reservations: countsAfter.reservations,
-          ticketTypes: countsAfter.ticketTypes.map((t) => ({
-            id: t.id,
-            quantitySold: t.quantitySold,
-            quantityReserved: t.quantityReserved,
-            quantityReleased: t.quantityReleased,
-            quantityTotal: t.quantityTotal,
-            price: t.price,
-          })),
+          ticketTypes: ticketTypesAfter,
         },
-        productionOverrideUsed: Boolean(
-          productionGate.requiresProductionConfirmation && input.allowProductionOverride
-        ),
+        emergencyOverrideUsed,
+        productionOverrideUsed: emergencyOverrideUsed,
       },
     });
 
-    return {
+    return toResult({
       dryRun: false,
-      eventId: event.id,
-      eventName: event.name,
-      eventStatus: event.status,
+      event,
+      organizationName: event.organization.name,
       counts: countsAfter,
+      safetyGate: { ...safetyGate, blocked: false },
       deleted: countsBefore,
-      productionGate: { ...productionGate, blocked: false },
-      preserved: {
-        event: true,
-        quantityTotal: true,
-        quantityReleased: true,
-        price: true,
-        eventConfig: true,
-      },
-    };
+    });
   },
 };

@@ -4,29 +4,32 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
-  PRODUCTION_EVENT_RESET_CONFIRMATION,
+  EMERGENCY_EVENT_RESET_CONFIRMATION,
   TEST_EVENT_RESET_CONFIRMATION,
   type EventTestResetResult,
 } from "@/lib/admin/event-test-reset";
 
 type Phase = "idle" | "preview" | "done";
 
-function formatNok(ore: number) {
-  return `${(ore / 100).toLocaleString("nb-NO", { minimumFractionDigits: 0 })} NOK`;
-}
-
 function CountsTable({
   title,
   counts,
+  eventMeta,
 }: {
   title: string;
   counts: EventTestResetResult["counts"];
+  eventMeta?: { eventId: string; eventName: string; organizationName: string };
 }) {
   const rows: Array<[string, number | string]> = [
     ["Ordrer", counts.orders],
+    ["Betalte ordre", counts.paidOrders],
+    ["Refunderte ordre", counts.refundedOrders],
+    ["Uavklarte økonomiske ordre", counts.unsettledOrders],
     ["Betalinger", counts.payments],
     ["Refusjoner", counts.refunds],
     ["Billetter", counts.tickets],
+    ["Refunderte billetter", counts.refundedTickets],
+    ["Innsjekkede billetter", counts.checkedInTickets],
     ["Reservasjoner", counts.reservations],
     ["Innsjekkinger", counts.checkIns],
     ["Offline-innsjekk", counts.offlineCheckIns],
@@ -35,12 +38,20 @@ function CountsTable({
     ["Analytics", counts.analyticsEvents],
     ["Ordresnapshots", counts.orderSnapshots],
     ["Wallet-pass", counts.walletPasses],
-    ["Betalt omsetning", formatNok(counts.paidRevenueOre)],
+    ["Venteliste", counts.waitlistEntries],
+    ["Påminnelsesjobber", counts.reminderJobs],
+    ["Promo-bruk", counts.promoUsages],
   ];
 
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-medium">{title}</h3>
+      {eventMeta ? (
+        <p className="text-xs text-[color:var(--muted)]">
+          {eventMeta.eventName} · org {eventMeta.organizationName} ·{" "}
+          <code className="font-mono">{eventMeta.eventId}</code>
+        </p>
+      ) : null}
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
         {rows.map(([label, value]) => (
           <div
@@ -69,6 +80,7 @@ function CountsTable({
 
 /**
  * SUPER_ADMIN-only danger zone: dry-run → type RESET TEST EVENT → execute.
+ * Primary gate: all financial orders must be fully refunded.
  */
 export function EventTestResetForm({ eventId }: { eventId: string }) {
   const router = useRouter();
@@ -78,18 +90,18 @@ export function EventTestResetForm({ eventId }: { eventId: string }) {
   const [preview, setPreview] = useState<EventTestResetResult | null>(null);
   const [result, setResult] = useState<EventTestResetResult | null>(null);
   const [confirmation, setConfirmation] = useState("");
-  const [productionConfirmation, setProductionConfirmation] = useState("");
+  const [emergencyConfirmation, setEmergencyConfirmation] = useState("");
   const [allowOverride, setAllowOverride] = useState(false);
+
+  const gate = preview?.safetyGate ?? preview?.productionGate;
 
   async function runDryRun() {
     setBusy(true);
     setMsg(null);
     setResult(null);
     try {
-      const res = await fetch(`/api/admin/events/${eventId}/test-reset`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dryRun: true }),
+      const res = await fetch(`/api/admin/events/${eventId}/reset-test-data`, {
+        method: "GET",
       });
       const body = (await res.json().catch(() => null)) as
         | EventTestResetResult
@@ -115,12 +127,12 @@ export function EventTestResetForm({ eventId }: { eventId: string }) {
       return;
     }
     if (
-      preview?.productionGate.requiresProductionConfirmation &&
+      gate?.requiresEmergencyConfirmation &&
       allowOverride &&
-      productionConfirmation !== PRODUCTION_EVENT_RESET_CONFIRMATION
+      emergencyConfirmation !== EMERGENCY_EVENT_RESET_CONFIRMATION
     ) {
       setMsg(
-        `Skriv nøyaktig «${PRODUCTION_EVENT_RESET_CONFIRMATION}» for produksjonsoverstyring.`
+        `Skriv nøyaktig «${EMERGENCY_EVENT_RESET_CONFIRMATION}» for nødoverstyring.`
       );
       return;
     }
@@ -128,14 +140,13 @@ export function EventTestResetForm({ eventId }: { eventId: string }) {
     setBusy(true);
     setMsg(null);
     try {
-      const res = await fetch(`/api/admin/events/${eventId}/test-reset`, {
+      const res = await fetch(`/api/admin/events/${eventId}/reset-test-data`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          dryRun: false,
-          confirmation,
-          allowProductionOverride: allowOverride || undefined,
-          productionConfirmation: allowOverride ? productionConfirmation : undefined,
+          confirm: confirmation,
+          allowEmergencyOverride: allowOverride || undefined,
+          emergencyConfirmation: allowOverride ? emergencyConfirmation : undefined,
         }),
       });
       const body = (await res.json().catch(() => null)) as
@@ -151,7 +162,7 @@ export function EventTestResetForm({ eventId }: { eventId: string }) {
       setResult(body as EventTestResetResult);
       setPhase("done");
       setConfirmation("");
-      setProductionConfirmation("");
+      setEmergencyConfirmation("");
       router.refresh();
     } finally {
       setBusy(false);
@@ -163,7 +174,7 @@ export function EventTestResetForm({ eventId }: { eventId: string }) {
     setPreview(null);
     setResult(null);
     setConfirmation("");
-    setProductionConfirmation("");
+    setEmergencyConfirmation("");
     setAllowOverride(false);
     setMsg(null);
   }
@@ -176,9 +187,8 @@ export function EventTestResetForm({ eventId }: { eventId: string }) {
       <div>
         <h2 className="font-medium text-[color:var(--destructive)]">Nullstill testdata</h2>
         <p className="mt-1 text-xs text-[color:var(--muted)]">
-          Kun SUPER_ADMIN. Sletter ordrer, billetter, reservasjoner, innsjekk, betalinger og
-          tilknyttede logger for dette arrangementet. Bevarer arrangement, billettyper (pris,
-          total, frigitt) og øvrige organisasjoner.
+          Dette sletter lokale testordre, billetter, refusjoner, reservasjoner og analyse for
+          dette arrangementet. Stripe-historikk påvirkes ikke.
         </p>
       </div>
 
@@ -190,22 +200,35 @@ export function EventTestResetForm({ eventId }: { eventId: string }) {
 
       {phase === "preview" && preview ? (
         <div className="space-y-4">
-          <CountsTable title="Forhåndsvisning (dry-run)" counts={preview.counts} />
+          <CountsTable
+            title="Forhåndsvisning (dry-run)"
+            counts={preview.counts}
+            eventMeta={{
+              eventId: preview.eventId,
+              eventName: preview.eventName,
+              organizationName: preview.organizationName,
+            }}
+          />
 
-          {preview.productionGate.reasons.length > 0 ? (
+          {gate && gate.reasons.length > 0 ? (
             <div
               className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs"
-              data-testid="production-gate-warning"
+              data-testid="safety-gate-warning"
             >
-              <p className="font-medium">Produksjonsbeskyttelse aktiv</p>
+              <p className="font-medium">Nullstilling blokkert — uavklarte økonomiske ordre</p>
+              <p className="mt-1 text-[color:var(--muted)]">
+                Alle økonomiske ordre må være fullt refundert først. Reset utsteder ikke
+                refusjoner.
+              </p>
               <ul className="mt-1 list-inside list-disc text-[color:var(--muted)]">
-                {preview.productionGate.reasons.map((r) => (
+                {gate.reasons.map((r) => (
                   <li key={r}>{r}</li>
                 ))}
               </ul>
-              {!preview.productionGate.overrideAvailable ? (
+              {!gate.overrideAvailable ? (
                 <p className="mt-2 text-[color:var(--muted)]">
-                  Overstyring krever miljøvariabelen ALLOW_PRODUCTION_EVENT_RESET=true.
+                  Nødoverstyring krever miljøvariabelen ALLOW_PRODUCTION_EVENT_RESET=true
+                  (kun nødsfall — ikke standard arbeidsflyt).
                 </p>
               ) : (
                 <label className="mt-2 flex items-start gap-2">
@@ -214,16 +237,21 @@ export function EventTestResetForm({ eventId }: { eventId: string }) {
                     className="mt-0.5"
                     checked={allowOverride}
                     onChange={(e) => setAllowOverride(e.target.checked)}
-                    data-testid="allow-production-override"
+                    data-testid="allow-emergency-override"
                   />
                   <span>
-                    Jeg forstår at dette er produksjon og vil overstyre beskyttelsen (krever ekstra
-                    bekreftelse).
+                    Nødoverstyring: jeg forstår at uavklarte ordre slettes lokalt uten refusjon
+                    (krever ekstra bekreftelse).
                   </span>
                 </label>
               )}
             </div>
-          ) : null}
+          ) : (
+            <p className="text-xs text-emerald-700" data-testid="safety-gate-ok">
+              Alle økonomiske ordre er fullt refundert (eller ingen økonomiske ordre). Klar for
+              nullstilling.
+            </p>
+          )}
 
           <div className="space-y-2">
             <label className="block space-y-1">
@@ -244,16 +272,16 @@ export function EventTestResetForm({ eventId }: { eventId: string }) {
             {allowOverride ? (
               <label className="block space-y-1">
                 <span className="text-xs text-[color:var(--muted)]">
-                  Produksjonsbekreftelse:{" "}
-                  <code className="font-mono">{PRODUCTION_EVENT_RESET_CONFIRMATION}</code>
+                  Nødbekreftelse:{" "}
+                  <code className="font-mono">{EMERGENCY_EVENT_RESET_CONFIRMATION}</code>
                 </span>
                 <input
                   className="w-full rounded-md border border-amber-500/50 bg-[color:var(--surface-high)] px-3 py-2 font-mono text-sm"
-                  value={productionConfirmation}
-                  onChange={(e) => setProductionConfirmation(e.target.value)}
-                  placeholder={PRODUCTION_EVENT_RESET_CONFIRMATION}
+                  value={emergencyConfirmation}
+                  onChange={(e) => setEmergencyConfirmation(e.target.value)}
+                  placeholder={EMERGENCY_EVENT_RESET_CONFIRMATION}
                   autoComplete="off"
-                  data-testid="production-reset-confirmation"
+                  data-testid="emergency-reset-confirmation"
                 />
               </label>
             ) : null}
@@ -266,7 +294,7 @@ export function EventTestResetForm({ eventId }: { eventId: string }) {
               disabled={
                 busy ||
                 confirmation !== TEST_EVENT_RESET_CONFIRMATION ||
-                (preview.productionGate.blocked && !allowOverride)
+                Boolean(gate?.blocked && !allowOverride)
               }
               onClick={executeReset}
               data-testid="test-reset-execute"
@@ -287,6 +315,7 @@ export function EventTestResetForm({ eventId }: { eventId: string }) {
           <CountsTable title="Etter nullstilling" counts={result.counts} />
           <p className="text-xs text-[color:var(--muted)]">
             Bevart: arrangement, quantityTotal, quantityReleased, pris og øvrig event-konfig.
+            Stripe-historikk er uendret.
           </p>
           <Button type="button" variant="outline" onClick={resetFlow}>
             Lukk

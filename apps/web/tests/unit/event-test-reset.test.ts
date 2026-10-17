@@ -11,6 +11,7 @@ import {
   ReservationStatus,
   CheckInResult,
   PaymentProviderType,
+  RefundStatus,
 } from "@prisma/client";
 import { AppError } from "@/lib/api-error";
 import {
@@ -19,20 +20,17 @@ import {
   hashTicketToken,
   encryptTicketToken,
 } from "@/lib/tickets/token";
+import { evaluateFinancialSafetyGate } from "@/services/event-test-reset-service";
 import {
-  evaluateProductionGate,
-  isTestCustomerEmail,
-} from "@/services/event-test-reset-service";
-import {
+  EMERGENCY_EVENT_RESET_CONFIRMATION,
   EVENT_TEST_DATA_RESET_ACTION,
-  PRODUCTION_EVENT_RESET_CONFIRMATION,
   TEST_EVENT_RESET_CONFIRMATION,
 } from "@/lib/admin/event-test-reset";
 
 const prisma = new PrismaClient();
 const runDb = Boolean(process.env.DATABASE_URL);
 
-const superAdminUser: {
+const sessionUser: {
   id: string;
   email: string;
   globalRole: GlobalRole;
@@ -53,12 +51,12 @@ const superAdminUser: {
 
 vi.mock("@/lib/admin/org-access", () => ({
   requireSuperAdmin: vi.fn(async () => {
-    if (superAdminUser.globalRole !== GlobalRole.SUPER_ADMIN) {
+    if (sessionUser.globalRole !== GlobalRole.SUPER_ADMIN) {
       throw new AppError("FORBIDDEN", "Kun SUPER_ADMIN", 403);
     }
-    return { user: superAdminUser, session: { user: superAdminUser } };
+    return { user: sessionUser, session: { user: sessionUser } };
   }),
-  requireAdminSession: vi.fn(async () => ({ user: superAdminUser })),
+  requireAdminSession: vi.fn(async () => ({ user: sessionUser })),
   requireEventAccess: vi.fn(),
 }));
 
@@ -66,7 +64,7 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
-describe("Event test-reset wiring", () => {
+describe("Event reset-test-data wiring", () => {
   it("security + settings pages expose Nullstill testdata for SUPER_ADMIN", () => {
     const securitySrc = readFileSync(
       path.resolve(__dirname, "../../src/app/admin/events/[id]/security/page.tsx"),
@@ -87,45 +85,50 @@ describe("Event test-reset wiring", () => {
     );
     expect(formSrc).toContain("Nullstill testdata");
     expect(formSrc).toContain(TEST_EVENT_RESET_CONFIRMATION);
-    expect(formSrc).toContain("/api/admin/events/${eventId}/test-reset");
+    expect(formSrc).toContain(
+      "Dette sletter lokale testordre, billetter, refusjoner, reservasjoner og analyse"
+    );
+    expect(formSrc).toContain("/api/admin/events/${eventId}/reset-test-data");
   });
 
-  it("API route is SUPER_ADMIN only and documents confirmation", () => {
+  it("preferred API route is SUPER_ADMIN only with GET dry-run + POST confirm", () => {
     const routeSrc = readFileSync(
-      path.resolve(__dirname, "../../src/app/api/admin/events/[id]/test-reset/route.ts"),
+      path.resolve(
+        __dirname,
+        "../../src/app/api/admin/events/[id]/reset-test-data/route.ts"
+      ),
       "utf8"
     );
     expect(routeSrc).toContain("requireSuperAdmin");
     expect(routeSrc).toContain("TEST_EVENT_RESET_CONFIRMATION");
+    expect(routeSrc).toContain("export async function GET");
+    expect(routeSrc).toContain("export async function POST");
     expect(routeSrc).toContain("ALLOW_PRODUCTION_EVENT_RESET");
   });
 
-  it("test email markers classify correctly", () => {
-    expect(isTestCustomerEmail("buyer@example.com")).toBe(true);
-    expect(isTestCustomerEmail("x@test.local")).toBe(true);
-    expect(isTestCustomerEmail("test+user@gmail.com")).toBe(true);
-    expect(isTestCustomerEmail("real.customer@gmail.com")).toBe(false);
-  });
-
-  it("production gate blocks live paid revenue and real emails", () => {
-    const blocked = evaluateProductionGate({
-      eventStatus: EventStatus.PUBLISHED,
-      paidRevenueOre: 50000,
-      realCustomerPaidOrderCount: 1,
+  it("financial safety gate blocks unsettled statuses and allows refunded-only", () => {
+    const blocked = evaluateFinancialSafetyGate({
+      unsettledByStatus: { PAID: 1, AUTHORIZED: 1 },
     });
     expect(blocked.blocked).toBe(true);
     expect(blocked.reasons.length).toBeGreaterThan(0);
 
-    const draftTestOnly = evaluateProductionGate({
-      eventStatus: EventStatus.DRAFT,
-      paidRevenueOre: 100,
-      realCustomerPaidOrderCount: 0,
+    const ok = evaluateFinancialSafetyGate({ unsettledByStatus: {} });
+    expect(ok.blocked).toBe(false);
+
+    const partial = evaluateFinancialSafetyGate({
+      unsettledByStatus: { PARTIALLY_REFUNDED: 2 },
     });
-    expect(draftTestOnly.blocked).toBe(false);
+    expect(partial.blocked).toBe(true);
+
+    const review = evaluateFinancialSafetyGate({
+      unsettledByStatus: { REVIEW_REQUIRED: 1 },
+    });
+    expect(review.blocked).toBe(true);
   });
 });
 
-describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
+describe.runIf(runDb)("GET|POST /api/admin/events/[id]/reset-test-data", () => {
   const suffix = Date.now().toString(36);
   const orgIds: string[] = [];
   const eventIds: string[] = [];
@@ -139,6 +142,8 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
   let orderAId = "";
   let orderBId = "";
   let ticketAId = "";
+  let eventASlug = "";
+  let eventAName = "";
 
   beforeAll(async () => {
     process.env.AUTH_SECRET =
@@ -153,8 +158,8 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
         name: "Super Reset",
       },
     });
-    superAdminUser.id = superAdmin.id;
-    superAdminUser.email = superAdmin.email;
+    sessionUser.id = superAdmin.id;
+    sessionUser.email = superAdmin.email;
     userIds.push(superAdmin.id);
 
     const org = await prisma.organization.create({
@@ -169,12 +174,14 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
     orgId = org.id;
     orgIds.push(org.id);
 
+    eventAName = `Reset Event A ${suffix}`;
+    eventASlug = `reset-a-${suffix}`;
     const eventA = await prisma.event.create({
       data: {
         organizationId: orgId,
         sellerOrganizationId: orgId,
-        name: `Reset Event A ${suffix}`,
-        slug: `reset-a-${suffix}`,
+        name: eventAName,
+        slug: eventASlug,
         startsAt: new Date(Date.now() + 7 * 86400_000),
         endsAt: new Date(Date.now() + 7 * 86400_000 + 3 * 3600_000),
         timezone: "Europe/Oslo",
@@ -241,6 +248,7 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
     });
     ticketTypeBId = ttB.id;
 
+    // Fully refunded financial order — allowed path
     const orderA = await prisma.order.create({
       data: {
         orderNumber: `TKT-RST-A-${suffix}`,
@@ -255,8 +263,8 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
         tax: 0,
         discount: 0,
         total: 49800,
-        paymentStatus: PaymentStatus.PAID,
-        orderStatus: "CONFIRMED",
+        paymentStatus: PaymentStatus.REFUNDED,
+        orderStatus: "REFUNDED",
         paidAt: new Date(),
         items: {
           create: {
@@ -274,14 +282,26 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
     });
     orderAId = orderA.id;
 
-    await prisma.payment.create({
+    const paymentA = await prisma.payment.create({
       data: {
         orderId: orderAId,
         provider: PaymentProviderType.STRIPE,
         amount: 49800,
         currency: "NOK",
-        status: PaymentStatus.PAID,
+        status: PaymentStatus.REFUNDED,
         providerPaymentId: `pi_reset_a_${suffix}`,
+      },
+    });
+
+    await prisma.refund.create({
+      data: {
+        orderId: orderAId,
+        paymentId: paymentA.id,
+        amount: 49800,
+        currency: "NOK",
+        status: RefundStatus.SUCCEEDED,
+        reason: "test reset fixture",
+        ticketIds: [],
       },
     });
 
@@ -289,7 +309,7 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
       data: {
         provider: PaymentProviderType.STRIPE,
         eventId: `evt_reset_a_${suffix}`,
-        eventType: "payment_intent.succeeded",
+        eventType: "charge.refunded",
         orderId: orderAId,
         payload: { test: true },
         status: "PROCESSED",
@@ -327,6 +347,16 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
       },
     });
 
+    await prisma.waitlistEntry.create({
+      data: {
+        eventId: eventAId,
+        ticketTypeId: ticketTypeAId,
+        email: `wait-${suffix}@example.com`,
+        name: "Waiter",
+        requestedQuantity: 1,
+      },
+    });
+
     const token = generateSecureToken();
     const ticket = await prisma.ticket.create({
       data: {
@@ -340,7 +370,8 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
         ticketTypeId: ticketTypeAId,
         holderName: "Buyer A",
         holderEmail: `buyer-a-${suffix}@example.com`,
-        status: TicketStatus.VALID,
+        status: TicketStatus.CHECKED_IN,
+        checkedInAt: new Date(),
       },
     });
     ticketAId = ticket.id;
@@ -353,7 +384,7 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
       },
     });
 
-    // Untouched sibling event order
+    // Untouched sibling event order (PAID — must remain)
     const orderB = await prisma.order.create({
       data: {
         orderNumber: `TKT-RST-B-${suffix}`,
@@ -417,6 +448,8 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
       await prisma.notificationLog.deleteMany({ where: { eventId } });
       await prisma.analyticsEvent.deleteMany({ where: { eventId } });
       await prisma.ticketReservation.deleteMany({ where: { eventId } });
+      await prisma.waitlistEntry.deleteMany({ where: { eventId } });
+      await prisma.eventReminderJob.deleteMany({ where: { eventId } });
       await prisma.ticketType.deleteMany({ where: { eventId } });
       await prisma.auditLog.deleteMany({
         where: { entityType: "Event", entityId: eventId },
@@ -433,70 +466,100 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
   });
 
   beforeEach(() => {
-    superAdminUser.globalRole = GlobalRole.SUPER_ADMIN;
+    sessionUser.globalRole = GlobalRole.SUPER_ADMIN;
     delete process.env.ALLOW_PRODUCTION_EVENT_RESET;
     vi.clearAllMocks();
   });
 
-  it("SUPER_ADMIN can dry-run and see inventory counts", async () => {
-    const { POST } = await import("@/app/api/admin/events/[id]/test-reset/route");
-    const res = await POST(
-      new Request(`http://localhost/api/admin/events/${eventAId}/test-reset`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dryRun: true }),
-      }),
+  it("GET dry-run shows event/org and inventory counts", async () => {
+    const { GET } = await import("@/app/api/admin/events/[id]/reset-test-data/route");
+    const res = await GET(
+      new Request(`http://localhost/api/admin/events/${eventAId}/reset-test-data`),
       { params: Promise.resolve({ id: eventAId }) }
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       dryRun: boolean;
+      eventId: string;
+      eventName: string;
+      organizationName: string;
+      safetyGate: { blocked: boolean };
       counts: {
         orders: number;
+        refundedOrders: number;
+        paidOrders: number;
         tickets: number;
+        checkedInTickets: number;
         reservations: number;
         checkIns: number;
         payments: number;
+        refunds: number;
         webhookEvents: number;
         notificationLogs: number;
         analyticsEvents: number;
+        waitlistEntries: number;
         ticketTypes: Array<{ quantitySold: number; quantityReserved: number }>;
       };
     };
     expect(body.dryRun).toBe(true);
+    expect(body.eventId).toBe(eventAId);
+    expect(body.eventName).toBe(eventAName);
+    expect(body.organizationName).toContain("Reset Org");
+    expect(body.safetyGate.blocked).toBe(false);
     expect(body.counts.orders).toBeGreaterThanOrEqual(1);
+    expect(body.counts.refundedOrders).toBeGreaterThanOrEqual(1);
+    expect(body.counts.paidOrders).toBe(0);
     expect(body.counts.tickets).toBeGreaterThanOrEqual(1);
+    expect(body.counts.checkedInTickets).toBeGreaterThanOrEqual(1);
     expect(body.counts.reservations).toBeGreaterThanOrEqual(1);
     expect(body.counts.checkIns).toBeGreaterThanOrEqual(1);
     expect(body.counts.payments).toBeGreaterThanOrEqual(1);
+    expect(body.counts.refunds).toBeGreaterThanOrEqual(1);
     expect(body.counts.webhookEvents).toBeGreaterThanOrEqual(1);
     expect(body.counts.notificationLogs).toBeGreaterThanOrEqual(1);
     expect(body.counts.analyticsEvents).toBeGreaterThanOrEqual(1);
+    expect(body.counts.waitlistEntries).toBeGreaterThanOrEqual(1);
     expect(body.counts.ticketTypes[0]?.quantitySold).toBe(2);
     expect(body.counts.ticketTypes[0]?.quantityReserved).toBe(2);
   });
 
-  it("non-SUPER_ADMIN gets 403", async () => {
-    superAdminUser.globalRole = GlobalRole.CUSTOMER;
-    const { POST } = await import("@/app/api/admin/events/[id]/test-reset/route");
-    const res = await POST(
-      new Request(`http://localhost/api/admin/events/${eventAId}/test-reset`, {
+  it("SUPER_ADMIN only; organizer denied", async () => {
+    sessionUser.globalRole = GlobalRole.CUSTOMER;
+    sessionUser.memberships = [
+      {
+        organizationId: orgId,
+        role: OrgRole.ORGANIZER_ADMIN,
+        canRefund: true,
+        isActive: true,
+      },
+    ];
+    const { GET, POST } = await import(
+      "@/app/api/admin/events/[id]/reset-test-data/route"
+    );
+    const getRes = await GET(
+      new Request(`http://localhost/api/admin/events/${eventAId}/reset-test-data`),
+      { params: Promise.resolve({ id: eventAId }) }
+    );
+    expect(getRes.status).toBe(403);
+
+    const postRes = await POST(
+      new Request(`http://localhost/api/admin/events/${eventAId}/reset-test-data`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dryRun: true }),
+        body: JSON.stringify({ confirm: TEST_EVENT_RESET_CONFIRMATION }),
       }),
       { params: Promise.resolve({ id: eventAId }) }
     );
-    expect(res.status).toBe(403);
+    expect(postRes.status).toBe(403);
   });
 
   it("wrong confirmation is rejected", async () => {
-    const { POST } = await import("@/app/api/admin/events/[id]/test-reset/route");
+    const { POST } = await import("@/app/api/admin/events/[id]/reset-test-data/route");
     const res = await POST(
-      new Request(`http://localhost/api/admin/events/${eventAId}/test-reset`, {
+      new Request(`http://localhost/api/admin/events/${eventAId}/reset-test-data`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dryRun: false, confirmation: "wrong" }),
+        body: JSON.stringify({ confirm: "wrong" }),
       }),
       { params: Promise.resolve({ id: eventAId }) }
     );
@@ -505,31 +568,124 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
     expect(body.error.code).toBe("CONFIRMATION_REQUIRED");
   });
 
-  it("resets event A and leaves event B untouched; preserves allocation/price", async () => {
-    const { POST } = await import("@/app/api/admin/events/[id]/test-reset/route");
-    const res = await POST(
-      new Request(`http://localhost/api/admin/events/${eventAId}/test-reset`, {
+  it("blocks with active PAID order", async () => {
+    const paidEvent = await prisma.event.create({
+      data: {
+        organizationId: orgId,
+        sellerOrganizationId: orgId,
+        name: `Paid Block ${suffix}`,
+        slug: `reset-paid-${suffix}`,
+        startsAt: new Date(Date.now() + 3 * 86400_000),
+        endsAt: new Date(Date.now() + 3 * 86400_000 + 3600_000),
+        timezone: "Europe/Oslo",
+        capacity: 50,
+        status: EventStatus.DRAFT,
+        visibility: "PUBLIC",
+        currency: "NOK",
+        city: "Oslo",
+      },
+    });
+    eventIds.push(paidEvent.id);
+
+    const tt = await prisma.ticketType.create({
+      data: {
+        eventId: paidEvent.id,
+        name: "Paid",
+        price: 10000,
+        quantityTotal: 50,
+        quantityReleased: 50,
+        quantitySold: 1,
+        quantityReserved: 0,
+      },
+    });
+
+    await prisma.order.create({
+      data: {
+        orderNumber: `TKT-RST-PAID-${suffix}`,
+        organizationId: orgId,
+        sellerOrganizationId: orgId,
+        eventId: paidEvent.id,
+        customerEmail: `paid.${suffix}@example.com`,
+        customerFirstName: "Paid",
+        customerLastName: "Buyer",
+        subtotal: 10000,
+        total: 10000,
+        paymentStatus: PaymentStatus.PAID,
+        orderStatus: "CONFIRMED",
+        paidAt: new Date(),
+        items: {
+          create: {
+            ticketTypeId: tt.id,
+            quantity: 1,
+            unitPrice: 10000,
+            total: 10000,
+            name: "Paid",
+          },
+        },
+      },
+    });
+
+    const { GET, POST } = await import(
+      "@/app/api/admin/events/[id]/reset-test-data/route"
+    );
+    const preview = await GET(
+      new Request(`http://localhost/api/admin/events/${paidEvent.id}/reset-test-data`),
+      { params: Promise.resolve({ id: paidEvent.id }) }
+    );
+    expect(preview.status).toBe(200);
+    const previewBody = (await preview.json()) as {
+      safetyGate: { blocked: boolean; reasons: string[] };
+    };
+    expect(previewBody.safetyGate.blocked).toBe(true);
+
+    const blocked = await POST(
+      new Request(`http://localhost/api/admin/events/${paidEvent.id}/reset-test-data`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dryRun: false,
-          confirmation: TEST_EVENT_RESET_CONFIRMATION,
-        }),
+        body: JSON.stringify({ confirm: TEST_EVENT_RESET_CONFIRMATION }),
+      }),
+      { params: Promise.resolve({ id: paidEvent.id }) }
+    );
+    expect(blocked.status).toBe(409);
+    const err = (await blocked.json()) as { error: { code: string; message: string } };
+    expect(err.error.code).toBe("EVENT_RESET_BLOCKED_UNREFUNDED");
+    expect(err.error.message).toMatch(/fullt refundert/i);
+    expect(await prisma.order.count({ where: { eventId: paidEvent.id } })).toBe(1);
+  });
+
+  it("allows when all financial orders fully refunded; resets inventory; preserves event B + metadata", async () => {
+    const { POST } = await import("@/app/api/admin/events/[id]/reset-test-data/route");
+    const res = await POST(
+      new Request(`http://localhost/api/admin/events/${eventAId}/reset-test-data`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: TEST_EVENT_RESET_CONFIRMATION }),
       }),
       { params: Promise.resolve({ id: eventAId }) }
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       dryRun: boolean;
-      deleted: { orders: number; tickets: number };
-      counts: { orders: number; tickets: number; reservations: number };
-      preserved: { quantityReleased: true };
+      deleted: {
+        orders: number;
+        tickets: number;
+        checkIns: number;
+        reservations: number;
+        waitlistEntries: number;
+      };
+      counts: { orders: number; tickets: number; reservations: number; checkIns: number };
+      preserved: { quantityReleased: true; stripeExternal: true };
     };
     expect(body.dryRun).toBe(false);
     expect(body.deleted.orders).toBeGreaterThanOrEqual(1);
+    expect(body.deleted.tickets).toBeGreaterThanOrEqual(1);
+    expect(body.deleted.checkIns).toBeGreaterThanOrEqual(1);
+    expect(body.deleted.reservations).toBeGreaterThanOrEqual(1);
     expect(body.counts.orders).toBe(0);
     expect(body.counts.tickets).toBe(0);
     expect(body.counts.reservations).toBe(0);
+    expect(body.counts.checkIns).toBe(0);
+    expect(body.preserved.stripeExternal).toBe(true);
 
     const ttA = await prisma.ticketType.findUniqueOrThrow({ where: { id: ticketTypeAId } });
     expect(ttA.quantitySold).toBe(0);
@@ -539,8 +695,17 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
     expect(ttA.price).toBe(24900);
 
     const eventA = await prisma.event.findUniqueOrThrow({ where: { id: eventAId } });
-    expect(eventA.name).toContain("Reset Event A");
+    expect(eventA.name).toBe(eventAName);
+    expect(eventA.slug).toBe(eventASlug);
     expect(eventA.capacity).toBe(500);
+    expect(eventA.organizationId).toBe(orgId);
+    expect(eventA.sellerOrganizationId).toBe(orgId);
+
+    expect(await prisma.order.count({ where: { id: orderAId } })).toBe(0);
+    expect(await prisma.ticket.count({ where: { eventId: eventAId } })).toBe(0);
+    expect(await prisma.checkIn.count({ where: { eventId: eventAId } })).toBe(0);
+    expect(await prisma.ticketReservation.count({ where: { eventId: eventAId } })).toBe(0);
+    expect(await prisma.waitlistEntry.count({ where: { eventId: eventAId } })).toBe(0);
 
     // Event B untouched
     expect(await prisma.order.count({ where: { id: orderBId } })).toBe(1);
@@ -554,20 +719,33 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
       where: {
         action: EVENT_TEST_DATA_RESET_ACTION,
         entityId: eventAId,
-        actorId: superAdminUser.id,
+        actorId: sessionUser.id,
       },
     });
     expect(audit).toBeTruthy();
+    const meta = audit?.metadata as {
+      eventId?: string;
+      actorId?: string;
+      timestamp?: string;
+      ticketTypeCountersBefore?: unknown;
+      ticketTypeCountersAfter?: unknown;
+      countsDeleted?: unknown;
+    } | null;
+    expect(meta?.eventId).toBe(eventAId);
+    expect(meta?.actorId).toBe(sessionUser.id);
+    expect(meta?.timestamp).toBeTruthy();
+    expect(meta?.ticketTypeCountersBefore).toBeTruthy();
+    expect(meta?.ticketTypeCountersAfter).toBeTruthy();
+    expect(meta?.countsDeleted).toBeTruthy();
   });
 
-  it("production gate blocks PUBLISHED event with paid real-customer revenue", async () => {
-    // Seed a live event with a real customer email
+  it("emergency override can bypass refunded-only when env enabled", async () => {
     const live = await prisma.event.create({
       data: {
         organizationId: orgId,
         sellerOrganizationId: orgId,
-        name: `Live Reset ${suffix}`,
-        slug: `reset-live-${suffix}`,
+        name: `Emergency Reset ${suffix}`,
+        slug: `reset-emerg-${suffix}`,
         startsAt: new Date(Date.now() + 3 * 86400_000),
         endsAt: new Date(Date.now() + 3 * 86400_000 + 3600_000),
         timezone: "Europe/Oslo",
@@ -594,12 +772,12 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
 
     await prisma.order.create({
       data: {
-        orderNumber: `TKT-RST-LIVE-${suffix}`,
+        orderNumber: `TKT-RST-EMERG-${suffix}`,
         organizationId: orgId,
         sellerOrganizationId: orgId,
         eventId: live.id,
-        customerEmail: `real.buyer.${suffix}@gmail.com`,
-        customerFirstName: "Real",
+        customerEmail: `emerg.${suffix}@gmail.com`,
+        customerFirstName: "Emerg",
         customerLastName: "Buyer",
         subtotal: 10000,
         total: 10000,
@@ -618,37 +796,17 @@ describe.runIf(runDb)("POST /api/admin/events/[id]/test-reset", () => {
       },
     });
 
-    const { POST } = await import("@/app/api/admin/events/[id]/test-reset/route");
+    const { POST } = await import("@/app/api/admin/events/[id]/reset-test-data/route");
 
-    const blocked = await POST(
-      new Request(`http://localhost/api/admin/events/${live.id}/test-reset`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dryRun: false,
-          confirmation: TEST_EVENT_RESET_CONFIRMATION,
-        }),
-      }),
-      { params: Promise.resolve({ id: live.id }) }
-    );
-    expect(blocked.status).toBe(409);
-    const err = (await blocked.json()) as { error: { code: string } };
-    expect(err.error.code).toBe("PRODUCTION_EVENT_RESET_BLOCKED");
-
-    // Still has the order
-    expect(await prisma.order.count({ where: { eventId: live.id } })).toBe(1);
-
-    // Override with env + stronger confirm works
     process.env.ALLOW_PRODUCTION_EVENT_RESET = "true";
     const allowed = await POST(
-      new Request(`http://localhost/api/admin/events/${live.id}/test-reset`, {
+      new Request(`http://localhost/api/admin/events/${live.id}/reset-test-data`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          dryRun: false,
-          confirmation: TEST_EVENT_RESET_CONFIRMATION,
-          allowProductionOverride: true,
-          productionConfirmation: PRODUCTION_EVENT_RESET_CONFIRMATION,
+          confirm: TEST_EVENT_RESET_CONFIRMATION,
+          allowEmergencyOverride: true,
+          emergencyConfirmation: EMERGENCY_EVENT_RESET_CONFIRMATION,
         }),
       }),
       { params: Promise.resolve({ id: live.id }) }
