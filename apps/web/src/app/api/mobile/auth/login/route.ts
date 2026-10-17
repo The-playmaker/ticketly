@@ -158,6 +158,8 @@ export async function POST(req: Request) {
 
     const jti = randomBytes(16).toString("base64url");
     const exp = Date.now() + SESSION_TTL_MS;
+    // Session create only — do not touch User.lastActiveAt on login (auth hot
+    // path must stay free of activity UPDATEs that contend under concurrency).
     await prisma.mobileSession.create({
       data: {
         jti,
@@ -165,10 +167,6 @@ export async function POST(req: Request) {
         expiresAt: new Date(exp),
         userAgent: req.headers.get("user-agent")?.slice(0, 200),
       },
-    });
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastActiveAt: new Date() },
     });
 
     return NextResponse.json({

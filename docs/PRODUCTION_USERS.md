@@ -91,3 +91,11 @@ Reset uses hashed, single-use, expiring `AuthActionToken` rows and `/set-passwor
 - Last active SUPER_ADMIN cannot remove their own SUPER_ADMIN role or disable themselves without another active SUPER_ADMIN.
 - Last active `ORGANIZER_ADMIN` in an org cannot be removed/demoted/disabled without another.
 - Audit actions include `USER_INVITED`, `INVITE_ACCEPTED`, `USER_DISABLED`, `USER_ENABLED`, `ORG_MEMBER_ADDED`, `ORG_MEMBER_REMOVED`, `ROLE_CHANGED`, `EVENT_ACCESS_CHANGED`.
+
+## `lastActiveAt` (do not write on auth)
+
+`User.lastActiveAt` remains in the schema for admin display, but **must not** be updated from credentials authorize, JWT/session refresh, mobile login, scanner, checkout, or page-render paths.
+
+Concurrent auth requests that all `UPDATE "User" SET "lastActiveAt"` on the same row caused Postgres statement timeouts (`57014` / Prisma `P2024`) and login instability.
+
+**Safe future design (not implemented):** a dedicated, throttled activity endpoint (e.g. once per 30–60 minutes), using a conditional update (`WHERE lastActiveAt IS NULL OR lastActiveAt < …`), called best-effort / non-blocking, never on the login critical path. Login success must not depend on activity telemetry.
