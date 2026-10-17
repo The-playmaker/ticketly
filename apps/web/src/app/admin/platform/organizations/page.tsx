@@ -45,7 +45,7 @@ export default async function PlatformOrganizationsPage() {
         </div>
         <Link
           href="/admin/platform/organizations/new"
-          className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-semibold text-[color:var(--accent-foreground)]"
+          className="inline-flex h-10 items-center rounded-md bg-[color:var(--accent)] px-4 text-sm font-semibold text-[color:var(--accent-foreground)]"
         >
           + Opprett organisasjon
         </Link>
@@ -56,9 +56,9 @@ export default async function PlatformOrganizationsPage() {
           <p className="text-[color:var(--muted)]">Ingen organisasjoner ennå.</p>
           <Link
             href="/admin/platform/organizations/new"
-            className="mt-3 inline-block text-[color:var(--accent-soft)] underline"
+            className="mt-4 inline-flex h-12 items-center rounded-md bg-[color:var(--accent)] px-6 text-base font-semibold text-[color:var(--accent-foreground)]"
           >
-            Opprett den første organisasjonen
+            Opprett organisasjon
           </Link>
         </div>
       ) : (
@@ -71,6 +71,7 @@ export default async function PlatformOrganizationsPage() {
                 <th className="px-4 py-3 font-medium">Medlemmer</th>
                 <th className="px-4 py-3 font-medium">Events</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Handling</th>
               </tr>
             </thead>
             <tbody>
@@ -80,7 +81,12 @@ export default async function PlatformOrganizationsPage() {
                   className="border-b border-[color:var(--outline)]/20 last:border-0"
                 >
                   <td className="px-4 py-3">
-                    <div className="font-medium">{org.name}</div>
+                    <Link
+                      href={`/admin/platform/organizations/${org.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {org.name}
+                    </Link>
                     <div className="text-xs text-[color:var(--muted)]">
                       {org.legalName ?? org.slug}
                     </div>
@@ -96,6 +102,14 @@ export default async function PlatformOrganizationsPage() {
                     ) : (
                       <span className="text-[color:var(--muted)]">Inaktiv</span>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/admin/platform/organizations/${org.id}`}
+                      className="text-xs text-[color:var(--accent-soft)] underline"
+                    >
+                      Rediger
+                    </Link>
                   </td>
                 </tr>
               ))}

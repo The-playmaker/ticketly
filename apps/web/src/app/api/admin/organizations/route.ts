@@ -8,7 +8,7 @@ import { writeAuditLog } from "@/lib/audit";
 import { canManageOrganization, isSuperAdmin } from "@/lib/auth/rbac";
 import { GlobalRole, OrgRole } from "@prisma/client";
 
-const sellerSchema = z.object({
+const createSchema = z.object({
   name: z.string().min(1).max(200),
   slug: z.string().min(1).max(80).optional(),
   legalName: z.string().min(1).max(200),
@@ -18,14 +18,36 @@ const sellerSchema = z.object({
   legalCity: z.string().min(1).max(100),
   legalCountry: z.string().min(2).max(2).default("NO"),
   customerServiceEmail: z.string().email(),
-  customerServicePhone: z.string().max(40).optional(),
+  customerServicePhone: z.string().min(1).max(40),
+  contactEmail: z.string().email(),
+  website: z.string().url().max(300).optional().nullable(),
+  vatRegistrationStatus: z.enum(["UNKNOWN", "REGISTERED", "NOT_REGISTERED", "EXEMPT"]),
+  termsVersion: z.string().min(1).optional(),
+  refundPolicyText: z.string().min(1),
+  displayName: z.string().max(200).optional(),
+});
+
+const patchSchema = z.object({
+  organizationId: z.string().min(1),
+  name: z.string().min(1).max(200).optional(),
+  slug: z.string().min(1).max(80).optional(),
+  legalName: z.string().min(1).max(200).optional(),
+  organizationNumber: z.string().min(5).max(30).optional(),
+  legalAddress: z.string().min(1).max(300).optional(),
+  legalPostalCode: z.string().min(2).max(20).optional(),
+  legalCity: z.string().min(1).max(100).optional(),
+  legalCountry: z.string().min(2).max(2).optional(),
+  customerServiceEmail: z.string().email().optional(),
+  customerServicePhone: z.string().max(40).optional().nullable(),
   contactEmail: z.string().email().optional(),
+  website: z.string().url().max(300).optional().nullable(),
   vatRegistrationStatus: z
     .enum(["UNKNOWN", "REGISTERED", "NOT_REGISTERED", "EXEMPT"])
     .optional(),
   termsVersion: z.string().min(1).optional(),
-  refundPolicyText: z.string().min(1).optional(),
+  refundPolicyText: z.string().min(1).optional().nullable(),
   displayName: z.string().max(200).optional(),
+  isActive: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -54,7 +76,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const { user } = await requireSuperAdmin();
-    const body = sellerSchema.parse(await req.json());
+    const body = createSchema.parse(await req.json());
     const slug = body.slug ?? slugify(body.name);
     const org = await prisma.organization.create({
       data: {
@@ -68,14 +90,15 @@ export async function POST(req: Request) {
         legalCountry: body.legalCountry,
         customerServiceEmail: body.customerServiceEmail,
         customerServicePhone: body.customerServicePhone,
-        contactEmail: body.contactEmail ?? body.customerServiceEmail,
-        vatRegistrationStatus: body.vatRegistrationStatus ?? "UNKNOWN",
+        contactEmail: body.contactEmail,
+        website: body.website ?? null,
+        vatRegistrationStatus: body.vatRegistrationStatus,
         termsVersion: body.termsVersion ?? "1.0",
         refundPolicyText: body.refundPolicyText,
       },
     });
 
-    // Make creator org admin member as well if they are not only platform-level
+    // Creator becomes ORGANIZER_ADMIN so team/settings membership checks succeed.
     await prisma.organizationMember.upsert({
       where: { organizationId_userId: { organizationId: org.id, userId: user.id } },
       update: { role: OrgRole.ORGANIZER_ADMIN, isActive: true },
@@ -102,10 +125,6 @@ export async function POST(req: Request) {
   }
 }
 
-const patchSchema = sellerSchema.partial().extend({
-  organizationId: z.string().min(1),
-});
-
 export async function PATCH(req: Request) {
   try {
     const session = await requireAdminSession();
@@ -121,13 +140,25 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { organizationId, displayName, ...rest } = body;
+    const { organizationId, displayName, isActive, ...rest } = body;
+    if (typeof isActive === "boolean" && !isSuperAdmin(user)) {
+      return NextResponse.json(
+        { error: { code: "FORBIDDEN", message: "Kun SUPER_ADMIN kan endre aktiv-status" } },
+        { status: 403 }
+      );
+    }
+
+    const data: Record<string, unknown> = { ...rest };
+    if (displayName != null) data.name = displayName;
+    if (typeof isActive === "boolean") data.isActive = isActive;
+
+    for (const key of Object.keys(data)) {
+      if (data[key] === undefined) delete data[key];
+    }
+
     const org = await prisma.organization.update({
       where: { id: organizationId },
-      data: {
-        ...rest,
-        ...(displayName != null ? { name: displayName } : {}),
-      },
+      data,
     });
 
     await writeAuditLog({
@@ -136,7 +167,7 @@ export async function PATCH(req: Request) {
       action: "ORG_SELLER_UPDATED",
       entityType: "Organization",
       entityId: organizationId,
-      metadata: rest,
+      metadata: { ...rest, isActive },
     });
 
     return NextResponse.json(org);

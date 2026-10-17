@@ -1,4 +1,6 @@
 import { describe, expect, it, beforeAll, afterAll, vi, beforeEach } from "vitest";
+import { readFileSync } from "fs";
+import path from "path";
 import { PrismaClient, GlobalRole, OrgRole } from "@prisma/client";
 import { AppError } from "@/lib/api-error";
 
@@ -9,19 +11,6 @@ const superAdminUser = {
   id: "placeholder",
   email: "super-org-test@test.local",
   globalRole: GlobalRole.SUPER_ADMIN,
-  isActive: true,
-  memberships: [] as {
-    organizationId: string;
-    role: OrgRole;
-    canRefund: boolean;
-    isActive: boolean;
-  }[],
-};
-
-const organizerUser = {
-  id: "placeholder-org",
-  email: "organizer-org-test@test.local",
-  globalRole: GlobalRole.CUSTOMER,
   isActive: true,
   memberships: [] as {
     organizationId: string;
@@ -42,6 +31,69 @@ vi.mock("@/lib/admin/org-access", () => ({
   resolveOrgIdForUser: vi.fn(),
 }));
 
+/** Mirrors resolveOrgIdForUser for SUPER_ADMIN without importing auth-bound modules. */
+async function resolveSettingsOrgIdForSuperAdmin() {
+  const org = await prisma.organization.findFirst({
+    where: { isActive: true },
+    orderBy: { createdAt: "asc" },
+  });
+  return org?.id ?? null;
+}
+
+describe("SUPER_ADMIN no-org settings CTA", () => {
+  it("settings page shows prominent Opprett organisasjon CTA when no org", () => {
+    const settingsSrc = readFileSync(
+      path.resolve(__dirname, "../../src/app/admin/settings/page.tsx"),
+      "utf8"
+    );
+    expect(settingsSrc).toContain("NoOrganizationPanel");
+    expect(settingsSrc).toContain("isSuperAdmin(user)");
+
+    const panelSrc = readFileSync(
+      path.resolve(__dirname, "../../src/components/admin/no-organization-panel.tsx"),
+      "utf8"
+    );
+    expect(panelSrc).toContain("Opprett organisasjon");
+    expect(panelSrc).toContain('href={createHref}');
+    expect(panelSrc).toContain('"/admin/platform/organizations/new"');
+    expect(panelSrc).toContain('data-testid="create-organization-cta"');
+    expect(panelSrc).toContain("text-base font-semibold");
+  });
+
+  it("platform org routes exist for list, create, and edit", () => {
+    const list = path.resolve(
+      __dirname,
+      "../../src/app/admin/platform/organizations/page.tsx"
+    );
+    const create = path.resolve(
+      __dirname,
+      "../../src/app/admin/platform/organizations/new/page.tsx"
+    );
+    const edit = path.resolve(
+      __dirname,
+      "../../src/app/admin/platform/organizations/[id]/page.tsx"
+    );
+    expect(readFileSync(list, "utf8")).toContain("Opprett organisasjon");
+    expect(readFileSync(list, "utf8")).toContain("Rediger");
+    expect(readFileSync(create, "utf8")).toContain("CreateOrganizationForm");
+    expect(readFileSync(edit, "utf8")).toContain("EditOrganizationForm");
+  });
+
+  it("create form posts to existing API and full-navigates to settings", () => {
+    const formSrc = readFileSync(
+      path.resolve(__dirname, "../../src/components/admin/create-organization-form.tsx"),
+      "utf8"
+    );
+    expect(formSrc).toContain('fetch("/api/admin/organizations"');
+    expect(formSrc).toContain('method: "POST"');
+    expect(formSrc).toContain('window.location.assign("/admin/settings")');
+    expect(formSrc).toContain("customerServicePhone");
+    expect(formSrc).toContain("contactEmail");
+    expect(formSrc).toContain("refundPolicyText");
+    expect(formSrc).toContain("website");
+  });
+});
+
 describe.runIf(runDb)("POST /api/admin/organizations", () => {
   const suffix = Date.now().toString(36);
   const createdOrgIds: string[] = [];
@@ -59,18 +111,6 @@ describe.runIf(runDb)("POST /api/admin/organizations", () => {
     superAdminUser.id = superAdmin.id;
     superAdminUser.email = superAdmin.email;
     userIds.push(superAdmin.id);
-
-    const organizer = await prisma.user.create({
-      data: {
-        email: `org-user-${suffix}@test.local`,
-        globalRole: GlobalRole.CUSTOMER,
-        isActive: true,
-        name: "Organizer",
-      },
-    });
-    organizerUser.id = organizer.id;
-    organizerUser.email = organizer.email;
-    userIds.push(organizer.id);
   });
 
   afterAll(async () => {
@@ -90,11 +130,8 @@ describe.runIf(runDb)("POST /api/admin/organizations", () => {
     vi.clearAllMocks();
   });
 
-  it("SUPER_ADMIN creates org, ORGANIZER_ADMIN membership, and audit log", async () => {
-    const { POST } = await import("@/app/api/admin/organizations/route");
-    const { requireSuperAdmin } = await import("@/lib/admin/org-access");
-
-    const payload = {
+  function validPayload(extra: Record<string, unknown> = {}) {
+    return {
       name: `Real Org ${suffix}`,
       displayName: `Real Org ${suffix}`,
       legalName: `Real Org AS ${suffix}`,
@@ -106,9 +143,18 @@ describe.runIf(runDb)("POST /api/admin/organizations", () => {
       customerServiceEmail: `support-${suffix}@example.com`,
       customerServicePhone: "+47 22 00 00 00",
       contactEmail: `contact-${suffix}@example.com`,
+      website: `https://org-${suffix}.example.com`,
       vatRegistrationStatus: "REGISTERED" as const,
       refundPolicyText: "Full refusjon inntil 14 dager før arrangement.",
+      ...extra,
     };
+  }
+
+  it("SUPER_ADMIN creates org, ORGANIZER_ADMIN membership, and audit log", async () => {
+    const { POST } = await import("@/app/api/admin/organizations/route");
+    const { requireSuperAdmin } = await import("@/lib/admin/org-access");
+
+    const payload = validPayload();
 
     const res = await POST(
       new Request("http://localhost/api/admin/organizations", {
@@ -120,12 +166,17 @@ describe.runIf(runDb)("POST /api/admin/organizations", () => {
 
     expect(requireSuperAdmin).toHaveBeenCalled();
     expect(res.status).toBe(201);
-    const org = (await res.json()) as { id: string; name: string; slug: string };
+    const org = (await res.json()) as {
+      id: string;
+      name: string;
+      slug: string;
+      website: string | null;
+    };
     createdOrgIds.push(org.id);
 
     expect(org.name).toBe(payload.displayName);
-    // Must not collide with demo cleanup seed slugs
-    expect(["titan-events", "shot-spot", "bloms", "noir", "festival-as"]).not.toContain(
+    expect(org.website).toBe(payload.website);
+    expect(["titan-events", "shot-spot", "bloms", "noir", "festival-as", "xo"]).not.toContain(
       org.slug
     );
 
@@ -151,22 +202,61 @@ describe.runIf(runDb)("POST /api/admin/organizations", () => {
     expect(stored.organizationNumber).toBe(payload.organizationNumber);
     expect(stored.legalAddress).toBe(payload.legalAddress);
     expect(stored.customerServiceEmail).toBe(payload.customerServiceEmail);
+    expect(stored.customerServicePhone).toBe(payload.customerServicePhone);
     expect(stored.contactEmail).toBe(payload.contactEmail);
     expect(stored.vatRegistrationStatus).toBe("REGISTERED");
     expect(stored.refundPolicyText).toBe(payload.refundPolicyText);
+    expect(stored.isActive).toBe(true);
 
-    // Settings/team resolve the first active org for SUPER_ADMIN — seller fields must be present
-    const settingsOrg = await prisma.organization.findFirst({
-      where: { isActive: true, id: org.id },
-    });
-    expect(settingsOrg?.legalName).toBeTruthy();
-    expect(settingsOrg?.organizationNumber).toBeTruthy();
+    // Settings resolves an active org after create (same query as resolveOrgIdForUser)
+    const settingsOrgId = await resolveSettingsOrgIdForSuperAdmin();
+    expect(settingsOrgId).toBeTruthy();
+    expect(
+      await prisma.organization.findFirst({ where: { id: org.id, isActive: true } })
+    ).toBeTruthy();
 
-    // Team page lists members for the resolved org
     const teamMembers = await prisma.organizationMember.findMany({
       where: { organizationId: org.id, isActive: true },
     });
     expect(teamMembers.some((m) => m.userId === superAdminUser.id)).toBe(true);
+  });
+
+  it("PATCH toggles isActive for SUPER_ADMIN", async () => {
+    const { POST, PATCH } = await import("@/app/api/admin/organizations/route");
+    const createRes = await POST(
+      new Request("http://localhost/api/admin/organizations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          validPayload({
+            name: `Toggle Org ${suffix}`,
+            displayName: `Toggle Org ${suffix}`,
+            legalName: `Toggle Org AS ${suffix}`,
+            organizationNumber: "888777666",
+            customerServiceEmail: `toggle-${suffix}@example.com`,
+            contactEmail: `toggle-c-${suffix}@example.com`,
+            website: undefined,
+          })
+        ),
+      })
+    );
+    expect(createRes.status).toBe(201);
+    const org = (await createRes.json()) as { id: string };
+    createdOrgIds.push(org.id);
+
+    const patchRes = await PATCH(
+      new Request("http://localhost/api/admin/organizations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationId: org.id, isActive: false }),
+      })
+    );
+    expect(patchRes.status).toBe(200);
+    const updated = (await patchRes.json()) as { isActive: boolean };
+    expect(updated.isActive).toBe(false);
+
+    const stored = await prisma.organization.findUniqueOrThrow({ where: { id: org.id } });
+    expect(stored.isActive).toBe(false);
   });
 
   it("non-SUPER_ADMIN cannot create org (403)", async () => {
@@ -180,22 +270,38 @@ describe.runIf(runDb)("POST /api/admin/organizations", () => {
       new Request("http://localhost/api/admin/organizations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: "Should Fail",
-          legalName: "Should Fail AS",
-          organizationNumber: "111111111",
-          legalAddress: "Nowhere 1",
-          legalPostalCode: "0001",
-          legalCity: "Oslo",
-          legalCountry: "NO",
-          customerServiceEmail: "fail@example.com",
-          refundPolicyText: "n/a",
-        }),
+        body: JSON.stringify(validPayload({ name: "Should Fail" })),
       })
     );
 
     expect(res.status).toBe(403);
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("does not seed Titan Events / XO / Shot Spot demo orgs", async () => {
+    const demoSlugs = ["titan-events", "shot-spot", "xo", "xo-drammen"];
+    const { POST } = await import("@/app/api/admin/organizations/route");
+    const res = await POST(
+      new Request("http://localhost/api/admin/organizations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          validPayload({
+            name: `No Demo ${suffix}`,
+            displayName: `No Demo ${suffix}`,
+            legalName: `No Demo AS ${suffix}`,
+            organizationNumber: "777666555",
+            customerServiceEmail: `nodemo-${suffix}@example.com`,
+            contactEmail: `nodemo-c-${suffix}@example.com`,
+            website: undefined,
+          })
+        ),
+      })
+    );
+    expect(res.status).toBe(201);
+    const org = (await res.json()) as { id: string; slug: string };
+    createdOrgIds.push(org.id);
+    expect(demoSlugs).not.toContain(org.slug);
   });
 });

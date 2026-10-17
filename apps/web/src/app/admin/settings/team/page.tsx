@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { resolveOrgIdForUser } from "@/lib/admin/org-access";
@@ -6,6 +5,7 @@ import { canManageTeam, isSuperAdmin } from "@/lib/auth/rbac";
 import { UserAdminService } from "@/services/user-admin-service";
 import { prisma } from "@/lib/db";
 import { TeamAdminClient } from "@/components/admin/team-admin-client";
+import { NoOrganizationPanel } from "@/components/admin/no-organization-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -25,18 +25,8 @@ export default async function TeamSettingsPage() {
   if (!orgId) {
     return (
       <div className="space-y-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Team</h1>
-          <p className="mt-2 text-sm text-[color:var(--muted)]">Ingen organisasjon tilknyttet.</p>
-        </div>
-        {isSuperAdmin(user) ? (
-          <Link
-            href="/admin/platform/organizations/new"
-            className="inline-flex rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-semibold text-[color:var(--accent-foreground)]"
-          >
-            Opprett organisasjon
-          </Link>
-        ) : null}
+        <h1 className="text-2xl font-semibold">Team</h1>
+        <NoOrganizationPanel showCreateCta={isSuperAdmin(user)} />
       </div>
     );
   }

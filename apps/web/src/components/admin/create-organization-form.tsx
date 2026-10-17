@@ -27,6 +27,7 @@ export function CreateOrganizationForm() {
     customerServiceEmail: "",
     customerServicePhone: "",
     contactEmail: "",
+    website: "",
     vatRegistrationStatus: "UNKNOWN" as VatRegistrationStatus,
     refundPolicyText: "",
   });
@@ -55,10 +56,11 @@ export function CreateOrganizationForm() {
         legalCity: form.legalCity.trim(),
         legalCountry: form.legalCountry.trim().toUpperCase(),
         customerServiceEmail: form.customerServiceEmail.trim(),
-        customerServicePhone: form.customerServicePhone.trim() || undefined,
-        contactEmail: form.contactEmail.trim() || form.customerServiceEmail.trim(),
+        customerServicePhone: form.customerServicePhone.trim(),
+        contactEmail: form.contactEmail.trim(),
+        website: form.website.trim() || undefined,
         vatRegistrationStatus: form.vatRegistrationStatus,
-        refundPolicyText: form.refundPolicyText.trim() || undefined,
+        refundPolicyText: form.refundPolicyText.trim(),
       }),
     });
 
@@ -71,10 +73,9 @@ export function CreateOrganizationForm() {
       return;
     }
 
-    // Full navigation so JWT/session memberships reload from DB
-    // (creator is auto-added as ORGANIZER_ADMIN by the API).
+    // Full document navigation reloads JWT (memberships refreshed on every jwt callback)
+    // so /admin/settings immediately resolves the new org and team works.
     window.location.assign("/admin/settings");
-    router.refresh();
   }
 
   return (
@@ -100,7 +101,7 @@ export function CreateOrganizationForm() {
           />
         </div>
         <div>
-          <Label>Org.nr</Label>
+          <Label>Organisasjonsnummer</Label>
           <Input
             value={form.organizationNumber}
             onChange={(e) => set("organizationNumber", e.target.value)}
@@ -108,13 +109,14 @@ export function CreateOrganizationForm() {
           />
         </div>
         <div>
-          <Label>VAT-status</Label>
+          <Label>VAT-registreringsstatus</Label>
           <select
             className="mt-1 w-full rounded-md border border-[color:var(--outline)]/40 bg-[color:var(--surface-low)] px-3 py-2"
             value={form.vatRegistrationStatus}
             onChange={(e) =>
               set("vatRegistrationStatus", e.target.value as VatRegistrationStatus)
             }
+            required
           >
             {VAT_OPTIONS.map((v) => (
               <option key={v} value={v}>
@@ -124,7 +126,7 @@ export function CreateOrganizationForm() {
           </select>
         </div>
         <div className="md:col-span-2">
-          <Label>Adresse</Label>
+          <Label>Juridisk adresse</Label>
           <Input
             value={form.legalAddress}
             onChange={(e) => set("legalAddress", e.target.value)}
@@ -157,6 +159,15 @@ export function CreateOrganizationForm() {
           />
         </div>
         <div>
+          <Label>Nettsted (valgfritt)</Label>
+          <Input
+            type="url"
+            value={form.website}
+            onChange={(e) => set("website", e.target.value)}
+            placeholder="https://"
+          />
+        </div>
+        <div>
           <Label>Kundeservice-e-post</Label>
           <Input
             type="email"
@@ -168,8 +179,10 @@ export function CreateOrganizationForm() {
         <div>
           <Label>Kundeservice-telefon</Label>
           <Input
+            type="tel"
             value={form.customerServicePhone}
             onChange={(e) => set("customerServicePhone", e.target.value)}
+            required
           />
         </div>
         <div className="md:col-span-2">
@@ -178,7 +191,7 @@ export function CreateOrganizationForm() {
             type="email"
             value={form.contactEmail}
             onChange={(e) => set("contactEmail", e.target.value)}
-            placeholder="Samme som kundeservice hvis tom"
+            required
           />
         </div>
         <div className="md:col-span-2">
@@ -194,7 +207,7 @@ export function CreateOrganizationForm() {
       </div>
       {error ? <p className="text-red-400">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={busy}>
+        <Button type="submit" disabled={busy} size="lg">
           {busy ? "Oppretter…" : "Opprett organisasjon"}
         </Button>
         <Button
