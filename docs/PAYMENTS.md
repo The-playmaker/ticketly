@@ -102,7 +102,7 @@ fulfillment). Reconciliation never creates tickets directly.
 
 - CLI (dry-run default): `npm run payments:reconcile -- --since-hours 24`
 - Apply: `npm run payments:reconcile -- --apply --since-hours 24`
-- Cron: `GET/POST /api/cron/payments-reconcile` every 10 minutes (`CRON_SECRET`)
+- Cron route: `GET/POST /api/cron/payments-reconcile` (`CRON_SECRET`); Vercel `crons` schedule omitted on Hobby — re-enable `*/10` in `vercel.json` on Pro
 - Admin UI (SUPER_ADMIN): `/admin/platform/payments/reconciliation`
 
 Candidates: PENDING, FAILED, REVIEW_REQUIRED, AUTHORIZED, PARTIALLY_REFUNDED,
