@@ -63,11 +63,11 @@ export class EventService {
     });
     if (!event) return null;
 
-    // Opportunistic: expire abandoned holds + rebuild quantityReserved before
-    // public availability is shown (throttled / idempotent).
+    // Before public availability: expire stale ACTIVE + rebuild quantityReserved
+    // when invariant drifts (throttled only on the no-op path).
     let cleaned = false;
     try {
-      const result = await ReservationService.cleanupEventSafe(event.id);
+      const result = await ReservationService.ensureInventoryConsistent(event.id);
       cleaned = Boolean(
         result &&
           !result.dryRun &&

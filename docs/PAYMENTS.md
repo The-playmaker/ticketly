@@ -105,6 +105,10 @@ fulfillment). Reconciliation never creates tickets directly.
 - Cron route: `GET/POST /api/cron/payments-reconcile` (`CRON_SECRET`); Vercel `crons` schedule omitted on Hobby — re-enable `*/10` in `vercel.json` on Pro
 - Admin UI (SUPER_ADMIN): `/admin/platform/payments/reconciliation`
 
+Reservation inventory cleanup uses the same `CRON_SECRET` pattern — see
+[RESERVATIONS.md](./RESERVATIONS.md) (`/api/cron/reservations-cleanup`; schedule
+externally, do not add Hobby crons to `vercel.json`).
+
 Candidates: PENDING, FAILED, REVIEW_REQUIRED, AUTHORIZED, PARTIALLY_REFUNDED,
 plus PAID from the last 24h for verification. Audit actions:
 `PAYMENT_RECONCILED`, `PAYMENT_REVIEW_REQUIRED`, `PAYMENT_RECONCILIATION_MISMATCH`.

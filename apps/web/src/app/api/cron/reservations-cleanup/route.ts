@@ -6,20 +6,23 @@ export const maxDuration = 60;
 
 /**
  * External/manual cron: expire stale ACTIVE reservations and rebuild
- * TicketType.quantityReserved from DB truth.
+ * TicketType.quantityReserved from DB truth (also picks up pure counter drift).
  * Protect with CRON_SECRET (Authorization: Bearer …).
  *
  * Do NOT add to vercel.json crons (Hobby plan blocks schedules).
+ * See docs/RESERVATIONS.md for curl + external scheduler setup.
  */
 async function run(req: Request) {
   const secret = process.env.CRON_SECRET?.trim();
-  if (secret) {
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json({ error: "CRON_SECRET required" }, { status: 503 });
+    }
+  } else {
     const auth = req.headers.get("authorization") ?? "";
     if (auth !== `Bearer ${secret}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-  } else if (process.env.NODE_ENV === "production") {
-    return NextResponse.json({ error: "CRON_SECRET required" }, { status: 503 });
   }
 
   const url = new URL(req.url);

@@ -2,6 +2,7 @@ import { EventStatus, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { AppError } from "@/lib/api-error";
 import { writeAuditLog } from "@/lib/audit";
+import { ReservationService } from "@/services/reservation-service";
 
 /**
  * INVARIANT — TicketType.quantitySold = current **active sold** inventory
@@ -309,22 +310,52 @@ export class InventoryService {
   }
 
   static async getEventInventorySummary(eventId: string) {
+    // Detect drift for admin warning, then correct before returning inventory.
+    let driftBefore: Awaited<
+      ReturnType<typeof ReservationService.checkQuantityReservedInvariant>
+    > | null = null;
+    let repaired = false;
+    try {
+      driftBefore = await ReservationService.checkQuantityReservedInvariant(eventId);
+      if (driftBefore.needsRepair) {
+        await ReservationService.repairEvent({ eventId, apply: true });
+        repaired = true;
+      }
+    } catch {
+      try {
+        await ReservationService.ensureInventoryConsistent(eventId);
+      } catch {
+        // Prefer returning a snapshot over failing the live panel
+      }
+    }
+
     const event = await prisma.event.findUniqueOrThrow({
       where: { id: eventId },
       include: { ticketTypes: true },
     });
-    const types = event.ticketTypes.map((tt) => ({
-      id: tt.id,
-      name: tt.name,
-      price: tt.price,
-      quantityTotal: tt.quantityTotal,
-      quantityReleased: tt.quantityReleased,
-      quantitySold: tt.quantitySold,
-      quantityReserved: tt.quantityReserved,
-      available: getReleasedAvailable(tt),
-      unreleased: getUnreleased(tt),
-      paused: Boolean(tt.salesPausedAt),
-    }));
+
+    const types = event.ticketTypes.map((tt) => {
+      const driftRow = driftBefore?.types.find((t) => t.ticketTypeId === tt.id);
+      return {
+        id: tt.id,
+        name: tt.name,
+        price: tt.price,
+        quantityTotal: tt.quantityTotal,
+        quantityReleased: tt.quantityReleased,
+        quantitySold: tt.quantitySold,
+        quantityReserved: tt.quantityReserved,
+        calculatedActiveReserved: driftRow?.calculatedActiveReserved ?? tt.quantityReserved,
+        reservedDelta: driftRow?.delta ?? 0,
+        available: getReleasedAvailable(tt),
+        unreleased: getUnreleased(tt),
+        paused: Boolean(tt.salesPausedAt),
+      };
+    });
+
+    const mismatched = (driftBefore?.types ?? []).filter(
+      (t) => t.delta !== 0 || t.expiredActiveCount > 0
+    );
+
     return {
       eventId,
       capacity: event.capacity,
@@ -335,6 +366,14 @@ export class InventoryService {
       reserved: types.reduce((s, t) => s + t.quantityReserved, 0),
       available: types.reduce((s, t) => s + t.available, 0),
       released: types.reduce((s, t) => s + t.quantityReleased, 0),
+      reservationDrift: driftBefore
+        ? {
+            detected: driftBefore.needsRepair,
+            repaired,
+            expiredCount: driftBefore.expiredCount,
+            types: mismatched,
+          }
+        : null,
     };
   }
 }

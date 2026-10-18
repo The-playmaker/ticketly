@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ReservationDriftWarning } from "@/components/admin/reservation-drift-warning";
 
 type LivePayload = {
   inventory: {
@@ -26,6 +27,19 @@ type LivePayload = {
       unreleased: number;
       paused: boolean;
     }[];
+    reservationDrift?: {
+      detected: boolean;
+      repaired?: boolean;
+      expiredCount?: number;
+      types: {
+        ticketTypeId: string;
+        name: string;
+        storedQuantityReserved: number;
+        calculatedActiveReserved: number;
+        delta: number;
+        expiredActiveCount: number;
+      }[];
+    } | null;
   };
   checkedIn: number;
   refunded: number;
@@ -139,9 +153,22 @@ export function EventOpsPanel({
 
   const primary = live?.inventory.types[0];
 
+  const drift = live?.inventory.reservationDrift;
+
   return (
     <div className="space-y-6">
       {msg ? <p className="text-sm text-amber-800">{msg}</p> : null}
+
+      {drift?.detected ? (
+        <ReservationDriftWarning
+          eventId={eventId}
+          detected={drift.detected}
+          repaired={drift.repaired}
+          expiredCount={drift.expiredCount}
+          types={drift.types}
+          showRepairLink
+        />
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         {live?.inventory.salesPaused ? (

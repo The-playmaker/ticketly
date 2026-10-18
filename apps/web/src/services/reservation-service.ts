@@ -380,11 +380,60 @@ export class ReservationService {
   }
 
   /**
-   * Cheap, idempotent cleanup: expire stale ACTIVE + rebuild quantityReserved
-   * from DB truth for one event. Throttled per eventId so public inventory
-   * reads and reserve() cannot permanently block sales without hammering DB.
+   * Lightweight invariant: stored quantityReserved must equal the sum of ACTIVE
+   * reservations that should still hold inventory (unexpired + payment-grace /
+   * PAID keepers). Also flags ACTIVE rows that should expire.
    *
-   * Skips audit when there is nothing to change (keeps opportunistic path quiet).
+   * Read-only — use before sales/inventory decisions; repair when `needsRepair`.
+   */
+  static async checkQuantityReservedInvariant(eventId: string): Promise<{
+    needsRepair: boolean;
+    expiredCount: number;
+    types: Array<{
+      ticketTypeId: string;
+      name: string;
+      storedQuantityReserved: number;
+      calculatedActiveReserved: number;
+      delta: number;
+      expiredActiveCount: number;
+    }>;
+  }> {
+    const preview = await this.repairEvent({ eventId, apply: false });
+    const needsRepair =
+      preview.expiredCount > 0 || preview.types.some((t) => t.delta !== 0);
+    return {
+      needsRepair,
+      expiredCount: preview.expiredCount,
+      types: preview.types.map((t) => ({
+        ticketTypeId: t.ticketTypeId,
+        name: t.name,
+        storedQuantityReserved: t.currentQuantityReserved,
+        calculatedActiveReserved: t.proposedQuantityReserved,
+        delta: t.delta,
+        expiredActiveCount: t.expiredActiveCount,
+      })),
+    };
+  }
+
+  /**
+   * Ensure inventory counters are consistent before a sales/availability read.
+   * Always corrects drift when detected; throttles only the no-op happy path
+   * so public pages do not hammer the DB when nothing is wrong.
+   */
+  static async ensureInventoryConsistent(
+    eventId: string,
+    opts?: { force?: boolean; actorId?: string | null }
+  ): Promise<ReservationRepairResult | null> {
+    return this.cleanupEventSafe(eventId, opts);
+  }
+
+  /**
+   * Cheap, idempotent cleanup: expire stale ACTIVE + rebuild quantityReserved
+   * from DB truth for one event.
+   *
+   * Throttle skips repeated dry-runs when the last pass found nothing to fix.
+   * If throttle would skip but a lightweight invariant detects drift, repair
+   * runs anyway — sales decisions must never leave counters uncorrected.
    */
   static async cleanupEventSafe(
     eventId: string,
@@ -392,12 +441,23 @@ export class ReservationService {
   ): Promise<ReservationRepairResult | null> {
     const key = eventId;
     const last = lastCleanupAt.get(key) ?? 0;
-    if (!opts?.force && Date.now() - last < CLEANUP_INTERVAL_MS) {
-      return null;
-    }
-    lastCleanupAt.set(key, Date.now());
+    const throttled = !opts?.force && Date.now() - last < CLEANUP_INTERVAL_MS;
 
     try {
+      if (throttled) {
+        const invariant = await this.checkQuantityReservedInvariant(eventId);
+        if (!invariant.needsRepair) {
+          return null;
+        }
+        lastCleanupAt.set(key, Date.now());
+        return await this.repairEvent({
+          eventId,
+          apply: true,
+          actorId: opts?.actorId,
+        });
+      }
+
+      lastCleanupAt.set(key, Date.now());
       const preview = await this.repairEvent({ eventId, apply: false });
       const needsWork =
         preview.expiredCount > 0 || preview.types.some((t) => t.delta !== 0);
@@ -408,7 +468,6 @@ export class ReservationService {
         eventId,
         apply: true,
         actorId: opts?.actorId,
-        // Opportunistic cleanups still audit when they change counters
       });
     } catch (e) {
       lastCleanupAt.delete(key);
@@ -416,7 +475,10 @@ export class ReservationService {
     }
   }
 
-  /** Global/opportunistic cleanup across events with stale ACTIVE reservations. */
+  /**
+   * Global cleanup: events with past-grace ACTIVE holds and/or counter drift
+   * (stored quantityReserved ≠ SUM of keeper ACTIVE rows).
+   */
   static async cleanupStaleReservations(opts?: {
     eventId?: string;
     force?: boolean;
@@ -435,8 +497,7 @@ export class ReservationService {
     const graceCutoff = new Date(now.getTime() - paymentGraceMinutes() * 60_000);
     const limit = opts?.limit ?? 50;
 
-    // Events with ACTIVE reservations past grace (safe to expire) or any mismatch risk
-    const stale = await prisma.ticketReservation.findMany({
+    const staleExpired = await prisma.ticketReservation.findMany({
       where: {
         status: ReservationStatus.ACTIVE,
         expiresAt: { lte: graceCutoff },
@@ -446,11 +507,31 @@ export class ReservationService {
       take: limit,
     });
 
+    const driftRows = await prisma.$queryRaw<Array<{ eventId: string }>>`
+      SELECT DISTINCT tt."eventId" as "eventId"
+      FROM "TicketType" tt
+      LEFT JOIN (
+        SELECT "ticketTypeId", COALESCE(SUM(quantity), 0)::int AS active_sum
+        FROM "TicketReservation"
+        WHERE status = 'ACTIVE'
+        GROUP BY "ticketTypeId"
+      ) r ON r."ticketTypeId" = tt.id
+      WHERE tt."quantityReserved" <> COALESCE(r.active_sum, 0)
+      LIMIT ${limit}
+    `;
+
+    const eventIds = [
+      ...new Set([
+        ...staleExpired.map((r) => r.eventId),
+        ...driftRows.map((r) => r.eventId),
+      ]),
+    ].slice(0, limit);
+
     const events: ReservationRepairResult[] = [];
     let skipped = 0;
-    for (const row of stale) {
+    for (const eventId of eventIds) {
       try {
-        const result = await this.cleanupEventSafe(row.eventId, {
+        const result = await this.cleanupEventSafe(eventId, {
           force: opts?.force ?? true,
           actorId: opts?.actorId,
         });
@@ -483,9 +564,9 @@ export class ReservationService {
 
     const expiresAt = new Date(Date.now() + this.ttlMinutes() * 60_000);
 
-    // Opportunistic cleanup before taking locks (cheap / throttled)
+    // Correct drift before locks (throttled no-op; always repairs when mismatched)
     try {
-      await this.cleanupEventSafe(input.eventId);
+      await this.ensureInventoryConsistent(input.eventId);
     } catch {
       // Fall through — in-transaction releaseExpired still runs
     }

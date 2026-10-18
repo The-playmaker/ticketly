@@ -4,11 +4,13 @@ import { prisma } from "@/lib/db";
 import { requireEventAccess } from "@/lib/admin/org-access";
 import { isSuperAdmin } from "@/lib/auth/rbac";
 import { eventInventorySnapshot, inventorySnapshot } from "@/services/inventory-service";
+import { ReservationService } from "@/services/reservation-service";
 import { DuplicateEventButton } from "@/components/admin/duplicate-event-button";
 import { EventParitySettingsForm } from "@/components/admin/event-parity-settings-form";
 import { EventOwnershipForm } from "@/components/admin/event-ownership-form";
 import { EventTestResetForm } from "@/components/admin/event-test-reset-form";
 import { ReservationsRepairForm } from "@/components/admin/reservations-repair-form";
+import { ReservationDriftWarning } from "@/components/admin/reservation-drift-warning";
 import { EditEventLink } from "@/components/admin/edit-event-link";
 
 type Props = { params: Promise<{ id: string }> };
@@ -43,9 +45,30 @@ export default async function EventSettingsPage({ params }: Props) {
       })
     : [];
 
+  const reservationInvariant = await ReservationService.checkQuantityReservedInvariant(
+    full.id
+  ).catch(() => null);
+
+  // Correct drift before showing inventory (warning still reflects pre-repair state)
+  let ticketTypesForInv = full.ticketTypes;
+  if (reservationInvariant?.needsRepair) {
+    await ReservationService.repairEvent({ eventId: full.id, apply: true }).catch(
+      () => undefined
+    );
+    const refreshed = await prisma.ticketType.findMany({
+      where: { eventId: full.id },
+      orderBy: { sortOrder: "asc" },
+    });
+    const byId = new Map(refreshed.map((t) => [t.id, t]));
+    ticketTypesForInv = full.ticketTypes.map((t) => {
+      const next = byId.get(t.id);
+      return next ? { ...t, quantityReserved: next.quantityReserved } : t;
+    });
+  }
+
   const inv = eventInventorySnapshot(
     full.capacity,
-    full.ticketTypes.map((t) => ({
+    ticketTypesForInv.map((t) => ({
       quantityTotal: t.quantityTotal,
       quantityReleased: t.quantityReleased,
       quantitySold: t.quantitySold,
@@ -54,6 +77,9 @@ export default async function EventSettingsPage({ params }: Props) {
   );
 
   const seller = full.sellerOrganization ?? full.organization;
+  const driftTypes = (reservationInvariant?.types ?? []).filter(
+    (t) => t.delta !== 0 || t.expiredActiveCount > 0
+  );
 
   return (
     <div className="space-y-6">
@@ -63,6 +89,16 @@ export default async function EventSettingsPage({ params }: Props) {
         </p>
         <EditEventLink eventId={full.id} />
       </div>
+
+      {reservationInvariant?.needsRepair ? (
+        <ReservationDriftWarning
+          eventId={full.id}
+          detected
+          repaired
+          expiredCount={reservationInvariant.expiredCount}
+          types={driftTypes}
+        />
+      ) : null}
 
       <section className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5 text-sm">
         <h2 className="font-medium">Arrangement</h2>
@@ -132,8 +168,9 @@ export default async function EventSettingsPage({ params }: Props) {
           available = released − sold − reserved · Bundles: admissionCount QR per unit
         </p>
         <ul className="mt-3 space-y-3">
-          {full.ticketTypes.map((t) => {
+          {ticketTypesForInv.map((t) => {
             const s = inventorySnapshot(t);
+            const drift = reservationInvariant?.types.find((d) => d.ticketTypeId === t.id);
             return (
               <li key={t.id} className="rounded-lg border border-[color:var(--outline)]/20 p-3">
                 <p className="font-medium">
@@ -146,7 +183,11 @@ export default async function EventSettingsPage({ params }: Props) {
                 </p>
                 <p className="mt-1 text-xs text-[color:var(--muted)]">
                   allocation {s.allocation} · released {s.released} · sold {s.sold} · reserved{" "}
-                  {s.reserved} · available {s.available} · min {t.minPerOrder} / max {t.maxPerOrder}
+                  {s.reserved}
+                  {drift && drift.delta !== 0
+                    ? ` (beregnet aktiv ${drift.calculatedActiveReserved})`
+                    : ""}{" "}
+                  · available {s.available} · min {t.minPerOrder} / max {t.maxPerOrder}
                 </p>
               </li>
             );

@@ -424,4 +424,86 @@ describe("reservation repair + inventory rebuild", () => {
     const tt = await prisma.ticketType.findUniqueOrThrow({ where: { id: ticketTypeId } });
     expect(tt.quantityReserved).toBe(1);
   });
+
+  it("invariant check detects mismatch and ensureInventoryConsistent repairs under throttle", async () => {
+    const future = new Date(Date.now() + 10 * 60_000);
+    await prisma.ticketReservation.create({
+      data: {
+        eventId,
+        ticketTypeId,
+        quantity: 1,
+        sessionId: `inv-${Date.now()}`,
+        status: ReservationStatus.ACTIVE,
+        expiresAt: future,
+      },
+    });
+    await prisma.ticketType.update({
+      where: { id: ticketTypeId },
+      data: { quantityReserved: 1 },
+    });
+
+    // Prime throttle with a clean pass
+    const clean = await ReservationService.cleanupEventSafe(eventId, { force: true });
+    expect(clean?.types.every((t) => t.delta === 0)).toBe(true);
+
+    // Inject drift while throttle window is active
+    await prisma.ticketType.update({
+      where: { id: ticketTypeId },
+      data: { quantityReserved: 25 },
+    });
+
+    const invariant = await ReservationService.checkQuantityReservedInvariant(eventId);
+    expect(invariant.needsRepair).toBe(true);
+    expect(invariant.types.find((t) => t.ticketTypeId === ticketTypeId)?.delta).toBe(-24);
+
+    // Throttled path must still repair — never leave drift for sales decisions
+    const repaired = await ReservationService.ensureInventoryConsistent(eventId);
+    expect(repaired?.applied).toBe(true);
+
+    const tt = await prisma.ticketType.findUniqueOrThrow({ where: { id: ticketTypeId } });
+    expect(tt.quantityReserved).toBe(1);
+    expect(getAvailableQuantity(tt)).toBe(9);
+  });
+
+  it("cleanupStaleReservations finds pure counter drift without expired ACTIVE", async () => {
+    const future = new Date(Date.now() + 10 * 60_000);
+    await prisma.ticketReservation.create({
+      data: {
+        eventId,
+        ticketTypeId,
+        quantity: 2,
+        sessionId: `drift-batch-${Date.now()}`,
+        status: ReservationStatus.ACTIVE,
+        expiresAt: future,
+      },
+    });
+    await prisma.ticketType.update({
+      where: { id: ticketTypeId },
+      data: { quantityReserved: 40 },
+    });
+
+    const batch = await ReservationService.cleanupStaleReservations({
+      force: true,
+      limit: 50,
+    });
+    expect(batch.events.some((e) => e.eventId === eventId)).toBe(true);
+
+    const tt = await prisma.ticketType.findUniqueOrThrow({ where: { id: ticketTypeId } });
+    expect(tt.quantityReserved).toBe(2);
+  });
+
+  it("repeated cleanupEventSafe is idempotent", async () => {
+    await seedStaleAbandoned(3);
+    const first = await ReservationService.cleanupEventSafe(eventId, { force: true });
+    expect(first?.applied).toBe(true);
+    expect(first?.expiredCount).toBe(3);
+
+    resetReservationCleanupThrottle();
+    const second = await ReservationService.cleanupEventSafe(eventId, { force: true });
+    expect(second?.expiredCount).toBe(0);
+    expect(second?.types.every((t) => t.delta === 0)).toBe(true);
+
+    const tt = await prisma.ticketType.findUniqueOrThrow({ where: { id: ticketTypeId } });
+    expect(tt.quantityReserved).toBe(0);
+  });
 });
