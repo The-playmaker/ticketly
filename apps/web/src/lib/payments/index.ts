@@ -95,6 +95,9 @@ export { MockStripePaymentProvider } from "./mock-stripe-provider";
 export {
   createLiveStripeLookupClient,
   lookupStripeForPayment,
+  normalizeStripeLookupIds,
+  isStripeCheckoutSessionId,
+  isStripePaymentIntentId,
 } from "./stripe-lookup";
 export type {
   StripeLookupClient,

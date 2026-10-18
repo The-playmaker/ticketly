@@ -113,11 +113,46 @@ function mapRefund(r: Stripe.Refund): StripeRefundSnapshot {
   };
 }
 
+/** Checkout Session ids must never be passed to paymentIntents.retrieve. */
+export function isStripeCheckoutSessionId(id: string | null | undefined): boolean {
+  return typeof id === "string" && id.startsWith("cs_");
+}
+
+/** Real PaymentIntent ids only (`pi_…`). Rejects session ids wrongly stored as PI. */
+export function isStripePaymentIntentId(id: string | null | undefined): boolean {
+  return typeof id === "string" && id.startsWith("pi_");
+}
+
+/**
+ * Normalize Ticketly Payment row ids before Stripe lookup.
+ * Backward-compat: rows that stored `cs_…` in providerPaymentId still resolve via session.
+ */
+export function normalizeStripeLookupIds(input: {
+  providerSessionId?: string | null;
+  providerPaymentId?: string | null;
+}): { sessionId: string | null; paymentIntentId: string | null } {
+  const sessionId = isStripeCheckoutSessionId(input.providerSessionId)
+    ? input.providerSessionId!
+    : isStripeCheckoutSessionId(input.providerPaymentId)
+      ? input.providerPaymentId!
+      : null;
+
+  const paymentIntentId = isStripePaymentIntentId(input.providerPaymentId)
+    ? input.providerPaymentId!
+    : null;
+
+  return { sessionId, paymentIntentId };
+}
+
+function isNonStripeLookupId(id: string): boolean {
+  return id.startsWith("free_") || id.startsWith("mock_");
+}
+
 /** Live Stripe lookup with retry. Safe for production reconciliation. */
 export function createLiveStripeLookupClient(): StripeLookupClient {
   return {
     async retrieveSession(sessionId: string) {
-      if (!sessionId || sessionId.startsWith("free_") || sessionId.startsWith("mock_")) {
+      if (!sessionId || isNonStripeLookupId(sessionId)) {
         return null;
       }
       return withStripeRetry(async () => {
@@ -134,7 +169,12 @@ export function createLiveStripeLookupClient(): StripeLookupClient {
     },
 
     async retrievePaymentIntent(paymentIntentId: string) {
-      if (!paymentIntentId || paymentIntentId.startsWith("free_") || paymentIntentId.startsWith("mock_")) {
+      // Never call paymentIntents.retrieve with a Checkout Session id.
+      if (
+        !paymentIntentId ||
+        isNonStripeLookupId(paymentIntentId) ||
+        isStripeCheckoutSessionId(paymentIntentId)
+      ) {
         return null;
       }
       return withStripeRetry(async () => {
@@ -165,7 +205,11 @@ export function createLiveStripeLookupClient(): StripeLookupClient {
     },
 
     async listRefunds(paymentIntentId: string) {
-      if (!paymentIntentId || paymentIntentId.startsWith("free_") || paymentIntentId.startsWith("mock_")) {
+      if (
+        !paymentIntentId ||
+        isNonStripeLookupId(paymentIntentId) ||
+        isStripeCheckoutSessionId(paymentIntentId)
+      ) {
         return [];
       }
       return withStripeRetry(async () => {
@@ -185,11 +229,25 @@ export async function lookupStripeForPayment(
   let paymentIntent: StripePaymentIntentSnapshot | null = null;
   let refunds: StripeRefundSnapshot[] = [];
 
-  if (ids.sessionId) {
-    session = await client.retrieveSession(ids.sessionId);
+  // Prefer an explicit session id; also accept a cs_ value wrongly passed as paymentIntentId.
+  const sessionId = isStripeCheckoutSessionId(ids.sessionId)
+    ? ids.sessionId!
+    : isStripeCheckoutSessionId(ids.paymentIntentId)
+      ? ids.paymentIntentId!
+      : ids.sessionId && !isStripePaymentIntentId(ids.sessionId)
+        ? ids.sessionId
+        : null;
+
+  if (sessionId) {
+    session = await client.retrieveSession(sessionId);
   }
 
-  const piId = ids.paymentIntentId || session?.paymentIntentId || null;
+  // Never treat cs_… as a PaymentIntent id. Prefer real pi_ from DB, else session.payment_intent.
+  const piId =
+    (isStripePaymentIntentId(ids.paymentIntentId) ? ids.paymentIntentId! : null) ||
+    (isStripePaymentIntentId(session?.paymentIntentId) ? session!.paymentIntentId! : null) ||
+    null;
+
   if (piId) {
     paymentIntent = await client.retrievePaymentIntent(piId);
     refunds = await client.listRefunds(piId);

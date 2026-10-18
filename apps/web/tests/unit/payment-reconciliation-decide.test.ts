@@ -100,6 +100,90 @@ describe("PaymentReconciliationService.decide", () => {
     expect(d.action).toBe("mark_review");
     expect(d.anomaly).toBe("AMOUNT_MISMATCH");
   });
+
+  it("open unpaid session with no PI => none (keep PENDING)", () => {
+    const lookup: StripeOrderLookup = {
+      session: {
+        id: "cs_open",
+        status: "open",
+        paymentStatus: "unpaid",
+        amountTotal: 24900,
+        currency: "nok",
+        livemode: true,
+        metadata: { orderId: "ord_1" },
+        paymentIntentId: null,
+      },
+      paymentIntent: null,
+      refunds: [],
+    };
+    const d = PaymentReconciliationService.decide({
+      order: baseOrder(PaymentStatus.PENDING),
+      ticketlyRefunded: 0,
+      lookup,
+    });
+    expect(d.action).toBe("none");
+    expect(d.anomaly).toBeNull();
+  });
+
+  it("expired unpaid session => mark_cancelled", () => {
+    const lookup: StripeOrderLookup = {
+      session: {
+        id: "cs_expired",
+        status: "expired",
+        paymentStatus: "unpaid",
+        amountTotal: 24900,
+        currency: "nok",
+        livemode: true,
+        metadata: {},
+        paymentIntentId: null,
+      },
+      paymentIntent: null,
+      refunds: [],
+    };
+    const d = PaymentReconciliationService.decide({
+      order: baseOrder(PaymentStatus.PENDING),
+      ticketlyRefunded: 0,
+      lookup,
+    });
+    expect(d.action).toBe("mark_cancelled");
+    expect(d.anomaly).toBe("EXPIRED_SESSION_NO_PI");
+  });
+
+  it("definitive failed PI => mark_failed", () => {
+    const lookup: StripeOrderLookup = {
+      session: {
+        id: "cs_1",
+        status: "open",
+        paymentStatus: "unpaid",
+        amountTotal: 24900,
+        currency: "nok",
+        livemode: false,
+        metadata: {},
+        paymentIntentId: "pi_fail",
+      },
+      paymentIntent: {
+        id: "pi_fail",
+        status: "requires_payment_method",
+        amount: 24900,
+        currency: "nok",
+        livemode: false,
+        metadata: {},
+        lastPaymentErrorCode: "card_declined",
+        outcomeType: null,
+        riskLevel: null,
+        amountRefunded: 0,
+        chargeId: null,
+      },
+      refunds: [],
+    };
+    const d = PaymentReconciliationService.decide({
+      order: baseOrder(PaymentStatus.PENDING),
+      ticketlyRefunded: 0,
+      lookup,
+    });
+    expect(d.action).toBe("mark_failed");
+    expect(d.anomaly).toBe("STRIPE_FAILED_TICKETLY_NOT_FAILED");
+  });
 });
 
 describe("stripe-retry helpers", () => {

@@ -18,6 +18,7 @@ import { PaymentService } from "@/services/payment-service";
 import {
   createLiveStripeLookupClient,
   lookupStripeForPayment,
+  normalizeStripeLookupIds,
   type StripeLookupClient,
   type StripeOrderLookup,
   type StripePaymentIntentSnapshot,
@@ -855,11 +856,17 @@ export class PaymentReconciliationService {
       select: { receivedAt: true },
     });
 
+    // Never treat cs_… as a PaymentIntent id (legacy rows stored session id as PI).
+    const normalizedIds = normalizeStripeLookupIds({
+      providerSessionId: payment?.providerSessionId,
+      providerPaymentId: payment?.providerPaymentId,
+    });
+
     let lookup: StripeOrderLookup;
     try {
       lookup = await lookupStripeForPayment(client, {
-        sessionId: payment?.providerSessionId,
-        paymentIntentId: payment?.providerPaymentId,
+        sessionId: normalizedIds.sessionId,
+        paymentIntentId: normalizedIds.paymentIntentId,
       });
     } catch (e) {
       const row: ReconciliationRow = {
@@ -876,8 +883,8 @@ export class PaymentReconciliationService {
         providerSessionId: payment?.providerSessionId ?? null,
         providerPaymentId: payment?.providerPaymentId ?? null,
         stripeDashboardUrl: stripeDashboardUrl({
-          sessionId: payment?.providerSessionId,
-          paymentIntentId: payment?.providerPaymentId,
+          sessionId: normalizedIds.sessionId,
+          paymentIntentId: normalizedIds.paymentIntentId,
         }),
         proposedAction: "none",
         anomalyReason: "LOOKUP_ERROR",
@@ -967,10 +974,14 @@ export class PaymentReconciliationService {
       currencyMatch: decision.currencyMatch,
       webhookLastSeenAt: lastWebhook?.receivedAt?.toISOString() ?? null,
       providerSessionId: payment?.providerSessionId ?? lookup.session?.id ?? null,
-      providerPaymentId: payment?.providerPaymentId ?? lookup.paymentIntent?.id ?? null,
+      providerPaymentId:
+        // Prefer real PI; do not surface legacy cs_… stored in providerPaymentId as a PI.
+        lookup.paymentIntent?.id ??
+        (payment?.providerPaymentId?.startsWith("pi_") ? payment.providerPaymentId : null) ??
+        null,
       stripeDashboardUrl: stripeDashboardUrl({
-        sessionId: payment?.providerSessionId ?? lookup.session?.id,
-        paymentIntentId: payment?.providerPaymentId ?? lookup.paymentIntent?.id,
+        sessionId: normalizedIds.sessionId ?? lookup.session?.id,
+        paymentIntentId: lookup.paymentIntent?.id ?? normalizedIds.paymentIntentId,
         livemode: lookup.paymentIntent?.livemode ?? lookup.session?.livemode,
       }),
       proposedAction: decision.action,

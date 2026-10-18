@@ -696,4 +696,225 @@ describe("Payment reconciliation (Stripe ↔ Ticketly)", () => {
       (await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).paymentStatus
     ).toBe(PaymentStatus.PAID);
   });
+
+  it("pending open checkout with providerPaymentId=cs_ => no LOOKUP_ERROR", async () => {
+    if (!dbReady) return;
+    const csId = `cs_live_open_${Date.now()}`;
+    // Legacy bug: both columns stored the Checkout Session id
+    const order = await createPendingOrder({
+      sessionId: csId,
+      paymentId: csId,
+    });
+
+    const piCalls: string[] = [];
+    const client: StripeLookupClient = {
+      async retrieveSession(id) {
+        expect(id).toBe(csId);
+        return session({
+          id: csId,
+          status: "open",
+          paymentStatus: "unpaid",
+          paymentIntentId: null,
+          metadata: { orderId: order.id },
+        });
+      },
+      async retrievePaymentIntent(id) {
+        piCalls.push(id);
+        throw new Error(`should not retrieve PI with id=${id}`);
+      },
+      async listRefunds(id) {
+        piCalls.push(`refunds:${id}`);
+        return [];
+      },
+    };
+
+    const row = await PaymentReconciliationService.reconcileOrder(order.id, {
+      apply: false,
+      stripeClient: client,
+    });
+
+    expect(row.anomalyReason).not.toBe("LOOKUP_ERROR");
+    expect(row.anomalyReason).toBeNull();
+    expect(row.proposedAction).toBe("none");
+    expect(row.stripeSessionStatus).toBe("open");
+    expect(row.stripeSessionPaymentStatus).toBe("unpaid");
+    expect(row.stripePiStatus).toBeNull();
+    expect(row.ticketlyStatus).toBe(PaymentStatus.PENDING);
+    expect(piCalls).toEqual([]);
+  });
+
+  it("expired checkout with providerPaymentId=cs_ => mark_cancelled", async () => {
+    if (!dbReady) return;
+    const csId = `cs_live_expired_${Date.now()}`;
+    const order = await createPendingOrder({
+      sessionId: csId,
+      paymentId: csId,
+    });
+
+    const client: StripeLookupClient = {
+      async retrieveSession() {
+        return session({
+          id: csId,
+          status: "expired",
+          paymentStatus: "unpaid",
+          paymentIntentId: null,
+          metadata: { orderId: order.id },
+        });
+      },
+      async retrievePaymentIntent() {
+        throw new Error("must not call paymentIntents.retrieve with cs_");
+      },
+      async listRefunds() {
+        return [];
+      },
+    };
+
+    const row = await PaymentReconciliationService.reconcileOrder(order.id, {
+      apply: true,
+      stripeClient: client,
+    });
+
+    expect(row.anomalyReason).not.toBe("LOOKUP_ERROR");
+    expect(row.proposedAction).toBe("mark_cancelled");
+    expect(row.anomalyReason).toBe("EXPIRED_SESSION_NO_PI");
+    expect(
+      (await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).paymentStatus
+    ).toBe(PaymentStatus.CANCELLED);
+  });
+
+  it("paid checkout with providerPaymentId=cs_ finds PI from session.payment_intent", async () => {
+    if (!dbReady) return;
+    const csId = `cs_live_paid_${Date.now()}`;
+    const realPi = `pi_live_from_session_${Date.now()}`;
+    const order = await createPendingOrder({
+      sessionId: csId,
+      paymentId: csId,
+    });
+
+    const client: StripeLookupClient = {
+      async retrieveSession(id) {
+        expect(id).toBe(csId);
+        return session({
+          id: csId,
+          status: "complete",
+          paymentStatus: "paid",
+          paymentIntentId: realPi,
+          metadata: { orderId: order.id, orderNumber: order.orderNumber },
+        });
+      },
+      async retrievePaymentIntent(id) {
+        expect(id).toBe(realPi);
+        expect(id.startsWith("cs_")).toBe(false);
+        return pi({
+          id: realPi,
+          status: "succeeded",
+          metadata: { orderId: order.id, orderNumber: order.orderNumber },
+        });
+      },
+      async listRefunds(id) {
+        expect(id).toBe(realPi);
+        return [];
+      },
+    };
+
+    const row = await PaymentReconciliationService.reconcileOrder(order.id, {
+      apply: true,
+      stripeClient: client,
+    });
+
+    expect(row.anomalyReason).not.toBe("LOOKUP_ERROR");
+    expect(row.proposedAction).toBe("mark_paid");
+    expect(row.applied).toBe(true);
+    expect(row.stripePiStatus).toBe("succeeded");
+    expect(
+      (await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).paymentStatus
+    ).toBe(PaymentStatus.PAID);
+  });
+
+  it("failed PI with legacy cs_ providerPaymentId => mark_failed", async () => {
+    if (!dbReady) return;
+    const csId = `cs_live_fail_${Date.now()}`;
+    const realPi = `pi_live_fail_${Date.now()}`;
+    const order = await createPendingOrder({
+      sessionId: csId,
+      paymentId: csId,
+    });
+
+    const client: StripeLookupClient = {
+      async retrieveSession() {
+        return session({
+          id: csId,
+          status: "open",
+          paymentStatus: "unpaid",
+          paymentIntentId: realPi,
+          metadata: { orderId: order.id },
+        });
+      },
+      async retrievePaymentIntent(id) {
+        expect(id).toBe(realPi);
+        return pi({
+          id: realPi,
+          status: "requires_payment_method",
+          lastPaymentErrorCode: "card_declined",
+          metadata: { orderId: order.id },
+        });
+      },
+      async listRefunds() {
+        return [];
+      },
+    };
+
+    const row = await PaymentReconciliationService.reconcileOrder(order.id, {
+      apply: true,
+      stripeClient: client,
+    });
+
+    expect(row.anomalyReason).not.toBe("LOOKUP_ERROR");
+    expect(row.proposedAction).toBe("mark_failed");
+    expect(
+      (await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).paymentStatus
+    ).toBe(PaymentStatus.FAILED);
+  });
+
+  it("valid paid rows with real pi_ remain verify_ok", async () => {
+    if (!dbReady) return;
+    const order = await createPendingOrder();
+    const payment = order.payments[0]!;
+
+    await PaymentReconciliationService.reconcileOrder(order.id, {
+      apply: true,
+      stripeClient: mockClient({
+        session: session({
+          id: payment.providerSessionId!,
+          metadata: { orderId: order.id, orderNumber: order.orderNumber },
+          paymentIntentId: payment.providerPaymentId!,
+        }),
+        paymentIntent: pi({
+          id: payment.providerPaymentId!,
+          metadata: { orderId: order.id, orderNumber: order.orderNumber },
+        }),
+        refunds: [],
+      }),
+    });
+
+    const row = await PaymentReconciliationService.reconcileOrder(order.id, {
+      apply: false,
+      stripeClient: mockClient({
+        session: session({
+          id: payment.providerSessionId!,
+          metadata: { orderId: order.id, orderNumber: order.orderNumber },
+          paymentIntentId: payment.providerPaymentId!,
+        }),
+        paymentIntent: pi({
+          id: payment.providerPaymentId!,
+          metadata: { orderId: order.id, orderNumber: order.orderNumber },
+        }),
+        refunds: [],
+      }),
+    });
+
+    expect(row.proposedAction).toBe("verify_ok");
+    expect(row.anomalyReason).toBeNull();
+    expect(row.ticketlyStatus).toBe(PaymentStatus.PAID);
+  });
 });

@@ -194,12 +194,22 @@ export class PaymentService {
       throw e;
     }
 
+    // Stripe: only persist a real PaymentIntent id. Checkout Session ids (cs_…) must not
+    // be stored as providerPaymentId — reconciliation would call paymentIntents.retrieve(cs_…).
+    // Other providers keep paymentId (or session fallback) as before.
+    const providerPaymentId =
+      providerType === PaymentProviderType.STRIPE
+        ? result.paymentId && result.paymentId.startsWith("pi_")
+          ? result.paymentId
+          : null
+        : (result.paymentId ?? result.sessionId);
+
     await prisma.payment.create({
       data: {
         orderId: order.id,
         provider: providerType,
         providerSessionId: result.sessionId,
-        providerPaymentId: result.paymentId ?? result.sessionId,
+        providerPaymentId,
         amount: order.total,
         currency: order.currency,
         status: PaymentStatus.PENDING,
