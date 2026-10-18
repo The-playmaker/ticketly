@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { AppError } from "@/lib/api-error";
+import { writeAuditLog } from "@/lib/audit";
 
 export type TicketTypeWithTiers = TicketType & { priceTiers: TicketPriceTier[] };
 
@@ -42,8 +43,117 @@ export function resolveUnitPrice(
 }
 
 /** Grace minutes after reservation expiry while payment webhook may still arrive */
-function paymentGraceMinutes() {
+export function paymentGraceMinutes() {
   return Number(process.env.PAYMENT_GRACE_MINUTES ?? 15);
+}
+
+export type ReservationRepairTicketTypeRow = {
+  ticketTypeId: string;
+  name: string;
+  quantityReleased: number;
+  quantitySold: number;
+  currentQuantityReserved: number;
+  activeTotal: number;
+  activeUnexpiredTotal: number;
+  expiredActiveQuantity: number;
+  expiredActiveCount: number;
+  proposedQuantityReserved: number;
+  delta: number;
+  availableBefore: number;
+  availableAfter: number;
+};
+
+export type ReservationRepairResult = {
+  eventId: string;
+  dryRun: boolean;
+  now: string;
+  graceMinutes: number;
+  expiredCount: number;
+  types: ReservationRepairTicketTypeRow[];
+  applied: boolean;
+};
+
+type ReservationWithOrder = {
+  id: string;
+  ticketTypeId: string;
+  quantity: number;
+  status: ReservationStatus;
+  expiresAt: Date;
+  orderId: string | null;
+  order: {
+    id: string;
+    paymentStatus: PaymentStatus;
+    orderStatus: OrderStatus;
+    paidAt: Date | null;
+  } | null;
+};
+
+/**
+ * Whether an ACTIVE reservation whose clock has expired should still be held
+ * (payment webhook race) or marked EXPIRED.
+ */
+export function shouldExpireReservation(
+  res: Pick<ReservationWithOrder, "expiresAt" | "order">,
+  now: Date,
+  graceCutoff: Date
+): boolean {
+  if (res.expiresAt > now) return false;
+
+  // Never release if order already paid — fulfillment owns inventory
+  if (res.order?.paymentStatus === PaymentStatus.PAID) {
+    return false;
+  }
+
+  // Hold while PENDING/unpaid within payment grace window
+  if (
+    res.order &&
+    res.order.paymentStatus === PaymentStatus.PENDING &&
+    res.order.orderStatus === OrderStatus.PENDING &&
+    res.expiresAt > graceCutoff
+  ) {
+    return false;
+  }
+
+  // Abandoned / past-grace PENDING, no order, cancelled unpaid, etc.
+  return true;
+}
+
+/**
+ * Steady-state source of truth for TicketType.quantityReserved:
+ * SUM(quantity) WHERE status = ACTIVE AND expiresAt > now
+ *
+ * During payment grace / PAID-awaiting-fulfillment, ACTIVE rows with
+ * expiresAt <= now that we intentionally keep also count (prevents oversell).
+ * After grace elapses those PENDING rows are expired and drop out.
+ */
+export function sumActiveUnexpired(
+  reservations: Array<Pick<ReservationWithOrder, "status" | "expiresAt" | "quantity">>,
+  now: Date
+): number {
+  return reservations
+    .filter((r) => r.status === ReservationStatus.ACTIVE && r.expiresAt > now)
+    .reduce((s, r) => s + r.quantity, 0);
+}
+
+/** Reservations that remain ACTIVE and must hold inventory after a repair pass */
+export function sumQuantityReservedTruth(
+  reservations: ReservationWithOrder[],
+  now: Date,
+  graceCutoff: Date
+): number {
+  return reservations
+    .filter((r) => r.status === ReservationStatus.ACTIVE)
+    .filter((r) => !shouldExpireReservation(r, now, graceCutoff))
+    .reduce((s, r) => s + r.quantity, 0);
+}
+
+/** Throttle cheap opportunistic cleanup so public reads don't hammer DB */
+const CLEANUP_INTERVAL_MS = Number(process.env.RESERVATION_CLEANUP_INTERVAL_MS ?? 30_000);
+const lastCleanupAt = new Map<string, number>();
+
+/** Test helper — clear opportunistic cleanup throttle */
+export function resetReservationCleanupThrottle() {
+  lastCleanupAt.clear();
 }
 
 export class ReservationService {
@@ -55,6 +165,9 @@ export class ReservationService {
    * Release expired reservations and free reserved quantity.
    * Never release inventory tied to a PENDING order still within payment grace
    * (prevents oversale when webhook races cleanup).
+   *
+   * Prefer `repairEvent` when counters may be stale — this path still uses
+   * decrement for backwards-compatible callers, then is safe under repair rebuild.
    */
   static async releaseExpired(tx?: Prisma.TransactionClient) {
     const db = tx ?? prisma;
@@ -68,19 +181,7 @@ export class ReservationService {
 
     let released = 0;
     for (const res of expired) {
-      // Hold inventory if order is still awaiting payment within grace window
-      if (
-        res.orderId &&
-        res.order &&
-        res.order.paymentStatus === PaymentStatus.PENDING &&
-        res.order.orderStatus === OrderStatus.PENDING &&
-        res.expiresAt > graceCutoff
-      ) {
-        continue;
-      }
-
-      // Never release if order already paid (webhook may still be issuing tickets)
-      if (res.order?.paymentStatus === PaymentStatus.PAID) {
+      if (!shouldExpireReservation(res, now, graceCutoff)) {
         continue;
       }
 
@@ -96,6 +197,270 @@ export class ReservationService {
     }
 
     return released;
+  }
+
+  /**
+   * Preview or apply reservation repair for one event.
+   *
+   * Apply (transaction):
+   * 1. Mark ACTIVE with expiresAt <= now as EXPIRED (respecting payment grace / PAID)
+   * 2. Set TicketType.quantityReserved exactly to SUM(ACTIVE ∧ expiresAt > now)
+   * 3. Audit INVENTORY_RESERVATION_REPAIR
+   *
+   * Never touches quantitySold, paid tickets, orders, or payments.
+   */
+  static async repairEvent(input: {
+    eventId: string;
+    apply?: boolean;
+    actorId?: string | null;
+  }): Promise<ReservationRepairResult> {
+    const apply = Boolean(input.apply);
+    const now = new Date();
+    const graceMinutes = paymentGraceMinutes();
+    const graceCutoff = new Date(now.getTime() - graceMinutes * 60_000);
+
+    const event = await prisma.event.findUnique({
+      where: { id: input.eventId },
+      include: {
+        ticketTypes: { orderBy: { sortOrder: "asc" } },
+      },
+    });
+    if (!event) throw new AppError("EVENT_NOT_FOUND", "Arrangement ikke funnet", 404);
+
+    const reservations = await prisma.ticketReservation.findMany({
+      where: { eventId: input.eventId, status: ReservationStatus.ACTIVE },
+      include: {
+        order: { select: { id: true, paymentStatus: true, orderStatus: true, paidAt: true } },
+      },
+    });
+
+    const byType = new Map<string, ReservationWithOrder[]>();
+    for (const tt of event.ticketTypes) {
+      byType.set(tt.id, []);
+    }
+    for (const r of reservations) {
+      const list = byType.get(r.ticketTypeId) ?? [];
+      list.push(r);
+      byType.set(r.ticketTypeId, list);
+    }
+
+    const typeRows: ReservationRepairTicketTypeRow[] = [];
+    const toExpireIds: string[] = [];
+    let expiredCount = 0;
+
+    for (const tt of event.ticketTypes) {
+      const list = byType.get(tt.id) ?? [];
+      const activeTotal = list.reduce((s, r) => s + r.quantity, 0);
+      const activeUnexpiredTotal = sumActiveUnexpired(list, now);
+
+      let expiredActiveQuantity = 0;
+      let expiredActiveCount = 0;
+      for (const r of list) {
+        if (shouldExpireReservation(r, now, graceCutoff)) {
+          expiredActiveQuantity += r.quantity;
+          expiredActiveCount += 1;
+          toExpireIds.push(r.id);
+        }
+      }
+
+      // Exact counter = ACTIVE keepers (unexpired + grace/PAID holds)
+      const proposedQuantityReserved = sumQuantityReservedTruth(list, now, graceCutoff);
+      const delta = proposedQuantityReserved - tt.quantityReserved;
+      const availableBefore = Math.max(
+        0,
+        tt.quantityReleased - tt.quantitySold - tt.quantityReserved
+      );
+      const availableAfter = Math.max(
+        0,
+        tt.quantityReleased - tt.quantitySold - proposedQuantityReserved
+      );
+
+      typeRows.push({
+        ticketTypeId: tt.id,
+        name: tt.name,
+        quantityReleased: tt.quantityReleased,
+        quantitySold: tt.quantitySold,
+        currentQuantityReserved: tt.quantityReserved,
+        activeTotal,
+        activeUnexpiredTotal,
+        expiredActiveQuantity,
+        expiredActiveCount,
+        proposedQuantityReserved,
+        delta,
+        availableBefore,
+        availableAfter,
+      });
+      expiredCount += expiredActiveCount;
+    }
+
+    if (!apply) {
+      return {
+        eventId: input.eventId,
+        dryRun: true,
+        now: now.toISOString(),
+        graceMinutes,
+        expiredCount,
+        types: typeRows,
+        applied: false,
+      };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Lock ticket types for this event
+      await tx.$queryRaw`
+        SELECT id FROM "TicketType" WHERE "eventId" = ${input.eventId} FOR UPDATE
+      `;
+
+      if (toExpireIds.length > 0) {
+        await tx.ticketReservation.updateMany({
+          where: { id: { in: toExpireIds }, status: ReservationStatus.ACTIVE },
+          data: { status: ReservationStatus.EXPIRED },
+        });
+      }
+
+      // Re-read ACTIVE after expire; set quantityReserved exactly from keepers
+      const remaining = await tx.ticketReservation.findMany({
+        where: { eventId: input.eventId, status: ReservationStatus.ACTIVE },
+        include: {
+          order: { select: { id: true, paymentStatus: true, orderStatus: true, paidAt: true } },
+        },
+      });
+
+      const truthByType = new Map<string, number>();
+      for (const tt of event.ticketTypes) {
+        truthByType.set(tt.id, 0);
+      }
+      for (const r of remaining) {
+        // Remaining ACTIVE should already be keepers; still filter defensively
+        if (!shouldExpireReservation(r, now, graceCutoff)) {
+          truthByType.set(r.ticketTypeId, (truthByType.get(r.ticketTypeId) ?? 0) + r.quantity);
+        }
+      }
+
+      for (const tt of event.ticketTypes) {
+        const proposed = truthByType.get(tt.id) ?? 0;
+        if (proposed !== tt.quantityReserved) {
+          await tx.ticketType.update({
+            where: { id: tt.id },
+            data: { quantityReserved: proposed },
+          });
+        }
+      }
+    });
+
+    await writeAuditLog({
+      actorId: input.actorId,
+      organizationId: event.organizationId,
+      action: "INVENTORY_RESERVATION_REPAIR",
+      entityType: "Event",
+      entityId: input.eventId,
+      metadata: {
+        dryRun: false,
+        expiredCount,
+        types: typeRows.map((t) => ({
+          ticketTypeId: t.ticketTypeId,
+          from: t.currentQuantityReserved,
+          to: t.proposedQuantityReserved,
+          delta: t.delta,
+          expiredActiveCount: t.expiredActiveCount,
+          expiredActiveQuantity: t.expiredActiveQuantity,
+        })),
+      },
+    });
+
+    return {
+      eventId: input.eventId,
+      dryRun: false,
+      now: now.toISOString(),
+      graceMinutes,
+      expiredCount,
+      types: typeRows,
+      applied: true,
+    };
+  }
+
+  /**
+   * Cheap, idempotent cleanup: expire stale ACTIVE + rebuild quantityReserved
+   * from DB truth for one event. Throttled per eventId so public inventory
+   * reads and reserve() cannot permanently block sales without hammering DB.
+   *
+   * Skips audit when there is nothing to change (keeps opportunistic path quiet).
+   */
+  static async cleanupEventSafe(
+    eventId: string,
+    opts?: { force?: boolean; actorId?: string | null; audit?: boolean }
+  ): Promise<ReservationRepairResult | null> {
+    const key = eventId;
+    const last = lastCleanupAt.get(key) ?? 0;
+    if (!opts?.force && Date.now() - last < CLEANUP_INTERVAL_MS) {
+      return null;
+    }
+    lastCleanupAt.set(key, Date.now());
+
+    try {
+      const preview = await this.repairEvent({ eventId, apply: false });
+      const needsWork =
+        preview.expiredCount > 0 || preview.types.some((t) => t.delta !== 0);
+      if (!needsWork) {
+        return preview;
+      }
+      return await this.repairEvent({
+        eventId,
+        apply: true,
+        actorId: opts?.actorId,
+        // Opportunistic cleanups still audit when they change counters
+      });
+    } catch (e) {
+      lastCleanupAt.delete(key);
+      throw e;
+    }
+  }
+
+  /** Global/opportunistic cleanup across events with stale ACTIVE reservations. */
+  static async cleanupStaleReservations(opts?: {
+    eventId?: string;
+    force?: boolean;
+    actorId?: string | null;
+    limit?: number;
+  }): Promise<{ events: ReservationRepairResult[]; skipped: number }> {
+    if (opts?.eventId) {
+      const result = await this.cleanupEventSafe(opts.eventId, {
+        force: opts.force ?? true,
+        actorId: opts.actorId,
+      });
+      return { events: result ? [result] : [], skipped: result ? 0 : 1 };
+    }
+
+    const now = new Date();
+    const graceCutoff = new Date(now.getTime() - paymentGraceMinutes() * 60_000);
+    const limit = opts?.limit ?? 50;
+
+    // Events with ACTIVE reservations past grace (safe to expire) or any mismatch risk
+    const stale = await prisma.ticketReservation.findMany({
+      where: {
+        status: ReservationStatus.ACTIVE,
+        expiresAt: { lte: graceCutoff },
+      },
+      select: { eventId: true },
+      distinct: ["eventId"],
+      take: limit,
+    });
+
+    const events: ReservationRepairResult[] = [];
+    let skipped = 0;
+    for (const row of stale) {
+      try {
+        const result = await this.cleanupEventSafe(row.eventId, {
+          force: opts?.force ?? true,
+          actorId: opts?.actorId,
+        });
+        if (result) events.push(result);
+        else skipped++;
+      } catch {
+        skipped++;
+      }
+    }
+    return { events, skipped };
   }
 
   /**
@@ -117,6 +482,13 @@ export class ReservationService {
     }
 
     const expiresAt = new Date(Date.now() + this.ttlMinutes() * 60_000);
+
+    // Opportunistic cleanup before taking locks (cheap / throttled)
+    try {
+      await this.cleanupEventSafe(input.eventId);
+    } catch {
+      // Fall through — in-transaction releaseExpired still runs
+    }
 
     return prisma.$transaction(async (tx) => {
       const event = await tx.event.findUnique({ where: { id: input.eventId } });

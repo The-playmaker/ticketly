@@ -8,6 +8,7 @@ import { DuplicateEventButton } from "@/components/admin/duplicate-event-button"
 import { EventParitySettingsForm } from "@/components/admin/event-parity-settings-form";
 import { EventOwnershipForm } from "@/components/admin/event-ownership-form";
 import { EventTestResetForm } from "@/components/admin/event-test-reset-form";
+import { ReservationsRepairForm } from "@/components/admin/reservations-repair-form";
 import { EditEventLink } from "@/components/admin/edit-event-link";
 
 type Props = { params: Promise<{ id: string }> };
@@ -111,6 +112,7 @@ export default async function EventSettingsPage({ params }: Props) {
             sellerOrganizationId={full.sellerOrganizationId}
             organizations={activeOrganizations}
           />
+          <ReservationsRepairForm eventId={full.id} />
           <EventTestResetForm eventId={full.id} />
         </>
       ) : (

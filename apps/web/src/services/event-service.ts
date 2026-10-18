@@ -14,6 +14,7 @@ import {
   getOrgFinancialTotals,
 } from "@/lib/admin/event-financials";
 import { RefundService } from "@/services/refund-service";
+import { ReservationService } from "@/services/reservation-service";
 
 export class EventService {
   static async listPublic(params?: { take?: number; city?: string }) {
@@ -40,7 +41,7 @@ export class EventService {
   }
 
   static async getBySlug(slug: string) {
-    return prisma.event.findFirst({
+    const event = await prisma.event.findFirst({
       where: {
         slug,
         OR: [
@@ -60,6 +61,31 @@ export class EventService {
         },
       },
     });
+    if (!event) return null;
+
+    // Opportunistic: expire abandoned holds + rebuild quantityReserved before
+    // public availability is shown (throttled / idempotent).
+    let cleaned = false;
+    try {
+      const result = await ReservationService.cleanupEventSafe(event.id);
+      cleaned = Boolean(
+        result &&
+          !result.dryRun &&
+          result.applied &&
+          (result.expiredCount > 0 || result.types.some((t) => t.delta !== 0))
+      );
+    } catch {
+      // Prefer returning inventory over failing the page
+    }
+
+    if (!cleaned) return event;
+
+    const ticketTypes = await prisma.ticketType.findMany({
+      where: { eventId: event.id, isVisible: true },
+      orderBy: { sortOrder: "asc" },
+      include: { priceTiers: { orderBy: { sortOrder: "asc" } } },
+    });
+    return { ...event, ticketTypes };
   }
 
   static async create(
