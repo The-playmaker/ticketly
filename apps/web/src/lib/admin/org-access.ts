@@ -191,6 +191,24 @@ export async function requireSuperAdmin() {
   return { session, user };
 }
 
+/**
+ * SUPER_ADMIN or org admin/event manager for the order's organization.
+ * Loads order by public orderNumber — never trusts client org ids.
+ */
+export async function requireOrderManageAccess(orderNumber: string) {
+  const session = await requireAdminSession();
+  const user = sessionUser(session);
+  const order = await prisma.order.findUnique({ where: { orderNumber } });
+  if (!order) throw new AppError("NOT_FOUND", "Ordre ikke funnet", 404);
+  if (isSuperAdmin(user)) {
+    return { session, user, order };
+  }
+  if (!canManageEvents(user, order.organizationId)) {
+    throw new AppError("FORBIDDEN", "Ingen tilgang", 403);
+  }
+  return { session, user, order };
+}
+
 /** Alias used by layout / dashboard — same as resolveOrgIdForUser. */
 export async function getAdminOrgId(userId: string, globalRole: string) {
   return resolveOrgIdForUser(userId, globalRole);

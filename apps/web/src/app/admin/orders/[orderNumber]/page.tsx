@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { PaymentStatus, TicketStatus } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/utils";
@@ -7,6 +8,7 @@ import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { organizationIdWhere } from "@/lib/admin/org-context";
 import { isSuperAdmin } from "@/lib/auth/rbac";
 import { expectedTicketCountForItems } from "@/lib/tickets/expected-count";
+import { OrderCustomerEmailPanel } from "@/components/admin/order-customer-email-panel";
 
 function providerLabel(provider: string) {
   switch (provider) {
@@ -109,6 +111,17 @@ export default async function AdminOrderDetailPage({ params }: Props) {
   );
   const ticketCountMismatch = order.tickets.length !== expectedTickets;
 
+  const activeTicketCount = order.tickets.filter(
+    (t) =>
+      t.status === TicketStatus.VALID ||
+      t.status === TicketStatus.CHECKED_IN ||
+      t.status === TicketStatus.TRANSFERRED
+  ).length;
+  const canResend =
+    (order.paymentStatus === PaymentStatus.PAID ||
+      order.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED) &&
+    activeTicketCount > 0;
+
   return (
     <div className="space-y-8">
       <div>
@@ -122,6 +135,12 @@ export default async function AdminOrderDetailPage({ params }: Props) {
         </p>
         <p className="text-sm text-[color:var(--muted)]">{order.event.name}</p>
       </div>
+
+      <OrderCustomerEmailPanel
+        orderNumber={order.orderNumber}
+        customerEmail={order.customerEmail}
+        canResend={canResend}
+      />
 
       <section className="grid gap-4 md:grid-cols-2">
         <div className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5">
