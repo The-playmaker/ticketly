@@ -108,6 +108,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 >
                   Betaling
                 </Link>
+                <Link
+                  href="/admin/platform/payments/reconciliation"
+                  className="rounded-md px-3 py-2 text-[color:var(--accent-soft)] transition hover:bg-[color:var(--surface-high)]"
+                >
+                  Reconcile
+                </Link>
               </>
             ) : null}
             <div className="mt-auto space-y-2 pt-6">

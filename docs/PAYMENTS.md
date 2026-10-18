@@ -94,6 +94,21 @@ Required for live sales: `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KE
 `NEXT_PUBLIC_APP_URL` (production: `https://billett.xodrammen.no`).
 Webhook: `{APP_URL}/api/payments/stripe/webhook`.
 
+## Payment reconciliation
+
+Stripe is authoritative for **payment** state; Ticketly for **order/ticket** state.
+Successful payments always go through `PaymentService.markOrderPaid` (exactly-once
+fulfillment). Reconciliation never creates tickets directly.
+
+- CLI (dry-run default): `npm run payments:reconcile -- --since-hours 24`
+- Apply: `npm run payments:reconcile -- --apply --since-hours 24`
+- Cron: `GET/POST /api/cron/payments-reconcile` every 10 minutes (`CRON_SECRET`)
+- Admin UI (SUPER_ADMIN): `/admin/platform/payments/reconciliation`
+
+Candidates: PENDING, FAILED, REVIEW_REQUIRED, AUTHORIZED, PARTIALLY_REFUNDED,
+plus PAID from the last 24h for verification. Audit actions:
+`PAYMENT_RECONCILED`, `PAYMENT_REVIEW_REQUIRED`, `PAYMENT_RECONCILIATION_MISMATCH`.
+
 ## Nexi (future / optional)
 
 When cutting over later, set `PAYMENT_PROVIDER=nexi` with Nexi production keys.

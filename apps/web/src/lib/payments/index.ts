@@ -92,3 +92,15 @@ export { NexiCheckoutProvider } from "./nexi-provider";
 export { NexiApiError } from "./nexi-client";
 export { StripePaymentProvider, stripeConfigHealth } from "./stripe-provider";
 export { MockStripePaymentProvider } from "./mock-stripe-provider";
+export {
+  createLiveStripeLookupClient,
+  lookupStripeForPayment,
+} from "./stripe-lookup";
+export type {
+  StripeLookupClient,
+  StripeOrderLookup,
+  StripeSessionSnapshot,
+  StripePaymentIntentSnapshot,
+  StripeRefundSnapshot,
+} from "./stripe-lookup";
+export { withStripeRetry, mapWithConcurrency } from "./stripe-retry";
