@@ -22,11 +22,6 @@ const fullNav = [
   { href: "/admin/settings/team", label: "Team" },
 ];
 
-const doorNav = [
-  { href: "/scan", label: "Skanner" },
-  { href: "/admin/events", label: "Mine events" },
-];
-
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login?callbackUrl=/admin");
@@ -42,9 +37,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!canAccessAdmin(user)) redirect("/");
 
+  // DOOR_STAFF-only: no admin console — scanner only
+  if (isDoorStaffOnly(user)) {
+    redirect("/scan");
+  }
+
   const platform = isSuperAdmin(user);
-  const doorOnly = isDoorStaffOnly(user);
-  const nav = doorOnly ? doorNav : fullNav;
+  const nav = fullNav;
   const orgScope = platform
     ? await resolveOrgScopeForUser(user.id, user.globalRole)
     : null;
@@ -55,7 +54,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <aside className="hidden w-60 shrink-0 flex-col border-r border-[color:var(--outline)]/30 bg-[color:var(--surface-low)] md:flex">
           <div className="border-b border-[color:var(--outline)]/25 px-4 py-5">
             <Link
-              href={doorOnly ? "/scan" : "/admin"}
+              href="/admin"
               className="font-display text-sm font-semibold uppercase tracking-[0.16em] text-foreground"
             >
               Ticketly Admin
@@ -161,14 +160,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Badge variant="muted" className="hidden sm:inline-flex">
                 {session.user.email}
               </Badge>
-              {!doorOnly ? (
-                <Link
-                  href="/admin/events/new"
-                  className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-semibold text-[color:var(--accent-foreground)]"
-                >
-                  + Opprett
-                </Link>
-              ) : null}
+              <Link
+                href="/admin/events/new"
+                className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs font-semibold text-[color:var(--accent-foreground)]"
+              >
+                + Opprett
+              </Link>
             </div>
           </header>
 

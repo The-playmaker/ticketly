@@ -3,8 +3,9 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { canScanTickets } from "@/lib/auth/rbac";
-import { filterEventsByAssignment } from "@/lib/auth/event-access";
+import { filterEventsByAssignment, isDoorStaffOnly } from "@/lib/auth/event-access";
 import { ScannerClient } from "@/components/scan/scanner-client";
+import { DoorStaffChrome } from "@/components/scan/door-staff-chrome";
 
 type Props = { searchParams: Promise<{ event?: string }> };
 
@@ -34,6 +35,8 @@ export default async function ScanPage({ searchParams }: Props) {
     eventAssignments: dbUser.eventAssignments,
   };
 
+  const doorOnly = isDoorStaffOnly(user);
+
   const events = await prisma.event.findMany({
     where: {
       status: { in: ["PUBLISHED", "SOLD_OUT", "COMPLETED"] },
@@ -48,23 +51,39 @@ export default async function ScanPage({ searchParams }: Props) {
 
   const scannable = events.filter((e) => canScanTickets(user, e.organizationId));
   const accessible = filterEventsByAssignment(user, scannable);
-  const selected = sp.event
-    ? accessible.find((e) => e.id === sp.event || e.slug === sp.event)
-    : accessible[0];
+
+  // Auto-select when exactly one; honor ?event= when multiple / deep-link
+  const selected =
+    accessible.length === 1
+      ? accessible[0]
+      : sp.event
+        ? accessible.find((e) => e.id === sp.event || e.slug === sp.event)
+        : accessible[0];
+
+  const chrome = doorOnly ? <DoorStaffChrome email={user.email} /> : null;
 
   if (!selected) {
     return (
-      <div className="flex min-h-dvh items-center justify-center p-6 text-center">
-        <div>
-          <h1 className="font-display text-2xl">Ingen arrangementer</h1>
-          <p className="mt-2 text-zinc-400">Du har ikke scanner-tilgang til noen events.</p>
+      <div className="min-h-dvh bg-zinc-950 text-zinc-100">
+        {chrome}
+        <div className="flex items-center justify-center p-6 text-center">
+          <div>
+            <h1 className="font-display text-2xl">Ingen arrangementer</h1>
+            <p className="mt-2 text-zinc-400">
+              Du har ikke scanner-tilgang til noen events.
+              {doorOnly
+                ? " Be en administrator om å tildele eventtilgang."
+                : null}
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="min-h-dvh bg-zinc-950 text-zinc-100">
+      {chrome}
       {accessible.length > 1 ? (
         <div className="border-b border-zinc-800 bg-zinc-900 px-4 py-2">
           <div className="flex flex-wrap gap-2">

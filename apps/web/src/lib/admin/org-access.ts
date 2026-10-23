@@ -1,11 +1,13 @@
 import { auth } from "@/lib/auth";
 import {
+  canAccessOrgConsole,
   canManageEvents,
   canManageOrganization,
   canScanTickets,
   isSuperAdmin,
   type AuthUser,
 } from "@/lib/auth/rbac";
+import { isDoorStaffOnly } from "@/lib/auth/event-access";
 import { prisma } from "@/lib/db";
 import { AppError } from "@/lib/api-error";
 import {
@@ -22,6 +24,29 @@ export async function requireAdminSession() {
     throw new AppError("UNAUTHORIZED", "Innlogging kreves", 401);
   }
   return session;
+}
+
+/**
+ * Admin console APIs (orders, reports, settings, financials, event editing).
+ * DOOR_STAFF-only users are denied — they may only use scanner surfaces.
+ */
+export async function requireOrgConsoleSession() {
+  const session = await requireAdminSession();
+  const user = sessionUser(session);
+  if (isDoorStaffOnly(user)) {
+    throw new AppError("FORBIDDEN", "Scanner-tilgang har ikke admin-konsoll", 403);
+  }
+  return { session, user };
+}
+
+/** Deny door-staff-only from org-scoped admin mutations when an org id is known. */
+export function assertOrgConsoleAccess(user: AuthUser, organizationId: string) {
+  if (isDoorStaffOnly(user)) {
+    throw new AppError("FORBIDDEN", "Scanner-tilgang har ikke admin-konsoll", 403);
+  }
+  if (!canAccessOrgConsole(user, organizationId) && !isSuperAdmin(user)) {
+    throw new AppError("FORBIDDEN", "Ingen tilgang", 403);
+  }
 }
 
 function sessionUser(session: Awaited<ReturnType<typeof requireAdminSession>>): AuthUser {
@@ -129,6 +154,10 @@ export async function resolveOrgIdParam(
   return membershipOrgId;
 }
 
+/**
+ * Read access for admin event surfaces (dashboard, attendees list metadata).
+ * Door-staff-only users are blocked — use scanner APIs instead.
+ */
 export async function requireEventAccess(eventId: string) {
   const session = await requireAdminSession();
   const event = await prisma.event.findUnique({ where: { id: eventId } });
@@ -136,6 +165,9 @@ export async function requireEventAccess(eventId: string) {
   const user = sessionUser(session);
   if (isSuperAdmin(user)) {
     return { session, user, event };
+  }
+  if (isDoorStaffOnly(user)) {
+    throw new AppError("FORBIDDEN", "Scanner-tilgang har ikke admin-konsoll", 403);
   }
   if (!canManageEvents(user, event.organizationId)) {
     if (!canScanTickets(user, event.organizationId)) {

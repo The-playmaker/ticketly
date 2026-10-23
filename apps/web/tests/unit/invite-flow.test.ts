@@ -211,4 +211,97 @@ describe.runIf(runDb)("Invite + auth flows (DB)", () => {
     await prisma.organizationMember.deleteMany({ where: { userId: member.id } });
     await prisma.user.delete({ where: { id: member.id } });
   });
+
+  it("editing existing member event assignments works", async () => {
+    const member = await prisma.user.create({
+      data: {
+        email: `door-assign-${suffix}@test.local`,
+        globalRole: GlobalRole.CUSTOMER,
+        isActive: true,
+        passwordHash: await hashPassword("door-assign-strong-pw"),
+      },
+    });
+    await prisma.organizationMember.create({
+      data: {
+        organizationId: orgId,
+        userId: member.id,
+        role: OrgRole.DOOR_STAFF,
+        isActive: true,
+      },
+    });
+
+    const starts = new Date(Date.now() + 86400000);
+    const ends = new Date(Date.now() + 90000000);
+    const e1 = await prisma.event.create({
+      data: {
+        organizationId: orgId,
+        sellerOrganizationId: orgId,
+        name: `Door Event A ${suffix}`,
+        slug: `door-a-${suffix}`,
+        capacity: 100,
+        startsAt: starts,
+        endsAt: ends,
+      },
+    });
+    const e2 = await prisma.event.create({
+      data: {
+        organizationId: orgId,
+        sellerOrganizationId: orgId,
+        name: `Door Event B ${suffix}`,
+        slug: `door-b-${suffix}`,
+        capacity: 100,
+        startsAt: starts,
+        endsAt: ends,
+      },
+    });
+
+    await UserAdminService.updateOrgMembership({
+      actorId,
+      organizationId: orgId,
+      userId: member.id,
+      restrictedEventIds: [e1.id],
+    });
+
+    let assignments = await prisma.eventAssignment.findMany({
+      where: { userId: member.id },
+    });
+    expect(assignments.map((a) => a.eventId)).toEqual([e1.id]);
+
+    await UserAdminService.updateOrgMembership({
+      actorId,
+      organizationId: orgId,
+      userId: member.id,
+      restrictedEventIds: [e2.id],
+    });
+    assignments = await prisma.eventAssignment.findMany({
+      where: { userId: member.id },
+    });
+    expect(assignments.map((a) => a.eventId).sort()).toEqual([e2.id]);
+
+    await UserAdminService.updateOrgMembership({
+      actorId,
+      organizationId: orgId,
+      userId: member.id,
+      restrictedEventIds: [],
+    });
+    assignments = await prisma.eventAssignment.findMany({
+      where: { userId: member.id },
+    });
+    expect(assignments).toEqual([]);
+
+    const accessLog = await prisma.auditLog.findFirst({
+      where: {
+        action: "EVENT_ACCESS_CHANGED",
+        organizationId: orgId,
+        entityId: member.id,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(accessLog).toBeTruthy();
+
+    await prisma.eventAssignment.deleteMany({ where: { userId: member.id } });
+    await prisma.event.deleteMany({ where: { id: { in: [e1.id, e2.id] } } });
+    await prisma.organizationMember.deleteMany({ where: { userId: member.id } });
+    await prisma.user.delete({ where: { id: member.id } });
+  });
 });

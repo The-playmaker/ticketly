@@ -605,13 +605,30 @@ export class UserAdminService {
     }
 
     if (input.restrictedEventIds !== undefined) {
+      const nextIds = input.restrictedEventIds ?? [];
+      if (nextIds.length) {
+        const count = await prisma.event.count({
+          where: {
+            id: { in: nextIds },
+            organizationId: input.organizationId,
+          },
+        });
+        if (count !== nextIds.length) {
+          throw new AppError(
+            "INVALID_EVENTS",
+            "Ugyldige arrangementer for denne organisasjonen",
+            400
+          );
+        }
+      }
+
       const existing = await prisma.eventAssignment.findMany({
         where: {
           userId: input.userId,
           event: { organizationId: input.organizationId },
         },
       });
-      const next = new Set(input.restrictedEventIds ?? []);
+      const next = new Set(nextIds);
       for (const row of existing) {
         if (!next.has(row.eventId)) {
           await prisma.eventAssignment.delete({ where: { id: row.id } });

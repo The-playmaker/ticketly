@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { EventService } from "@/services/event-service";
-import { requireEventAccess } from "@/lib/admin/org-access";
+import { requireEventManageAccess } from "@/lib/admin/org-access";
 import { jsonError } from "@/lib/api-error";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -16,7 +16,7 @@ const bodySchema = z.object({
 export async function PATCH(req: Request, ctx: Ctx) {
   try {
     const { id } = await ctx.params;
-    const { user } = await requireEventAccess(id);
+    const { user } = await requireEventManageAccess(id);
     const body = bodySchema.parse(await req.json());
     const updated = await EventService.update(
       id,

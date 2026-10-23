@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { CheckInService } from "@/services/check-in-service";
 import { requireSession } from "@/lib/auth/session";
-import { canScanTickets, AuthorizationError } from "@/lib/auth/rbac";
-import { prisma } from "@/lib/db";
+import { AuthorizationError } from "@/lib/auth/rbac";
+import { assertCanScanEvent } from "@/lib/auth/org-access";
+import { AppError } from "@/lib/api-error";
 
 const schema = z.object({
   eventId: z.string(),
@@ -18,10 +19,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Ugyldig søk" }, { status: 400 });
     }
 
-    const event = await prisma.event.findUniqueOrThrow({ where: { id: parsed.data.eventId } });
-    if (!canScanTickets(user, event.organizationId)) {
-      throw new AuthorizationError();
-    }
+    await assertCanScanEvent(user, parsed.data.eventId);
 
     const results = await CheckInService.searchGuests(parsed.data.eventId, parsed.data.query);
     return NextResponse.json({
@@ -38,6 +36,9 @@ export async function POST(req: Request) {
       })),
     });
   } catch (e) {
+    if (e instanceof AppError) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
+    }
     const status = e instanceof AuthorizationError ? 403 : 401;
     return NextResponse.json({ error: e instanceof Error ? e.message : "Error" }, { status });
   }

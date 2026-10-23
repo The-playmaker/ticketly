@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { resolvePostLoginPath } from "@/lib/auth/post-login";
 
 const showDemoCredentials =
   process.env.NODE_ENV !== "production" &&
@@ -30,12 +31,23 @@ export default function LoginForm() {
       password,
       redirect: false,
     });
-    setLoading(false);
     if (res?.error) {
+      setLoading(false);
       setError("Feil e-post eller passord");
       return;
     }
-    router.push(callbackUrl);
+    const session = await getSession();
+    const dest = resolvePostLoginPath(
+      session?.user
+        ? {
+            globalRole: session.user.globalRole,
+            memberships: session.user.memberships,
+          }
+        : null,
+      callbackUrl
+    );
+    setLoading(false);
+    router.push(dest);
     router.refresh();
   }
 

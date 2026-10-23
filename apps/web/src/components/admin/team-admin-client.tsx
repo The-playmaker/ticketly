@@ -1,11 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { orgRoleLabel } from "@/lib/auth/role-labels";
 
 type Member = {
   membershipId: string;
@@ -28,6 +30,95 @@ type Invite = {
 };
 
 const ROLES = ["ORGANIZER_ADMIN", "EVENT_MANAGER", "DOOR_STAFF"] as const;
+
+function usesEventAssignment(role: string) {
+  return role === "DOOR_STAFF" || role === "EVENT_MANAGER";
+}
+
+function MemberEventAccessEditor({
+  member,
+  events,
+  busy,
+  onSave,
+}: {
+  member: Member;
+  events: { id: string; name: string }[];
+  busy: boolean;
+  onSave: (eventIds: string[]) => Promise<boolean>;
+}) {
+  const [selected, setSelected] = useState(() =>
+    member.eventAccess.map((e) => e.id)
+  );
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setSelected(member.eventAccess.map((e) => e.id));
+  }, [member.eventAccess, member.userId, member.role]);
+
+  if (!usesEventAssignment(member.role)) {
+    return <span className="text-xs text-[color:var(--muted)]">Alle</span>;
+  }
+
+  const dirty =
+    selected.length !== member.eventAccess.length ||
+    selected.some((id) => !member.eventAccess.some((e) => e.id === id));
+
+  return (
+    <div className="min-w-[12rem] space-y-2">
+      <div className="flex max-h-32 flex-wrap gap-1.5 overflow-y-auto">
+        {events.length === 0 ? (
+          <span className="text-xs text-[color:var(--muted)]">Ingen events</span>
+        ) : (
+          events.map((ev) => {
+            const on = selected.includes(ev.id);
+            return (
+              <button
+                key={ev.id}
+                type="button"
+                disabled={busy || saving}
+                onClick={() =>
+                  setSelected((prev) =>
+                    on ? prev.filter((id) => id !== ev.id) : [...prev, ev.id]
+                  )
+                }
+                className={`rounded-md px-2 py-1 text-xs ${
+                  on
+                    ? "bg-[color:var(--accent)] text-[color:var(--accent-foreground)]"
+                    : "bg-[color:var(--surface-high)] text-[color:var(--muted)]"
+                }`}
+              >
+                {ev.name}
+              </button>
+            );
+          })
+        )}
+      </div>
+      {member.role === "DOOR_STAFF" && selected.length === 0 ? (
+        <p className="text-[10px] text-[color:var(--muted)]">
+          Ingen (tildel events)
+        </p>
+      ) : null}
+      {member.role === "EVENT_MANAGER" && selected.length === 0 ? (
+        <p className="text-[10px] text-[color:var(--muted)]">
+          Tom = alle events
+        </p>
+      ) : null}
+      <Button
+        size="sm"
+        variant="secondary"
+        disabled={busy || saving || !dirty}
+        onClick={async () => {
+          setSaving(true);
+          const ok = await onSave(selected);
+          setSaving(false);
+          if (ok) toast.success("Eventtilgang lagret");
+        }}
+      >
+        Lagre tilgang
+      </Button>
+    </div>
+  );
+}
 
 export function TeamAdminClient({
   organizationId,
@@ -76,7 +167,7 @@ export function TeamAdminClient({
   async function patch(
     userId: string,
     body: Record<string, unknown>
-  ) {
+  ): Promise<boolean> {
     setBusy(true);
     setError(null);
     const res = await fetch("/api/admin/team", {
@@ -90,9 +181,10 @@ export function TeamAdminClient({
         error?: { message?: string };
       };
       setError(data.error?.message ?? "Oppdatering feilet");
-      return;
+      return false;
     }
     router.refresh();
+    return true;
   }
 
   return (
@@ -119,15 +211,20 @@ export function TeamAdminClient({
             >
               {ROLES.map((r) => (
                 <option key={r} value={r}>
-                  {r}
+                  {orgRoleLabel(r)}
                 </option>
               ))}
             </select>
           </div>
         </div>
-        {role === "DOOR_STAFF" || role === "EVENT_MANAGER" ? (
+        {usesEventAssignment(role) ? (
           <div className="mt-3">
-            <Label>Eventtilgang (valgfritt — tom = ingen for dørvakt)</Label>
+            <Label>
+              Eventtilgang
+              {role === "DOOR_STAFF"
+                ? " (tom = ingen scanner-tilgang)"
+                : " (valgfritt — tom = alle)"}
+            </Label>
             <div className="mt-2 flex max-h-40 flex-wrap gap-2 overflow-y-auto">
               {events.map((ev) => {
                 const on = eventIds.includes(ev.id);
@@ -188,17 +285,23 @@ export function TeamAdminClient({
                   >
                     {ROLES.map((r) => (
                       <option key={r} value={r}>
-                        {r}
+                        {orgRoleLabel(r)}
                       </option>
                     ))}
                   </select>
                 </td>
-                <td className="px-3 py-2 text-xs">
-                  {m.eventAccess.length
-                    ? m.eventAccess.map((e) => e.name).join(", ")
-                    : m.role === "DOOR_STAFF"
-                      ? "Ingen (tildel events)"
-                      : "Alle"}
+                <td className="px-3 py-2 align-top">
+                  <MemberEventAccessEditor
+                    member={m}
+                    events={events}
+                    busy={busy}
+                    onSave={(ids) =>
+                      patch(m.userId, {
+                        action: "update",
+                        restrictedEventIds: ids,
+                      })
+                    }
+                  />
                 </td>
                 <td className="px-3 py-2">
                   <Badge variant="muted">{m.status}</Badge>
@@ -246,7 +349,7 @@ export function TeamAdminClient({
             {invitations.map((i) => (
               <li key={i.id} className="flex justify-between gap-4">
                 <span>
-                  {i.email} · {i.role}
+                  {i.email} · {orgRoleLabel(i.role)}
                 </span>
                 <span className="text-xs text-[color:var(--muted)]">
                   utløper {new Date(i.expiresAt).toLocaleDateString("nb-NO")}

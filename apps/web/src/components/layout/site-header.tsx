@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { isDoorStaffOnly } from "@/lib/auth/event-access";
 
 export async function SiteHeader() {
   const session = await auth();
+  const doorOnly = isDoorStaffOnly(session?.user);
+  const staffHome = doorOnly ? "/scan" : "/admin";
+  const staffLabel = doorOnly ? "Scanner" : "Admin";
 
   return (
     <header className="sticky top-0 z-40 border-b border-[color:var(--outline)]/30 bg-[color:var(--background)]/85 backdrop-blur-md">
@@ -38,7 +42,7 @@ export async function SiteHeader() {
               {(session.user.globalRole === "SUPER_ADMIN" ||
                 (session.user.memberships?.length ?? 0) > 0) && (
                 <Button asChild size="sm" variant="secondary">
-                  <Link href="/admin">Admin</Link>
+                  <Link href={staffHome}>{staffLabel}</Link>
                 </Button>
               )}
               <form

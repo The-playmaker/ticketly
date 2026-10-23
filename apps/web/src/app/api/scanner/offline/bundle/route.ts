@@ -3,8 +3,8 @@ import { createHash } from "crypto";
 import { prisma, TicketStatus } from "@ticketly/database";
 import { OfflineScannerService, decryptPayload, getOfflineBundleKey } from "@ticketly/ticketing";
 import { verifyMobileSession } from "@/app/api/mobile/auth/login/route";
-import { canScanTickets } from "@/lib/auth/rbac";
-import { assertDeviceNotRevoked } from "@/lib/auth/org-access";
+import { assertCanScanEvent, assertDeviceNotRevoked } from "@/lib/auth/org-access";
+import { AppError } from "@/lib/api-error";
 
 export async function GET(req: Request) {
   const userId = await verifyMobileSession(req.headers.get("authorization"));
@@ -35,21 +35,31 @@ export async function GET(req: Request) {
 
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
-    include: { memberships: { where: { isActive: true } } },
+    include: {
+      memberships: { where: { isActive: true } },
+      eventAssignments: { select: { eventId: true } },
+    },
   });
-  const event = await prisma.event.findUniqueOrThrow({ where: { id: eventId } });
-  if (
-    !canScanTickets(
+
+  try {
+    await assertCanScanEvent(
       {
         id: user.id,
         email: user.email,
         globalRole: user.globalRole,
         isActive: user.isActive,
         memberships: user.memberships,
+        eventAssignments: user.eventAssignments,
       },
-      event.organizationId
-    )
-  ) {
+      eventId
+    );
+  } catch (e) {
+    if (e instanceof AppError) {
+      return NextResponse.json(
+        { error: { code: e.code, message: e.message } },
+        { status: e.status }
+      );
+    }
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
