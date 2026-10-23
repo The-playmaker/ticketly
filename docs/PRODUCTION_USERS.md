@@ -56,6 +56,14 @@ Do not copy Titan Events / example.com seed data into production.
 
 When inviting or editing a door staff member, restrict to specific events. Door staff without assignments cannot scan. They cannot access revenue, refunds, org settings, user admin, or settlement by default.
 
+**Paused sales ≠ no scanner:** Event status `PAUSED` (or `salesPausedAt`) stops new ticket sales but **must remain visible** on `/scan`. Scanner lists include `PUBLISHED`, `PAUSED`, `SOLD_OUT`, and `COMPLETED`.
+
+**Diagnose empty scanner:** Team → «Scanner-tilgang diagnostikk» (or `GET /api/admin/team/scanner-diagnostic?email=…&organizationId=…`) shows membership, `EventAssignment` rows, event status, and allow/deny reasons.
+
+### Dual-domain / cookie risk
+
+Team admin and the scanner must hit the **same** production database and `AUTH_SECRET`. Do not invent a multi-DB setup: if Team (e.g. one Vercel alias) and `/scan` (another domain/project) use different `DATABASE_URL`, you can see an event selected in Team while the scanner says «Ingen arrangementer». Auth session cookies are **host-scoped** — `APP_URL` / `AUTH_URL` / `NEXT_PUBLIC_APP_URL` must match the hostname the user logs into; cross-domain cookies will not share sessions.
+
 ## 6. Disable test staff
 
 Prefer **Disable** over delete:

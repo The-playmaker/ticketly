@@ -15,8 +15,13 @@ import {
   filterEventsByAssignment,
   isDoorStaffOnly,
 } from "@/lib/auth/event-access";
+import {
+  isScannableEventStatus,
+  SCANNABLE_EVENT_STATUSES,
+} from "@/lib/auth/scannable-events";
 import { resolvePostLoginPath } from "@/lib/auth/post-login";
 import { orgRoleLabel } from "@/lib/auth/role-labels";
+import { EventStatus } from "@prisma/client";
 
 const door: AuthUser = {
   id: "u-door",
@@ -141,5 +146,58 @@ describe("Member event-assignment PATCH contract", () => {
 
     const clearAll = { ...payload, restrictedEventIds: [] as string[] };
     expect(clearAll.restrictedEventIds).toEqual([]);
+  });
+});
+
+describe("Scanner event status filter (PAUSED sales ≠ no validation)", () => {
+  it("includes PAUSED alongside PUBLISHED / SOLD_OUT / COMPLETED", () => {
+    expect(SCANNABLE_EVENT_STATUSES).toContain(EventStatus.PAUSED);
+    expect(SCANNABLE_EVENT_STATUSES).toContain(EventStatus.PUBLISHED);
+    expect(SCANNABLE_EVENT_STATUSES).toContain(EventStatus.SOLD_OUT);
+    expect(SCANNABLE_EVENT_STATUSES).toContain(EventStatus.COMPLETED);
+    expect(SCANNABLE_EVENT_STATUSES).not.toContain(EventStatus.DRAFT);
+    expect(SCANNABLE_EVENT_STATUSES).not.toContain(EventStatus.CANCELLED);
+    expect(isScannableEventStatus("PAUSED")).toBe(true);
+    expect(isScannableEventStatus("DRAFT")).toBe(false);
+  });
+
+  it("assigned DOOR_STAFF still sees PAUSED events after status filter + assignment filter", () => {
+    const withAssign = { ...door, eventAssignments: [{ eventId: "e1" }] };
+    const dbEvents = [
+      { id: "e1", organizationId: "org1", status: EventStatus.PAUSED },
+      { id: "e2", organizationId: "org1", status: EventStatus.PUBLISHED },
+      { id: "e3", organizationId: "org1", status: EventStatus.DRAFT },
+    ];
+    const afterStatus = dbEvents.filter((e) => isScannableEventStatus(e.status));
+    expect(afterStatus.map((e) => e.id).sort()).toEqual(["e1", "e2"]);
+    const accessible = filterEventsByAssignment(withAssign, afterStatus);
+    expect(accessible.map((e) => e.id)).toEqual(["e1"]);
+  });
+
+  it("no assignment ⇒ empty scanner list even when PAUSED events exist", () => {
+    const dbEvents = [
+      { id: "e1", organizationId: "org1", status: EventStatus.PAUSED },
+    ].filter((e) => isScannableEventStatus(e.status));
+    expect(
+      filterEventsByAssignment({ ...door, eventAssignments: [] }, dbEvents)
+    ).toEqual([]);
+  });
+
+  it("cannot scan unassigned event even if PUBLISHED", () => {
+    const withAssign = { ...door, eventAssignments: [{ eventId: "e1" }] };
+    const other = { id: "e2", organizationId: "org1", status: EventStatus.PUBLISHED };
+    expect(filterEventsByAssignment(withAssign, [other])).toEqual([]);
+    expect(canAccessAssignedEvent(withAssign, other)).toBe(false);
+  });
+
+  it("login path: door staff with assignment reaches /scan (not admin)", () => {
+    const withAssign = { ...door, eventAssignments: [{ eventId: "e1" }] };
+    expect(resolvePostLoginPath(withAssign)).toBe("/scan");
+    expect(canScanTickets(withAssign, "org1")).toBe(true);
+    expect(
+      filterEventsByAssignment(withAssign, [
+        { id: "e1", organizationId: "org1", status: EventStatus.PAUSED },
+      ])
+    ).toHaveLength(1);
   });
 });

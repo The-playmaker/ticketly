@@ -299,6 +299,49 @@ describe.runIf(runDb)("Invite + auth flows (DB)", () => {
     });
     expect(accessLog).toBeTruthy();
 
+    // listOrgTeam surfaces the assignment (incl. after re-assign)
+    await UserAdminService.updateOrgMembership({
+      actorId,
+      organizationId: orgId,
+      userId: member.id,
+      restrictedEventIds: [e1.id],
+    });
+    const team = await UserAdminService.listOrgTeam(orgId);
+    const teamMember = team.members.find((m) => m.userId === member.id);
+    expect(teamMember?.eventAccess.map((e) => e.id)).toEqual([e1.id]);
+    expect(teamMember?.eventAccess[0]?.status).toBeTruthy();
+
+    // PAUSED event remains visible to scanner diagnostic / assignment filter
+    await prisma.event.update({
+      where: { id: e1.id },
+      data: { status: "PAUSED" },
+    });
+    const diag = await UserAdminService.diagnoseScannerAccess({
+      userId: member.id,
+      organizationId: orgId,
+    });
+    expect(diag.user.email).toBe(member.email);
+    expect(diag.memberships.some((m) => m.role === OrgRole.DOOR_STAFF)).toBe(true);
+    expect(diag.eventAssignments).toHaveLength(1);
+    expect(diag.eventAssignments[0]?.eventStatus).toBe("PAUSED");
+    expect(diag.eventAssignments[0]?.scannerAccess).toBe("allowed");
+    expect(diag.scannerAccess).toBe("allowed");
+    expect(diag.scannerVisibleEvents.map((e) => e.id)).toContain(e1.id);
+
+    // No assignment ⇒ denied
+    await UserAdminService.updateOrgMembership({
+      actorId,
+      organizationId: orgId,
+      userId: member.id,
+      restrictedEventIds: [],
+    });
+    const empty = await UserAdminService.diagnoseScannerAccess({
+      email: member.email,
+      organizationId: orgId,
+    });
+    expect(empty.scannerAccess).toBe("denied");
+    expect(empty.scannerVisibleEvents).toEqual([]);
+
     await prisma.eventAssignment.deleteMany({ where: { userId: member.id } });
     await prisma.event.deleteMany({ where: { id: { in: [e1.id, e2.id] } } });
     await prisma.organizationMember.deleteMany({ where: { userId: member.id } });

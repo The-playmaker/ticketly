@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { orgRoleLabel } from "@/lib/auth/role-labels";
+import { ScannerAccessDiagnostic } from "@/components/admin/scanner-access-diagnostic";
 
 type Member = {
   membershipId: string;
@@ -15,7 +16,7 @@ type Member = {
   name: string;
   email: string;
   role: string;
-  eventAccess: { id: string; name: string }[];
+  eventAccess: { id: string; name: string; status?: string }[];
   status: "ACTIVE" | "DISABLED";
   lastActiveAt: string | Date | null;
 };
@@ -359,6 +360,8 @@ export function TeamAdminClient({
           </ul>
         </section>
       ) : null}
+
+      <ScannerAccessDiagnostic organizationId={organizationId} />
     </div>
   );
 }

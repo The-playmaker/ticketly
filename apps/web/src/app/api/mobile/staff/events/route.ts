@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { verifyMobileSession } from "@/app/api/mobile/auth/login/route";
 import { canScanTickets } from "@/lib/auth/rbac";
 import { filterEventsByAssignment } from "@/lib/auth/event-access";
+import { SCANNABLE_EVENT_STATUSES } from "@/lib/auth/scannable-events";
 
 export async function GET(req: Request) {
   const userId = await verifyMobileSession(req.headers.get("authorization"));
@@ -40,7 +41,8 @@ export async function GET(req: Request) {
 
   const events = await prisma.event.findMany({
     where: {
-      status: { in: ["PUBLISHED", "SOLD_OUT", "COMPLETED"] },
+      // Include PAUSED: paused sales must not block ticket validation
+      status: { in: SCANNABLE_EVENT_STATUSES },
       OR: [
         { assignments: { some: { userId } } },
         { organization: { members: { some: { userId, isActive: true } } } },

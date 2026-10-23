@@ -8,7 +8,15 @@ import {
   generateRawToken,
   hashToken,
 } from "@/lib/auth/action-tokens";
-import { ORG_OWNER_ROLE } from "@/lib/auth/rbac";
+import { canScanTickets, ORG_OWNER_ROLE } from "@/lib/auth/rbac";
+import {
+  filterEventsByAssignment,
+  isDoorStaffOnly,
+} from "@/lib/auth/event-access";
+import {
+  isScannableEventStatus,
+  SCANNABLE_EVENT_STATUSES,
+} from "@/lib/auth/scannable-events";
 import {
   sendAccountDisabledEmail,
   sendOrganizerInviteEmail,
@@ -304,7 +312,10 @@ export class UserAdminService {
             lastActiveAt: true,
             eventAssignments: {
               where: { event: { organizationId } },
-              select: { eventId: true, event: { select: { id: true, name: true } } },
+              select: {
+                eventId: true,
+                event: { select: { id: true, name: true, status: true } },
+              },
             },
           },
         },
@@ -334,6 +345,7 @@ export class UserAdminService {
         eventAccess: m.user.eventAssignments.map((a) => ({
           id: a.event.id,
           name: a.event.name,
+          status: a.event.status,
         })),
         status: !m.user.isActive || !m.isActive ? ("DISABLED" as const) : ("ACTIVE" as const),
         membershipActive: m.isActive,
@@ -729,6 +741,197 @@ export class UserAdminService {
         organization: { select: { id: true, name: true } },
       },
     });
+  }
+
+  /**
+   * Admin diagnostic: why a user can / cannot see events on /scan.
+   * Mirrors scan-page filtering (scannable statuses + org scan role + EventAssignment).
+   */
+  static async diagnoseScannerAccess(input: {
+    email?: string;
+    userId?: string;
+    organizationId?: string;
+  }) {
+    const email = input.email?.toLowerCase().trim();
+    if (!input.userId && !email) {
+      throw new AppError("VALIDATION", "Oppgi e-post eller userId", 400);
+    }
+
+    const user = await prisma.user.findFirst({
+      where: input.userId ? { id: input.userId } : { email: email! },
+      include: {
+        memberships: {
+          where: input.organizationId
+            ? { organizationId: input.organizationId }
+            : undefined,
+          include: {
+            organization: { select: { id: true, name: true, slug: true } },
+          },
+        },
+        eventAssignments: {
+          include: {
+            event: {
+              select: {
+                id: true,
+                name: true,
+                status: true,
+                organizationId: true,
+                salesPausedAt: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new AppError("NOT_FOUND", "Bruker ikke funnet", 404);
+    }
+
+    const authUser = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      globalRole: user.globalRole,
+      isActive: user.isActive,
+      memberships: user.memberships.map((m) => ({
+        organizationId: m.organizationId,
+        role: m.role,
+        canRefund: m.canRefund,
+        isActive: m.isActive,
+      })),
+      eventAssignments: user.eventAssignments.map((a) => ({ eventId: a.eventId })),
+    };
+
+    const orgFilter = input.organizationId
+      ? { organizationId: input.organizationId }
+      : user.globalRole === GlobalRole.SUPER_ADMIN
+        ? {}
+        : {
+            organization: {
+              members: { some: { userId: user.id, isActive: true } },
+            },
+          };
+
+    const candidateEvents = await prisma.event.findMany({
+      where: {
+        status: { in: SCANNABLE_EVENT_STATUSES },
+        ...orgFilter,
+      },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        organizationId: true,
+        salesPausedAt: true,
+      },
+      orderBy: { startsAt: "asc" },
+      take: 100,
+    });
+
+    const scannableByRole = candidateEvents.filter((e) =>
+      canScanTickets(authUser, e.organizationId)
+    );
+    const accessible = filterEventsByAssignment(authUser, scannableByRole);
+
+    const assignmentRows = user.eventAssignments
+      .filter((a) =>
+        input.organizationId
+          ? a.event.organizationId === input.organizationId
+          : true
+      )
+      .map((a) => {
+        const statusOk = isScannableEventStatus(a.event.status);
+        const orgScan = canScanTickets(authUser, a.event.organizationId);
+        const assignedOk = filterEventsByAssignment(authUser, [a.event]).length === 1;
+        let reason: string;
+        let allowed: boolean;
+        if (!user.isActive) {
+          allowed = false;
+          reason = "Brukeren er deaktivert";
+        } else if (!orgScan) {
+          allowed = false;
+          reason = "Mangler aktiv org-medlemskap med scanner-rolle (DOOR_STAFF/EVENT_MANAGER/ORGANIZER_ADMIN)";
+        } else if (!statusOk) {
+          allowed = false;
+          reason = `Event-status ${a.event.status} er ikke scanner-klar (trenger PUBLISHED/PAUSED/SOLD_OUT/COMPLETED)`;
+        } else if (!assignedOk) {
+          allowed = false;
+          reason = "EventAssignment finnes ikke / filtreres bort for denne rollen";
+        } else {
+          allowed = true;
+          reason =
+            a.event.status === "PAUSED" || a.event.salesPausedAt
+              ? "Tillatt — PAUSED/salg pauset blokkerer ikke ticket-validering"
+              : "Tillatt";
+        }
+        return {
+          eventId: a.event.id,
+          eventName: a.event.name,
+          organizationId: a.event.organizationId,
+          eventStatus: a.event.status,
+          salesPausedAt: a.event.salesPausedAt,
+          scannerAccess: allowed ? ("allowed" as const) : ("denied" as const),
+          reason,
+        };
+      });
+
+    const memberships = user.memberships.map((m) => ({
+      organizationId: m.organizationId,
+      organizationName: m.organization.name,
+      role: m.role,
+      membershipActive: m.isActive,
+      canScanOrg: canScanTickets(authUser, m.organizationId),
+    }));
+
+    let summaryReason: string;
+    if (!user.isActive) {
+      summaryReason = "Brukeren er deaktivert — ingen scanner-tilgang";
+    } else if (!memberships.some((m) => m.membershipActive && m.canScanOrg)) {
+      summaryReason = "Ingen aktiv org-medlemskap med scanner-rolle";
+    } else if (
+      isDoorStaffOnly(authUser) &&
+      authUser.eventAssignments.length === 0
+    ) {
+      summaryReason =
+        "DOOR_STAFF uten EventAssignment — scanner viser «Ingen arrangementer»";
+    } else if (accessible.length === 0 && assignmentRows.some((r) => r.eventStatus === "DRAFT" || r.eventStatus === "CANCELLED" || r.eventStatus === "SCHEDULED")) {
+      summaryReason =
+        "Har tildelinger, men ingen events i scanner-klare statuser (PUBLISHED/PAUSED/SOLD_OUT/COMPLETED)";
+    } else if (accessible.length === 0) {
+      summaryReason = "Ingen events synlige for scanner etter rolle- og assignment-filter";
+    } else {
+      summaryReason = `${accessible.length} event(s) synlige på /scan`;
+    }
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        isActive: user.isActive,
+        globalRole: user.globalRole,
+        doorStaffOnly: isDoorStaffOnly(authUser),
+      },
+      memberships,
+      eventAssignments: assignmentRows,
+      scannerVisibleEvents: accessible.map((e) => ({
+        id: e.id,
+        name: e.name,
+        status: e.status,
+        organizationId: e.organizationId,
+      })),
+      scannerAccess:
+        accessible.length > 0
+          ? ("allowed" as const)
+          : ("denied" as const),
+      reason: summaryReason,
+      notes: {
+        scannableStatuses: SCANNABLE_EVENT_STATUSES,
+        dualDomain:
+          "Team og scanner må bruke samme produksjons-DB og AUTH_SECRET. Ulike Vercel-prosjekter/domener med ulike DATABASE_URL gir «event valgt i Team» på ett sted og «Ingen arrangementer» på et annet. Auth-cookies er host-scoped — APP_URL / AUTH_URL må matche domenet brukeren logger inn på.",
+      },
+    };
   }
 
   static async updateOrganizationSeller(

@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { canScanTickets } from "@/lib/auth/rbac";
 import { filterEventsByAssignment, isDoorStaffOnly } from "@/lib/auth/event-access";
+import { SCANNABLE_EVENT_STATUSES } from "@/lib/auth/scannable-events";
 import { ScannerClient } from "@/components/scan/scanner-client";
 import { DoorStaffChrome } from "@/components/scan/door-staff-chrome";
 
@@ -39,7 +40,8 @@ export default async function ScanPage({ searchParams }: Props) {
 
   const events = await prisma.event.findMany({
     where: {
-      status: { in: ["PUBLISHED", "SOLD_OUT", "COMPLETED"] },
+      // Include PAUSED: paused sales must not block ticket validation
+      status: { in: SCANNABLE_EVENT_STATUSES },
       ...(user.globalRole === "SUPER_ADMIN"
         ? {}
         : { organization: { members: { some: { userId: user.id, isActive: true } } } }),

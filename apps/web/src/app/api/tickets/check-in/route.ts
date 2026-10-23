@@ -41,11 +41,25 @@ async function resolveUser(
   }
   const session = await getOptionalSession();
   if (!session) throw new AuthorizationError("Unauthorized");
-  const assignments = await prisma.eventAssignment.findMany({
-    where: { userId: session.id },
-    select: { eventId: true },
+  // Always reload memberships + assignments from DB so scanner access
+  // reflects EventAssignment / role changes without waiting on a stale JWT.
+  const fresh = await prisma.user.findUnique({
+    where: { id: session.id },
+    include: {
+      memberships: { where: { isActive: true } },
+      eventAssignments: { select: { eventId: true } },
+    },
   });
-  return { ...session, eventAssignments: assignments };
+  if (!fresh?.isActive) throw new AuthorizationError("Unauthorized");
+  return {
+    id: fresh.id,
+    email: fresh.email,
+    name: fresh.name,
+    globalRole: fresh.globalRole,
+    isActive: fresh.isActive,
+    memberships: fresh.memberships,
+    eventAssignments: fresh.eventAssignments,
+  };
 }
 
 export async function POST(req: Request) {

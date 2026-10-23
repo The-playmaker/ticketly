@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { isSuperAdmin } from "@/lib/auth/rbac";
 import { UserAdminService } from "@/services/user-admin-service";
 import { PlatformUsersClient } from "@/components/admin/platform-users-client";
+import { ScannerAccessDiagnostic } from "@/components/admin/scanner-access-diagnostic";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,7 @@ export default async function PlatformUsersPage({ searchParams }: Props) {
         initialStatus={status}
         initialRole={role}
       />
+      <ScannerAccessDiagnostic />
     </div>
   );
 }
