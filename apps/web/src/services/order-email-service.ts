@@ -1,5 +1,5 @@
 import { PaymentStatus, TicketStatus } from "@prisma/client";
-import { z } from "zod";
+import { emailSchema } from "@ticketly/validation";
 import { prisma } from "@/lib/db";
 import { AppError } from "@/lib/api-error";
 import { writeAuditLog } from "@/lib/audit";
@@ -8,7 +8,7 @@ import { formatEventDateTime } from "@/lib/time";
 import { withCoverCacheBust } from "@/lib/media/cover-url";
 
 /** Same email schema as checkout / team invite. */
-export const customerEmailSchema = z.string().email();
+export const customerEmailSchema = emailSchema;
 
 const ACTIVE_TICKET_STATUSES: TicketStatus[] = [
   TicketStatus.VALID,
@@ -39,7 +39,7 @@ export class OrderEmailService {
     actorId: string;
     ipAddress?: string | null;
   }) {
-    const parsed = customerEmailSchema.safeParse(input.email.trim().toLowerCase());
+    const parsed = customerEmailSchema.safeParse(input.email);
     if (!parsed.success) {
       throw new AppError("VALIDATION_ERROR", "Ugyldig e-postadresse", 400);
     }

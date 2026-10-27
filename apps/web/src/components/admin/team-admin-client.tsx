@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { EMAIL_MESSAGES, emailSchema } from "@ticketly/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -142,12 +143,18 @@ export function TeamAdminClient({
   async function invite() {
     setBusy(true);
     setError(null);
+    const parsed = emailSchema.safeParse(email);
+    if (!parsed.success) {
+      setBusy(false);
+      setError(EMAIL_MESSAGES.invalid);
+      return;
+    }
     const res = await fetch("/api/admin/team", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         organizationId,
-        email,
+        email: parsed.data,
         role,
         restrictedEventIds: eventIds.length ? eventIds : undefined,
       }),

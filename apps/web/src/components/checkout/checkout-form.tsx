@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,18 +11,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney } from "@/lib/utils";
 import { LEGAL_VERSIONS } from "@/lib/legal/versions";
+import {
+  EMAIL_MESSAGES,
+  emailSchema,
+  emailTypoHint,
+  normalizeEmail,
+} from "@ticketly/validation";
 
-const schema = z.object({
-  firstName: z.string().min(1, "Påkrevd"),
-  lastName: z.string().min(1, "Påkrevd"),
-  email: z.string().email("Ugyldig e-post"),
-  phone: z.string().optional(),
-  promoCode: z.string().optional(),
-  createAccount: z.boolean().optional(),
-  termsAccepted: z.literal(true, { error: "Du må godta vilkårene" }),
-  ageConfirmed: z.boolean().optional(),
-  marketingOptIn: z.boolean().optional(),
-});
+const schema = z
+  .object({
+    firstName: z.string().min(1, "Påkrevd"),
+    lastName: z.string().min(1, "Påkrevd"),
+    email: emailSchema,
+    emailConfirm: z.string().min(1, EMAIL_MESSAGES.required),
+    phone: z.string().optional(),
+    promoCode: z.string().optional(),
+    createAccount: z.boolean().optional(),
+    termsAccepted: z.literal(true, { error: "Du må godta vilkårene" }),
+    ageConfirmed: z.boolean().optional(),
+    marketingOptIn: z.boolean().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (normalizeEmail(val.emailConfirm) !== val.email) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["emailConfirm"],
+        message: EMAIL_MESSAGES.mismatch,
+      });
+    }
+  });
 
 type FormValues = z.infer<typeof schema>;
 
@@ -55,6 +72,7 @@ export function CheckoutForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [promoDiscount, setPromoDiscount] = useState(0);
+  const [typoDismissed, setTypoDismissed] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(
@@ -72,6 +90,7 @@ export function CheckoutForm({
       firstName: "",
       lastName: "",
       email: "",
+      emailConfirm: "",
       phone: "",
       promoCode: "",
       createAccount: false,
@@ -80,6 +99,14 @@ export function CheckoutForm({
       marketingOptIn: false,
     },
   });
+
+  const watchedEmail = form.watch("email");
+  const typoHint = useMemo(() => {
+    const hint = emailTypoHint(watchedEmail ?? "");
+    if (!hint) return null;
+    if (typoDismissed === hint.original) return null;
+    return hint;
+  }, [watchedEmail, typoDismissed]);
 
   async function validatePromo() {
     const code = form.getValues("promoCode");
@@ -115,6 +142,7 @@ export function CheckoutForm({
           firstName: values.firstName,
           lastName: values.lastName,
           email: values.email,
+          emailConfirm: values.emailConfirm,
           phone: values.phone,
           promoCode: values.promoCode,
           createAccount: values.createAccount,
@@ -232,7 +260,61 @@ export function CheckoutForm({
           </div>
           <div>
             <Label htmlFor="email">E-post</Label>
-            <Input id="email" type="email" {...form.register("email")} />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              {...form.register("email", {
+                onChange: () => setTypoDismissed(null),
+              })}
+            />
+            {form.formState.errors.email ? (
+              <p className="mt-1 text-sm text-red-400">{form.formState.errors.email.message}</p>
+            ) : null}
+            {typoHint ? (
+              <p
+                className="mt-1.5 text-sm text-amber-200"
+                role="status"
+                data-testid="email-typo-hint"
+              >
+                {typoHint.message}{" "}
+                <button
+                  type="button"
+                  className="underline underline-offset-2 hover:text-amber-100"
+                  onClick={() => {
+                    form.setValue("email", typoHint.suggested, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
+                    setTypoDismissed(null);
+                  }}
+                >
+                  Bruk forslag
+                </button>
+                <span className="text-[color:var(--muted)]"> · </span>
+                <button
+                  type="button"
+                  className="text-[color:var(--muted)] underline underline-offset-2 hover:text-zinc-300"
+                  onClick={() => setTypoDismissed(typoHint.original)}
+                >
+                  Nei
+                </button>
+              </p>
+            ) : null}
+          </div>
+          <div>
+            <Label htmlFor="emailConfirm">Bekreft e-post</Label>
+            <Input
+              id="emailConfirm"
+              type="email"
+              autoComplete="email"
+              {...form.register("emailConfirm")}
+            />
+            {form.formState.errors.emailConfirm ? (
+              <p className="mt-1 text-sm text-red-400">
+                {form.formState.errors.emailConfirm.message}
+              </p>
+            ) : null}
           </div>
           <div>
             <Label htmlFor="phone">Telefon</Label>

@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  EMAIL_MESSAGES,
+  emailSchema,
+  emailTypoHint,
+  normalizeEmail,
+} from "@ticketly/validation";
 
 type MsgKind = "ok" | "fail" | null;
 
@@ -24,17 +30,37 @@ export function OrderCustomerEmailPanel({
   const [msg, setMsg] = useState<string | null>(null);
   const [msgKind, setMsgKind] = useState<MsgKind>(null);
   const [savedEmail, setSavedEmail] = useState(customerEmail);
+  const [typoDismissed, setTypoDismissed] = useState<string | null>(null);
 
   function setFeedback(kind: MsgKind, text: string) {
     setMsgKind(kind);
     setMsg(text);
   }
 
+  const typoHint = useMemo(() => {
+    const hint = emailTypoHint(email);
+    if (!hint) return null;
+    if (typoDismissed === hint.original) return null;
+    return hint;
+  }, [email, typoDismissed]);
+
+  function clientValidateEmail(): string | null {
+    const parsed = emailSchema.safeParse(email);
+    if (!parsed.success) {
+      setFeedback("fail", EMAIL_MESSAGES.invalid);
+      return null;
+    }
+    return parsed.data;
+  }
+
   async function patchEmail(): Promise<string | null> {
+    const validated = clientValidateEmail();
+    if (!validated) return null;
+
     const res = await fetch(`/api/admin/orders/${orderNumber}/customer-email`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim() }),
+      body: JSON.stringify({ email: validated }),
     });
     const data = (await res.json().catch(() => null)) as {
       email?: string;
@@ -44,7 +70,7 @@ export function OrderCustomerEmailPanel({
     if (!res.ok) {
       throw new Error(data?.error?.message ?? "Kunne ikke lagre e-post");
     }
-    const next = data?.email ?? email.trim();
+    const next = data?.email ?? validated;
     setSavedEmail(next);
     setEmail(next);
     return next;
@@ -71,6 +97,7 @@ export function OrderCustomerEmailPanel({
     setMsgKind(null);
     try {
       const next = await patchEmail();
+      if (!next) return;
       setFeedback("ok", `E-post lagret: ${next}`);
       router.refresh();
     } catch (e) {
@@ -106,6 +133,7 @@ export function OrderCustomerEmailPanel({
     setMsgKind(null);
     try {
       const next = await patchEmail();
+      if (!next) return;
       try {
         const result = await postResend();
         setFeedback(
@@ -135,7 +163,7 @@ export function OrderCustomerEmailPanel({
     }
   }
 
-  const dirty = email.trim().toLowerCase() !== savedEmail.toLowerCase();
+  const dirty = normalizeEmail(email) !== normalizeEmail(savedEmail);
   const disabled = busy !== null;
 
   return (
@@ -156,10 +184,36 @@ export function OrderCustomerEmailPanel({
             type="email"
             autoComplete="off"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setTypoDismissed(null);
+            }}
             disabled={disabled}
             data-testid="admin-order-customer-email"
           />
+          {typoHint ? (
+            <p className="text-sm text-amber-200" role="status" data-testid="admin-email-typo-hint">
+              {typoHint.message}{" "}
+              <button
+                type="button"
+                className="underline underline-offset-2 hover:text-amber-100"
+                onClick={() => {
+                  setEmail(typoHint.suggested);
+                  setTypoDismissed(null);
+                }}
+              >
+                Bruk forslag
+              </button>
+              <span className="text-[color:var(--muted)]"> · </span>
+              <button
+                type="button"
+                className="text-[color:var(--muted)] underline underline-offset-2"
+                onClick={() => setTypoDismissed(typoHint.original)}
+              >
+                Nei
+              </button>
+            </p>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap gap-2">

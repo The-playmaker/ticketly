@@ -1,4 +1,16 @@
 import { z } from "zod";
+import { emailSchema } from "./email";
+
+export {
+  COMMON_EMAIL_DOMAINS,
+  EMAIL_MESSAGES,
+  emailSchema,
+  emailTypoHint,
+  normalizeEmail,
+  splitEmail,
+  suggestEmailTypo,
+  type EmailSuggestion,
+} from "./email";
 
 /** Strong password: min 12 chars, no silly complexity rules. */
 export const strongPasswordSchema = z
@@ -6,12 +18,12 @@ export const strongPasswordSchema = z
   .min(12, "Passordet må være minst 12 tegn");
 
 export const loginSchema = z.object({
-  email: z.string().email(),
+  email: emailSchema,
   password: z.string().min(1),
 });
 
 export const registerSchema = z.object({
-  email: z.string().email(),
+  email: emailSchema,
   password: strongPasswordSchema,
   firstName: z.string().min(1).max(100),
   lastName: z.string().min(1).max(100),
@@ -25,13 +37,13 @@ export const setPasswordSchema = z.object({
 });
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().email(),
+  email: emailSchema,
 });
 
 export const checkoutContactSchema = z.object({
   firstName: z.string().min(1).max(100),
   lastName: z.string().min(1).max(100),
-  email: z.string().email(),
+  email: emailSchema,
   phone: z.string().min(5).max(30).optional(),
   createAccount: z.boolean().optional(),
   password: strongPasswordSchema.optional(),

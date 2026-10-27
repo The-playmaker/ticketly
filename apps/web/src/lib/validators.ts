@@ -1,12 +1,15 @@
 import { z } from "zod";
+import { emailSchema, EMAIL_MESSAGES, normalizeEmail } from "@ticketly/validation";
+
+export { emailSchema, EMAIL_MESSAGES, normalizeEmail, emailTypoHint, suggestEmailTypo } from "@ticketly/validation";
 
 export const loginSchema = z.object({
-  email: z.string().email(),
+  email: emailSchema,
   password: z.string().min(6),
 });
 
 export const registerSchema = z.object({
-  email: z.string().email(),
+  email: emailSchema,
   password: z.string().min(8),
   firstName: z.string().min(1).max(100),
   lastName: z.string().min(1).max(100),
@@ -16,11 +19,22 @@ export const registerSchema = z.object({
 export const checkoutContactSchema = z.object({
   firstName: z.string().min(1).max(100),
   lastName: z.string().min(1).max(100),
-  email: z.string().email(),
+  email: emailSchema,
+  /** Optional confirm — when present must match email after normalize. */
+  emailConfirm: z.string().optional(),
   phone: z.string().min(5).max(30).optional(),
   createAccount: z.boolean().optional(),
   password: z.string().min(8).optional(),
   promoCode: z.string().optional(),
+}).superRefine((val, ctx) => {
+  if (val.emailConfirm == null || val.emailConfirm === "") return;
+  if (normalizeEmail(val.emailConfirm) !== val.email) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["emailConfirm"],
+      message: EMAIL_MESSAGES.mismatch,
+    });
+  }
 });
 
 export const ticketSelectionSchema = z.object({
@@ -110,7 +124,7 @@ export const manualCheckInSchema = z.object({
 export const guestListSchema = z.object({
   eventId: z.string(),
   name: z.string().min(1),
-  email: z.string().email().optional(),
+  email: emailSchema.optional(),
   phone: z.string().optional(),
   comment: z.string().optional(),
   partySize: z.number().int().min(1).max(20).default(1),
@@ -120,7 +134,7 @@ export const guestListSchema = z.object({
 export const transferTicketSchema = z.object({
   ticketId: z.string(),
   toName: z.string().min(1),
-  toEmail: z.string().email(),
+  toEmail: emailSchema,
 });
 
 export const mintDynamicQrSchema = z.object({

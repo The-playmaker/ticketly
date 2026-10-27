@@ -67,7 +67,15 @@ export async function POST(req: Request) {
 
     const parsed = bodySchema.safeParse(json);
     if (!parsed.success) {
-      throw new AppError("VALIDATION_ERROR", "Ugyldig data", 400, parsed.error.flatten());
+      const emailIssue = parsed.error.issues.find(
+        (i) => i.path[0] === "email" || i.path[0] === "emailConfirm"
+      );
+      throw new AppError(
+        "VALIDATION_ERROR",
+        emailIssue?.message ?? "Ugyldig data",
+        400,
+        parsed.error.flatten()
+      );
     }
 
     const eventForAge = await prisma.event.findUnique({

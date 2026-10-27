@@ -300,7 +300,7 @@ export class OrderService {
           sellerOrganizationId: event.organizationId,
           eventId: event.id,
           customerId: input.customer.customerId,
-          customerEmail: input.customer.email.toLowerCase(),
+          customerEmail: input.customer.email.trim().toLowerCase(),
           customerPhone: input.customer.phone,
           customerFirstName: input.customer.firstName,
           customerLastName: input.customer.lastName,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { OrgRole } from "@prisma/client";
 import { z } from "zod";
+import { emailSchema } from "@ticketly/validation";
 import {
   requireAdminSession,
   resolveOrgIdParam,
@@ -42,7 +43,7 @@ export async function GET(req: Request) {
 }
 
 const inviteSchema = z.object({
-  email: z.string().email(),
+  email: emailSchema,
   role: z.nativeEnum(OrgRole),
   restrictedEventIds: z.array(z.string()).optional(),
   organizationId: z.string().optional(),
