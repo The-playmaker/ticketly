@@ -40,7 +40,10 @@ export class EventService {
     });
   }
 
-  static async getBySlug(slug: string) {
+  static async getBySlug(
+    slug: string,
+    opts?: { skipInventoryCleanup?: boolean }
+  ) {
     const event = await prisma.event.findFirst({
       where: {
         slug,
@@ -63,11 +66,16 @@ export class EventService {
     });
     if (!event) return null;
 
-    // Before public availability: expire stale ACTIVE + rebuild quantityReserved
-    // when invariant drifts (throttled only on the no-op path).
+    // Metadata / OG tags do not need live counters — skip opportunistic cleanup.
+    if (opts?.skipInventoryCleanup) {
+      return event;
+    }
+
+    // Opportunistic: expire/rebuild only outside throttle + when SQL invariant
+    // detects drift. Avoids a full repair dry-run on every public page view.
     let cleaned = false;
     try {
-      const result = await ReservationService.ensureInventoryConsistent(event.id);
+      const result = await ReservationService.cleanupEventSafe(event.id);
       cleaned = Boolean(
         result &&
           !result.dryRun &&
@@ -521,21 +529,64 @@ export class EventService {
     const orgFilter = organizationId ? { organizationId } : {};
     const eventOrgFilter = organizationId ? { organizationId } : {};
 
-    const orders = await prisma.order.findMany({
-      where: {
-        ...orgFilter,
-        paymentStatus: {
-          in: [
-            PaymentStatus.PAID,
-            PaymentStatus.PARTIALLY_REFUNDED,
-            PaymentStatus.REFUNDED,
-            PaymentStatus.FAILED,
-            PaymentStatus.PENDING,
-          ],
+    const [
+      orders,
+      financials,
+      ticketsSold,
+      checkedIn,
+      activeReservations,
+      refundsAgg,
+      pageViews,
+      checkoutStarts,
+      events,
+    ] = await Promise.all([
+      prisma.order.findMany({
+        where: {
+          ...orgFilter,
+          paymentStatus: {
+            in: [
+              PaymentStatus.PAID,
+              PaymentStatus.PARTIALLY_REFUNDED,
+              PaymentStatus.REFUNDED,
+              PaymentStatus.FAILED,
+              PaymentStatus.PENDING,
+            ],
+          },
         },
-      },
-      select: { total: true, createdAt: true, paidAt: true, paymentStatus: true },
-    });
+        select: { total: true, createdAt: true, paidAt: true, paymentStatus: true },
+      }),
+      getOrgFinancialTotals(prisma, organizationId),
+      prisma.ticket.count({
+        where: {
+          event: eventOrgFilter,
+          status: { in: ["VALID", "CHECKED_IN", "TRANSFERRED"] },
+        },
+      }),
+      prisma.ticket.count({
+        where: { event: eventOrgFilter, status: "CHECKED_IN" },
+      }),
+      prisma.ticketReservation.count({
+        where: {
+          status: "ACTIVE",
+          expiresAt: { gt: new Date() },
+          event: eventOrgFilter,
+        },
+      }),
+      prisma.refund.aggregate({
+        where: { order: orgFilter, status: "SUCCEEDED" },
+        _count: true,
+      }),
+      prisma.analyticsEvent.count({
+        where: { type: "PAGE_VIEW", event: eventOrgFilter },
+      }),
+      prisma.analyticsEvent.count({
+        where: { type: "CHECKOUT_STARTED", event: eventOrgFilter },
+      }),
+      prisma.event.findMany({
+        where: eventOrgFilter,
+        select: { capacity: true, ticketTypes: { select: { quantitySold: true } } },
+      }),
+    ]);
 
     // Ever-paid = reached capture (incl. later refunded). Do NOT filter to current PAID only.
     const everPaid = orders.filter(
@@ -545,51 +596,17 @@ export class EventService {
         o.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED ||
         o.paymentStatus === PaymentStatus.REFUNDED
     );
-    const financials = await getOrgFinancialTotals(prisma, organizationId);
     const revenueToday = everPaid
       .filter((o) => (o.paidAt ?? o.createdAt) >= startOfDay)
       .reduce((s, o) => s + o.total, 0);
 
-    const ticketsSold = await prisma.ticket.count({
-      where: {
-        event: eventOrgFilter,
-        status: { in: ["VALID", "CHECKED_IN", "TRANSFERRED"] },
-      },
-    });
-    const checkedIn = await prisma.ticket.count({
-      where: { event: eventOrgFilter, status: "CHECKED_IN" },
-    });
-
-    const activeReservations = await prisma.ticketReservation.count({
-      where: {
-        status: "ACTIVE",
-        expiresAt: { gt: new Date() },
-        event: eventOrgFilter,
-      },
-    });
-
-    const refundsAgg = await prisma.refund.aggregate({
-      where: { order: orgFilter, status: "SUCCEEDED" },
-      _count: true,
-    });
-
     const failedPayments = orders.filter((o) => o.paymentStatus === PaymentStatus.FAILED).length;
 
-    const pageViews = await prisma.analyticsEvent.count({
-      where: { type: "PAGE_VIEW", event: eventOrgFilter },
-    });
-    const checkoutStarts = await prisma.analyticsEvent.count({
-      where: { type: "CHECKOUT_STARTED", event: eventOrgFilter },
-    });
     const conversion =
       pageViews > 0
         ? Math.round((financials.paidOrderCount / pageViews) * 1000) / 10
         : null;
 
-    const events = await prisma.event.findMany({
-      where: eventOrgFilter,
-      select: { capacity: true, ticketTypes: { select: { quantitySold: true } } },
-    });
     const capacity = events.reduce((s, e) => s + e.capacity, 0);
     const sold = events.reduce(
       (s, e) => s + e.ticketTypes.reduce((a, t) => a + t.quantitySold, 0),

@@ -34,25 +34,26 @@ export default async function AdminDashboardPage() {
   }
 
   const orgFilter = organizationIdWhere(scope.organizationId);
-  const stats = await EventService.getOrgDashboardStats(scope.organizationId);
-  const events = await prisma.event.findMany({
-    where: orgFilter,
-    include: { organization: { select: { id: true, name: true } } },
-    orderBy: { startsAt: "asc" },
-    take: 10,
-  });
-
-  const paidOrders = await prisma.order.findMany({
-    where: {
-      ...orgFilter,
-      OR: [
-        { paidAt: { not: null } },
-        { paymentStatus: { in: ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"] } },
-      ],
-    },
-    select: { total: true, paidAt: true, createdAt: true },
-    orderBy: { createdAt: "asc" },
-  });
+  const [stats, events, paidOrders] = await Promise.all([
+    EventService.getOrgDashboardStats(scope.organizationId),
+    prisma.event.findMany({
+      where: orgFilter,
+      include: { organization: { select: { id: true, name: true } } },
+      orderBy: { startsAt: "asc" },
+      take: 10,
+    }),
+    prisma.order.findMany({
+      where: {
+        ...orgFilter,
+        OR: [
+          { paidAt: { not: null } },
+          { paymentStatus: { in: ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"] } },
+        ],
+      },
+      select: { total: true, paidAt: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
 
   const byDayMap = new Map<string, number>();
   for (const o of paidOrders) {

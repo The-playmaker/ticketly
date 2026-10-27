@@ -380,9 +380,11 @@ export class ReservationService {
   }
 
   /**
-   * Lightweight invariant: stored quantityReserved must equal the sum of ACTIVE
-   * reservations that should still hold inventory (unexpired + payment-grace /
-   * PAID keepers). Also flags ACTIVE rows that should expire.
+   * Lightweight invariant via one SQL pass — does **not** load all reservations
+   * into a full `repairEvent` dry-run (that path was blocking every public read).
+   *
+   * stored quantityReserved must equal SUM of ACTIVE keepers (unexpired +
+   * payment-grace PENDING + PAID). Also flags ACTIVE rows that should expire.
    *
    * Read-only — use before sales/inventory decisions; repair when `needsRepair`.
    */
@@ -398,42 +400,105 @@ export class ReservationService {
       expiredActiveCount: number;
     }>;
   }> {
-    const preview = await this.repairEvent({ eventId, apply: false });
+    const now = new Date();
+    const graceCutoff = new Date(now.getTime() - paymentGraceMinutes() * 60_000);
+
+    const rows = await prisma.$queryRaw<
+      Array<{
+        ticketTypeId: string;
+        name: string;
+        storedQuantityReserved: number;
+        calculatedActiveReserved: number;
+        expiredActiveCount: number;
+      }>
+    >`
+      SELECT
+        tt.id AS "ticketTypeId",
+        tt.name AS "name",
+        tt."quantityReserved" AS "storedQuantityReserved",
+        COALESCE(k.keeper_qty, 0)::int AS "calculatedActiveReserved",
+        COALESCE(e.expired_count, 0)::int AS "expiredActiveCount"
+      FROM "TicketType" tt
+      LEFT JOIN (
+        SELECT
+          tr."ticketTypeId",
+          COALESCE(SUM(tr.quantity), 0)::int AS keeper_qty
+        FROM "TicketReservation" tr
+        LEFT JOIN "Order" o ON o.id = tr."orderId"
+        WHERE tr."eventId" = ${eventId}
+          AND tr.status = 'ACTIVE'
+          AND (
+            tr."expiresAt" > ${now}
+            OR o."paymentStatus" = 'PAID'
+            OR (
+              o."paymentStatus" = 'PENDING'
+              AND o."orderStatus" = 'PENDING'
+              AND tr."expiresAt" > ${graceCutoff}
+            )
+          )
+        GROUP BY tr."ticketTypeId"
+      ) k ON k."ticketTypeId" = tt.id
+      LEFT JOIN (
+        SELECT
+          tr."ticketTypeId",
+          COUNT(*)::int AS expired_count
+        FROM "TicketReservation" tr
+        LEFT JOIN "Order" o ON o.id = tr."orderId"
+        WHERE tr."eventId" = ${eventId}
+          AND tr.status = 'ACTIVE'
+          AND tr."expiresAt" <= ${now}
+          AND NOT (
+            o."paymentStatus" = 'PAID'
+            OR (
+              o."paymentStatus" = 'PENDING'
+              AND o."orderStatus" = 'PENDING'
+              AND tr."expiresAt" > ${graceCutoff}
+            )
+          )
+        GROUP BY tr."ticketTypeId"
+      ) e ON e."ticketTypeId" = tt.id
+      WHERE tt."eventId" = ${eventId}
+      ORDER BY tt."sortOrder" ASC
+    `;
+
+    const types = rows.map((r) => ({
+      ticketTypeId: r.ticketTypeId,
+      name: r.name,
+      storedQuantityReserved: r.storedQuantityReserved,
+      calculatedActiveReserved: r.calculatedActiveReserved,
+      delta: r.calculatedActiveReserved - r.storedQuantityReserved,
+      expiredActiveCount: r.expiredActiveCount,
+    }));
+    const expiredCount = types.reduce((s, t) => s + t.expiredActiveCount, 0);
     const needsRepair =
-      preview.expiredCount > 0 || preview.types.some((t) => t.delta !== 0);
-    return {
-      needsRepair,
-      expiredCount: preview.expiredCount,
-      types: preview.types.map((t) => ({
-        ticketTypeId: t.ticketTypeId,
-        name: t.name,
-        storedQuantityReserved: t.currentQuantityReserved,
-        calculatedActiveReserved: t.proposedQuantityReserved,
-        delta: t.delta,
-        expiredActiveCount: t.expiredActiveCount,
-      })),
-    };
+      expiredCount > 0 || types.some((t) => t.delta !== 0);
+    return { needsRepair, expiredCount, types };
   }
 
   /**
-   * Ensure inventory counters are consistent before a sales/availability read.
-   * Always corrects drift when detected; throttles only the no-op happy path
-   * so public pages do not hammer the DB when nothing is wrong.
+   * Sales / reserve path: always run the lightweight SQL invariant and repair
+   * on mismatch. Does not skip for the opportunistic throttle — counters that
+   * affect checkout must not stay wrong.
    */
   static async ensureInventoryConsistent(
     eventId: string,
     opts?: { force?: boolean; actorId?: string | null }
   ): Promise<ReservationRepairResult | null> {
-    return this.cleanupEventSafe(eventId, opts);
+    return this.cleanupEventSafe(eventId, {
+      ...opts,
+      force: true,
+    });
   }
 
   /**
-   * Cheap, idempotent cleanup: expire stale ACTIVE + rebuild quantityReserved
-   * from DB truth for one event.
+   * Opportunistic cleanup for public inventory reads (e.g. getBySlug).
    *
-   * Throttle skips repeated dry-runs when the last pass found nothing to fix.
-   * If throttle would skip but a lightweight invariant detects drift, repair
-   * runs anyway — sales decisions must never leave counters uncorrected.
+   * - Within throttle window: return immediately (no DB) so page views stay snappy.
+   * - Outside throttle: one cheap SQL invariant; only then `repairEvent(apply)`.
+   * - Never runs a full dry-run preview on the read path.
+   *
+   * Use `ensureInventoryConsistent` / `force: true` when a sales decision needs
+   * a guaranteed check (reserve, admin apply, cron).
    */
   static async cleanupEventSafe(
     eventId: string,
@@ -443,27 +508,41 @@ export class ReservationService {
     const last = lastCleanupAt.get(key) ?? 0;
     const throttled = !opts?.force && Date.now() - last < CLEANUP_INTERVAL_MS;
 
+    if (throttled) {
+      return null;
+    }
+
     try {
-      if (throttled) {
-        const invariant = await this.checkQuantityReservedInvariant(eventId);
-        if (!invariant.needsRepair) {
-          return null;
-        }
+      const invariant = await this.checkQuantityReservedInvariant(eventId);
+      if (!invariant.needsRepair) {
         lastCleanupAt.set(key, Date.now());
-        return await this.repairEvent({
+        const now = new Date();
+        return {
           eventId,
-          apply: true,
-          actorId: opts?.actorId,
-        });
+          dryRun: true,
+          now: now.toISOString(),
+          graceMinutes: paymentGraceMinutes(),
+          expiredCount: 0,
+          types: invariant.types.map((t) => ({
+            ticketTypeId: t.ticketTypeId,
+            name: t.name,
+            quantityReleased: 0,
+            quantitySold: 0,
+            currentQuantityReserved: t.storedQuantityReserved,
+            activeTotal: t.calculatedActiveReserved,
+            activeUnexpiredTotal: t.calculatedActiveReserved,
+            expiredActiveQuantity: 0,
+            expiredActiveCount: 0,
+            proposedQuantityReserved: t.calculatedActiveReserved,
+            delta: 0,
+            availableBefore: 0,
+            availableAfter: 0,
+          })),
+          applied: false,
+        };
       }
 
       lastCleanupAt.set(key, Date.now());
-      const preview = await this.repairEvent({ eventId, apply: false });
-      const needsWork =
-        preview.expiredCount > 0 || preview.types.some((t) => t.delta !== 0);
-      if (!needsWork) {
-        return preview;
-      }
       return await this.repairEvent({
         eventId,
         apply: true,

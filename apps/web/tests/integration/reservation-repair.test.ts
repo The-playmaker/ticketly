@@ -425,7 +425,7 @@ describe("reservation repair + inventory rebuild", () => {
     expect(tt.quantityReserved).toBe(1);
   });
 
-  it("invariant check detects mismatch and ensureInventoryConsistent repairs under throttle", async () => {
+  it("opportunistic cleanup skips under throttle; sales path still repairs drift", async () => {
     const future = new Date(Date.now() + 10 * 60_000);
     await prisma.ticketReservation.create({
       data: {
@@ -456,7 +456,15 @@ describe("reservation repair + inventory rebuild", () => {
     expect(invariant.needsRepair).toBe(true);
     expect(invariant.types.find((t) => t.ticketTypeId === ticketTypeId)?.delta).toBe(-24);
 
-    // Throttled path must still repair — never leave drift for sales decisions
+    // Public/opportunistic path must not block every page view during throttle
+    const skipped = await ReservationService.cleanupEventSafe(eventId);
+    expect(skipped).toBeNull();
+    const stillDrifted = await prisma.ticketType.findUniqueOrThrow({
+      where: { id: ticketTypeId },
+    });
+    expect(stillDrifted.quantityReserved).toBe(25);
+
+    // Sales path always cheap-checks + repairs — never leave drift for checkout
     const repaired = await ReservationService.ensureInventoryConsistent(eventId);
     expect(repaired?.applied).toBe(true);
 

@@ -17,7 +17,9 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
-  const event = await EventService.getBySlug(slug);
+  // Skip inventory cleanup — metadata does not need live availability counters,
+  // and sharing the page+metadata path used to double-run repair work.
+  const event = await EventService.getBySlug(slug, { skipInventoryCleanup: true });
   if (!event) return { title: "Arrangement" };
   const title = event.name;
   const description =

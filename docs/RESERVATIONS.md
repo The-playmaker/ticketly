@@ -13,12 +13,12 @@ quantityReserved = SUM(quantity)
     (expiresAt > now, OR payment-grace PENDING, OR PAID awaiting fulfillment)
 ```
 
-Before public/admin inventory is returned for sales decisions, Ticketly:
+Before sales decisions (`reserve` / admin inventory apply), Ticketly:
 
-1. Expires stale `ACTIVE` reservations (respecting payment grace / PAID holds)
-2. Rebuilds `quantityReserved` from DB truth when a mismatch is detected
+1. Runs a **cheap SQL invariant** (not a full repair dry-run)
+2. Expires stale `ACTIVE` reservations and rebuilds `quantityReserved` only when mismatch is detected
 
-Opportunistic cleanup is throttled on the no-op path; **drift always forces a repair**.
+Public event pages use **opportunistic** cleanup (`cleanupEventSafe`): skipped entirely inside the throttle window (`RESERVATION_CLEANUP_INTERVAL_MS`, default 30s) so page views stay snappy. The sales path (`ensureInventoryConsistent`) always cheap-checks and repairs on drift.
 
 ## Tools
 
