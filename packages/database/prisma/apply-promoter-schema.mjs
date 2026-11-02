@@ -27,7 +27,7 @@ const enumInsert = `enum DiscountType {
   FIXED
 }
 
-/// DISCOUNT = classic promo; TRACKING = promoter attribution (discount may be 0).
+/// DISCOUNT = classic promo; TRACKING = promoter attribution only (never discounts).
 enum PromoCodeKind {
   DISCOUNT
   TRACKING
@@ -78,7 +78,7 @@ const newModel = `model PromoCode {
   label          String?
   kind           PromoCodeKind @default(DISCOUNT)
   discountType   DiscountType
-  discountValue  Int // percentage basis points (2000=20%) or fixed øre; 0 allowed for TRACKING
+  discountValue  Int // percentage basis points (2000=20%) or fixed øre; TRACKING always stored as 0
   maxUses        Int?
   usedCount      Int           @default(0)
   startAt        DateTime?

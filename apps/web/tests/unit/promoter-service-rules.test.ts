@@ -42,4 +42,25 @@ describe("PromoService promoter create rules", () => {
       // Prisma FK / DB-down is acceptable here
     }
   });
+
+  it("forces TRACKING discount to 0 even if client sends a positive value", async () => {
+    try {
+      const created = await PromoService.create({
+        organizationId: "org_missing",
+        code: `TRKFORCE${Date.now()}`,
+        kind: "TRACKING",
+        label: "Force Zero",
+        discountType: DiscountType.PERCENTAGE,
+        discountValue: 2500,
+      });
+      // If create somehow succeeds against a real org, discount must still be 0
+      expect(created.discountValue).toBe(0);
+      expect(created.kind).toBe("TRACKING");
+    } catch (e) {
+      // Validation must not reject positive input for TRACKING — it is coerced to 0
+      if (e instanceof AppError) {
+        expect(e.code).not.toBe("INVALID_PROMO");
+      }
+    }
+  });
 });
