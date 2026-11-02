@@ -69,24 +69,24 @@ export function EventCard({ event }: EventCardProps) {
   return (
     <Link
       href={`/events/${event.slug}`}
-      className="group relative block overflow-hidden rounded-lg border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] transition hover:border-[color:var(--accent)]/50"
+      className="group relative block overflow-hidden rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] shadow-[var(--shadow-soft)] transition duration-300 hover:border-[color:var(--accent)]/45 hover:shadow-[var(--shadow-panel)] focus-visible:outline-none"
       data-testid="event-card"
     >
-      <div className="relative aspect-[16/9] overflow-hidden bg-[color:var(--surface-high)]">
+      <div className="relative aspect-[16/10] overflow-hidden bg-[color:var(--surface-high)] sm:aspect-[16/9]">
         {cover ? (
           <Image
             src={cover}
             alt={event.name}
             fill
-            className="object-cover transition duration-500 group-hover:scale-105"
-            sizes="(max-width: 768px) 100vw, 33vw"
+            className="object-cover transition duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
         ) : (
           <div className="flex h-full items-center justify-center bg-gradient-to-br from-[color:var(--surface-high)] to-[color:var(--background)] text-[color:var(--muted)]">
             {event.name}
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/35 to-transparent" />
         <div className="absolute left-3 top-3 rounded bg-black/55 px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-white backdrop-blur-sm">
           {formatEventDateTime(event.startsAt, event.timezone)}
         </div>
@@ -103,13 +103,13 @@ export function EventCard({ event }: EventCardProps) {
           <p className="text-[10px] uppercase tracking-[0.16em] text-[color:var(--accent-soft)]">
             {event.organization.name}
           </p>
-          <h3 className="font-display text-2xl font-semibold text-white">{event.name}</h3>
+          <h3 className="mt-0.5 font-display text-xl font-semibold leading-tight text-white sm:text-2xl">{event.name}</h3>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
             {event.venue?.name ?? event.city ?? "—"}
           </p>
         </div>
       </div>
-      <div className="flex items-center justify-between gap-3 border-t border-[color:var(--outline)]/25 px-4 py-3">
+      <div className="flex items-center justify-between gap-3 border-t border-[color:var(--outline)]/25 px-4 py-3.5">
         <div>
           {!purchasable ? (
             <span className="text-sm font-medium text-[color:var(--muted)]">{statusChip}</span>
