@@ -4,16 +4,18 @@ import { Button } from "@/components/ui/button";
 /** Minimal nav for DOOR_STAFF-only users: Scanner + Logg ut. */
 export function DoorStaffChrome({ email }: { email?: string | null }) {
   return (
-    <header className="flex h-12 items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950 px-4">
-      <div className="flex items-center gap-4">
+    <header className="flex h-12 items-center justify-between gap-3 border-b border-[color:var(--outline)]/30 bg-[color:var(--surface-low)] px-4">
+      <div className="flex min-w-0 items-center gap-3">
         <Link
           href="/scan"
-          className="font-display text-sm font-semibold uppercase tracking-wider text-amber-400"
+          className="font-display text-sm font-semibold uppercase tracking-wider text-[color:var(--accent)]"
         >
           Scanner
         </Link>
         {email ? (
-          <span className="hidden truncate text-xs text-zinc-500 sm:inline">{email}</span>
+          <span className="hidden truncate text-xs text-[color:var(--muted)] sm:inline">
+            {email}
+          </span>
         ) : null}
       </div>
       <form
