@@ -13,6 +13,8 @@ const serverSchema = z.object({
   APP_URL: z.string().url(),
   NEXT_PUBLIC_APP_URL: z.string().url(),
   PAYMENT_PROVIDER: z.string().optional(),
+  PAYMENT_BACKUP_PROVIDER: z.string().optional(),
+  PAYMENT_STRIPE_BACKUP: z.enum(["true", "false"]).optional(),
   NEXI_ENVIRONMENT: z.enum(["test", "production", "live", "prod"]).optional(),
   NEXI_SECRET_API_KEY: z.string().optional(),
   NEXI_CHECKOUT_KEY: z.string().optional(),
@@ -43,7 +45,7 @@ function paymentProviderName(env: NodeJS.ProcessEnv): string {
 function assertNexiEnv(env: NodeJS.ProcessEnv, data: ServerEnv): void {
   if (!data.NEXI_SECRET_API_KEY || isPlaceholderCredential(data.NEXI_SECRET_API_KEY)) {
     throw new Error(
-      "NEXI_SECRET_API_KEY required when PAYMENT_PROVIDER=nexi (no mock/Stripe/fake fallback)"
+      "NEXI_SECRET_API_KEY required when PAYMENT_PROVIDER=nexi (configure PAYMENT_BACKUP_PROVIDER=stripe separately for create-time backup)"
     );
   }
   const checkoutKey = data.NEXI_CHECKOUT_KEY || data.NEXT_PUBLIC_NEXI_CHECKOUT_KEY;
@@ -127,6 +129,27 @@ export function validateServerEnv(env: NodeJS.ProcessEnv = process.env): ServerE
       }
     } else {
       throw new Error(`Unsupported PAYMENT_PROVIDER=${provider} in production`);
+    }
+
+    const backup = (data.PAYMENT_BACKUP_PROVIDER ?? "").toLowerCase().trim();
+    const stripeBackup =
+      backup === "stripe" || data.PAYMENT_STRIPE_BACKUP === "true";
+    if (stripeBackup && isNexi) {
+      if (!data.STRIPE_SECRET_KEY?.startsWith("sk_")) {
+        throw new Error(
+          "STRIPE_SECRET_KEY required when PAYMENT_BACKUP_PROVIDER=stripe (create-time backup)"
+        );
+      }
+      if (!data.STRIPE_WEBHOOK_SECRET?.startsWith("whsec_")) {
+        throw new Error(
+          "STRIPE_WEBHOOK_SECRET required when PAYMENT_BACKUP_PROVIDER=stripe"
+        );
+      }
+      if (!data.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith("pk_")) {
+        throw new Error(
+          "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY required when PAYMENT_BACKUP_PROVIDER=stripe"
+        );
+      }
     }
 
     const emailProvider = (data.EMAIL_PROVIDER ?? "console").toLowerCase().trim();
