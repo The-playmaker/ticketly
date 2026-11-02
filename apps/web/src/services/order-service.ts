@@ -127,6 +127,8 @@ export function calculatePricing(input: {
 }
 
 export function applyPromo(promo: PromoCode, subtotal: number): number {
+  // Promoter TRACKING codes are attribution-only — never discount checkout totals.
+  if (promo.kind === "TRACKING") return 0;
   if (!promo.isActive) return 0;
   const now = new Date();
   if (promo.startAt && promo.startAt > now) return 0;
