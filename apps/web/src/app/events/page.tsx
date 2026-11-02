@@ -2,13 +2,13 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { EventCard } from "@/components/events/event-card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { EventService } from "@/services/event-service";
+import { getCachedPublicEventList } from "@/lib/cache/cached-reads";
 
 export const metadata = { title: "Arrangementer" };
 export const dynamic = "force-dynamic";
 
 export default async function EventsPage() {
-  const events = await EventService.listPublic();
+  const events = await getCachedPublicEventList();
 
   return (
     <div className="min-h-dvh">

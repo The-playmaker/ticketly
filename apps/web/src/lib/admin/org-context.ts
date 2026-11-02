@@ -1,8 +1,11 @@
 import { cookies } from "next/headers";
-import { prisma } from "@/lib/db";
 import { ADMIN_ORG_COOKIE, ADMIN_ORG_GLOBAL } from "@/lib/admin/org-context-constants";
 import type { AdminOrgOption, AdminOrgScope, OrgContextMode } from "@/lib/admin/org-context-types";
 import { parseAdminOrgCookie, organizationIdWhere } from "@/lib/admin/org-context-utils";
+import {
+  getCachedAllOrganizations,
+  getCachedMembershipOrganizations,
+} from "@/lib/cache/cached-reads";
 
 export { ADMIN_ORG_COOKIE, ADMIN_ORG_GLOBAL };
 export type { AdminOrgOption, AdminOrgScope, OrgContextMode };
@@ -13,20 +16,12 @@ export async function readAdminOrgCookie(): Promise<string | null> {
   return jar.get(ADMIN_ORG_COOKIE)?.value ?? null;
 }
 
+/** Short-TTL cached — safe for switcher; RBAC still enforced on mutations. */
 export async function listAllOrganizations(): Promise<AdminOrgOption[]> {
-  return prisma.organization.findMany({
-    orderBy: [{ isActive: "desc" }, { name: "asc" }],
-    select: { id: true, name: true, slug: true, isActive: true },
-  });
+  return getCachedAllOrganizations();
 }
 
+/** Short-TTL cached membership orgs for the given user. */
 export async function listMembershipOrganizations(userId: string): Promise<AdminOrgOption[]> {
-  const members = await prisma.organizationMember.findMany({
-    where: { userId, isActive: true },
-    include: {
-      organization: { select: { id: true, name: true, slug: true, isActive: true } },
-    },
-    orderBy: { createdAt: "asc" },
-  });
-  return members.map((m) => m.organization);
+  return getCachedMembershipOrganizations(userId);
 }

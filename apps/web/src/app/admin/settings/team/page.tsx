@@ -42,14 +42,16 @@ export default async function TeamSettingsPage() {
     redirect("/admin");
   }
 
-  const org = await prisma.organization.findUnique({ where: { id: orgId } });
-  const team = await UserAdminService.listOrgTeam(orgId);
-  const events = await prisma.event.findMany({
-    where: { organizationId: orgId },
-    select: { id: true, name: true },
-    orderBy: { startsAt: "desc" },
-    take: 100,
-  });
+  const [org, team, events] = await Promise.all([
+    prisma.organization.findUnique({ where: { id: orgId } }),
+    UserAdminService.listOrgTeam(orgId),
+    prisma.event.findMany({
+      where: { organizationId: orgId },
+      select: { id: true, name: true },
+      orderBy: { startsAt: "desc" },
+      take: 100,
+    }),
+  ]);
 
   return (
     <div className="space-y-6">
