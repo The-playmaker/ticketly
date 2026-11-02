@@ -5,6 +5,7 @@ import { EventCard } from "@/components/events/event-card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { EventService } from "@/services/event-service";
+import { CapturePromoterRef } from "@/components/analytics/capture-promoter-ref";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-dvh">
+      <CapturePromoterRef />
       <SiteHeader />
       <main>
         <section className="relative overflow-hidden border-b border-[color:var(--outline)]/30">
