@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toPaymentUserFacingError } from "@/lib/user-facing-error";
 
 declare global {
   interface Window {
@@ -84,7 +85,7 @@ export function NexiEmbeddedCheckout({
         checkout.on("pay-initialized", () => setLoading(false));
         setLoading(false);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Checkout feilet");
+        setError(toPaymentUserFacingError(e));
         setLoading(false);
       }
     };

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/utils";
+import { toPaymentUserFacingError, toUserFacingError } from "@/lib/user-facing-error";
 
 type TicketTypeOption = {
   id: string;
@@ -65,7 +66,11 @@ export function TicketSelector({
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Kunne ikke reservere billetter");
+      if (!res.ok) {
+        throw new Error(
+          toUserFacingError(data, "Kunne ikke reservere billetter")
+        );
+      }
 
       const params = new URLSearchParams({
         event: eventSlug,
@@ -76,7 +81,7 @@ export function TicketSelector({
       });
       router.push(`/checkout?${params.toString()}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Noe gikk galt");
+      setError(toPaymentUserFacingError(e));
     } finally {
       setLoading(false);
     }
