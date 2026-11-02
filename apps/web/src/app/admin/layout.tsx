@@ -17,6 +17,7 @@ const fullNav = [
   { href: "/admin/events", label: "Arrangementer" },
   { href: "/admin/orders", label: "Ordrer / Support" },
   { href: "/admin/promos", label: "Kampanjekoder" },
+  { href: "/admin/promoters", label: "Promotører" },
   { href: "/admin/reports", label: "Analyse" },
   { href: "/admin/webhooks", label: "Webhooks" },
   { href: "/admin/settings", label: "Innstillinger" },
