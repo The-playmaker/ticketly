@@ -132,8 +132,10 @@ export async function POST(req: Request) {
       /* non-blocking */
     }
 
-    const provider = resolvePaymentProviderType();
-    const checkout = await PaymentService.startCheckout(order.id, provider);
+    const primaryProvider = resolvePaymentProviderType();
+    const checkout = await PaymentService.startCheckout(order.id, primaryProvider);
+    // Actual provider may be backup after create-time failover
+    const provider = checkout.provider ?? primaryProvider;
 
     try {
       await prisma.analyticsEvent.create({
@@ -142,7 +144,7 @@ export async function POST(req: Request) {
           eventId: order.eventId,
           sessionId: parsed.data.sessionId,
           orderId: order.id,
-          meta: { provider },
+          meta: { provider, primaryProvider },
         },
       });
     } catch {
