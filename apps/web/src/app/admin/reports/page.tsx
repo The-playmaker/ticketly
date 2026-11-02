@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
-import { organizationIdWhere } from "@/lib/admin/org-context";
 import { isDoorStaffOnly } from "@/lib/auth/event-access";
+import { getCachedAdminEventList } from "@/lib/cache/cached-reads";
 import { NoOrganizationPanel } from "@/components/admin/no-organization-panel";
 
 export const dynamic = "force-dynamic";
@@ -41,11 +40,7 @@ export default async function AdminReportsPage() {
     );
   }
 
-  const events = await prisma.event.findMany({
-    where: organizationIdWhere(scope.organizationId),
-    include: { organization: { select: { name: true } } },
-    orderBy: { startsAt: "desc" },
-  });
+  const events = await getCachedAdminEventList(scope.organizationId);
 
   return (
     <div className="space-y-6">

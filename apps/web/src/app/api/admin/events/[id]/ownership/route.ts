@@ -5,6 +5,7 @@ import { EventService } from "@/services/event-service";
 import { requireSuperAdmin } from "@/lib/admin/org-access";
 import { prisma } from "@/lib/db";
 import { jsonError, AppError } from "@/lib/api-error";
+import { revalidateAdminDataCaches } from "@/lib/cache/tags";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -39,6 +40,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
     revalidatePath("/admin/events");
     revalidatePath(`/admin/events/${id}`);
     revalidatePath(`/admin/events/${id}/settings`);
+    revalidateAdminDataCaches(event.organizationId);
+    revalidateAdminDataCaches(body.organizationId);
 
     return NextResponse.json({ event });
   } catch (e) {
