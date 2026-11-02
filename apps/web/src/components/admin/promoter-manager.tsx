@@ -26,12 +26,6 @@ export type PromoterRow = {
   netRevenue: number;
 };
 
-function discountLabel(p: PromoterRow) {
-  if (!p.discountValue) return "Kun sporing";
-  if (p.discountType === "PERCENTAGE") return `${(p.discountValue / 100).toFixed(0)}%`;
-  return formatMoney(p.discountValue);
-}
-
 export function PromoterManager({
   initialPromoters,
   events,
@@ -45,7 +39,6 @@ export function PromoterManager({
   const [label, setLabel] = useState("");
   const [code, setCode] = useState("");
   const [eventId, setEventId] = useState(defaultEventId ?? "");
-  const [discountPct, setDiscountPct] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -76,7 +69,6 @@ export function PromoterManager({
     setBusy(true);
     setMsg(null);
     try {
-      const pct = discountPct.trim() ? Number(discountPct) : 0;
       const res = await fetch("/api/admin/promoters", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -84,8 +76,7 @@ export function PromoterManager({
           code,
           label: label.trim() || null,
           eventId: eventId || null,
-          discountType: "PERCENTAGE",
-          discountValue: pct > 0 ? Math.round(pct * 100) : 0,
+          // Attribution only — server forces kind=TRACKING and discountValue=0.
         }),
       });
       if (!res.ok) {
@@ -95,9 +86,8 @@ export function PromoterManager({
       }
       setCode("");
       setLabel("");
-      setDiscountPct("");
       await refresh();
-      setMsg("Promotør opprettet — del sporingslenken");
+      setMsg("Promotør opprettet — del sporingslenken (ingen rabatt)");
     } finally {
       setBusy(false);
     }
@@ -175,19 +165,11 @@ export function PromoterManager({
             ))}
           </select>
         </div>
-        <div>
-          <label className="text-xs text-[color:var(--muted)]">
-            Valgfri rabatt (%)
-          </label>
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            step={1}
-            value={discountPct}
-            onChange={(e) => setDiscountPct(e.target.value)}
-            placeholder="0 = kun sporing"
-          />
+        <div className="sm:col-span-2 lg:col-span-3">
+          <p className="rounded-md border border-[color:var(--outline)]/25 bg-[color:var(--surface-high)] px-3 py-2 text-xs text-[color:var(--muted)]">
+            Kun sporing — promotørlenker beviser salg og gir ingen rabatt. For ekte
+            kampanjekoder, bruk rabattkoder under Kampanjer.
+          </p>
         </div>
         <div className="flex items-end">
           <Button type="submit" disabled={busy || !code.trim() || !eventId}>
@@ -231,7 +213,7 @@ export function PromoterManager({
             <tr>
               <th className="px-4 py-3">Promotør</th>
               <th className="px-4 py-3">Kode / lenke</th>
-              <th className="px-4 py-3">Rabatt</th>
+              <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Ordrer</th>
               <th className="px-4 py-3">Billetter</th>
               <th className="px-4 py-3">Brutto</th>
@@ -272,7 +254,7 @@ export function PromoterManager({
                       <p className="mt-1 text-xs text-[color:var(--muted)]">Mangler arrangement</p>
                     )}
                   </td>
-                  <td className="px-4 py-3">{discountLabel(p)}</td>
+                  <td className="px-4 py-3">Kun sporing</td>
                   <td className="px-4 py-3">{p.ordersCount}</td>
                   <td className="px-4 py-3">{p.ticketsSold}</td>
                   <td className="px-4 py-3">{formatMoney(p.grossSales)}</td>
