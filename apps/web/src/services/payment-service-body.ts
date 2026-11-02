@@ -13,11 +13,7 @@ import {
   PAID_LIKE,
   reconcileExistingAttemptBeforeNewCheckout,
   createCheckoutWithOptionalFailover,
-  shouldIgnoreFailureForPaidOrder,
 } from "@/services/payment-checkout-attempt";
-import { TicketService } from "@/services/ticket-service";
-import { writeAuditLog } from "@/lib/audit";
-import { createOrderSnapshot } from "@ticketly/ticketing";
 import { AppError } from "@/lib/api-error";
 import { markOrderPaidImpl } from "@/services/payment-service-paid";
 import {
@@ -99,12 +95,11 @@ export class PaymentService {
         orderId: order.id,
         provider: providerType,
         providerSessionId: `free_${order.id}`,
-        paymentId: `free_${order.id}` as never,
         providerPaymentId: `free_${order.id}`,
         externalEventId: `free_${order.id}`,
         amount: 0,
         currency: order.currency,
-      } as never);
+      });
       const appUrl = process.env.APP_URL ?? "http://localhost:3456";
       return {
         checkoutUrl: `${appUrl}/orders/${order.orderNumber}?t=${order.accessToken}&paid=1`,
