@@ -4,13 +4,13 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { EventCard } from "@/components/events/event-card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { EventService } from "@/services/event-service";
+import { getCachedPublicEventList } from "@/lib/cache/cached-reads";
 import { CapturePromoterRef } from "@/components/analytics/capture-promoter-ref";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const events = await EventService.listPublic({ take: 6 });
+  const events = await getCachedPublicEventList(6);
 
   return (
     <div className="min-h-dvh">
