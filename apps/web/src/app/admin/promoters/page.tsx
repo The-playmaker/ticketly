@@ -1,7 +1,7 @@
 import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { requireAdminPageSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { AppError } from "@/lib/api-error";
+import { isMissingPromoMigrationError } from "@/lib/promo-migration";
 import { PromoService } from "@/services/promo-service";
 import { PromoterManager } from "@/components/admin/promoter-manager";
 import { NoOrganizationPanel } from "@/components/admin/no-organization-panel";
@@ -67,7 +67,7 @@ export default async function AdminPromotersPage() {
       }),
     ]);
   } catch (e) {
-    if (e instanceof AppError && e.code === "DB_MIGRATION_REQUIRED") {
+    if (isMissingPromoMigrationError(e)) {
       return (
         <div className="space-y-6">
           <h1 className="text-2xl font-semibold">Promotører</h1>

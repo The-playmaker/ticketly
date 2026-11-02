@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { AppError } from "@/lib/api-error";
+import { isMissingPromoMigrationError } from "@/lib/promo-migration";
 import { PromoService } from "@/services/promo-service";
 import { PromoterManager } from "@/components/admin/promoter-manager";
 
@@ -24,7 +24,7 @@ export default async function EventPromotersPage({ params }: Props) {
       kind: "TRACKING",
     });
   } catch (e) {
-    if (e instanceof AppError && e.code === "DB_MIGRATION_REQUIRED") {
+    if (isMissingPromoMigrationError(e)) {
       return (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Promotører</h2>
