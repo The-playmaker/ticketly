@@ -74,13 +74,12 @@ export class PromoService {
     if (!code || code.length < 2) {
       throw new AppError("INVALID_PROMO", "Ugyldig kampanjekode", 400);
     }
-    if (kind === "DISCOUNT" && input.discountValue <= 0) {
+    // TRACKING (promoter) is attribution-only — always store zero discount.
+    const discountValue = kind === "TRACKING" ? 0 : input.discountValue;
+    if (kind === "DISCOUNT" && discountValue <= 0) {
       throw new AppError("INVALID_PROMO", "Rabatt må være positiv", 400);
     }
-    if (kind === "TRACKING" && input.discountValue < 0) {
-      throw new AppError("INVALID_PROMO", "Rabatt kan ikke være negativ", 400);
-    }
-    if (input.discountType === "PERCENTAGE" && input.discountValue > 10000) {
+    if (kind === "DISCOUNT" && input.discountType === "PERCENTAGE" && discountValue > 10000) {
       throw new AppError("INVALID_PROMO", "Prosentrabatt kan ikke overstige 100%", 400);
     }
 
@@ -91,7 +90,7 @@ export class PromoService {
         label: input.label?.trim() || null,
         kind,
         discountType: input.discountType,
-        discountValue: input.discountValue,
+        discountValue,
         eventId: input.eventId ?? null,
         ticketTypeId: input.ticketTypeId ?? null,
         maxUses: input.maxUses ?? null,
@@ -123,13 +122,18 @@ export class PromoService {
     if (!existing) throw new AppError("PROMO_NOT_FOUND", "Kampanjekode ikke funnet", 404);
 
     const nextKind = data.kind != null ? resolveKind(data.kind) : existing.kind;
+    // TRACKING is attribution-only — force zero discount on write / kind flip.
     const nextDiscount =
-      data.discountValue != null ? data.discountValue : existing.discountValue;
+      nextKind === "TRACKING"
+        ? 0
+        : data.discountValue != null
+          ? data.discountValue
+          : existing.discountValue;
     if (nextKind === "DISCOUNT" && nextDiscount <= 0) {
       throw new AppError("INVALID_PROMO", "Rabatt må være positiv", 400);
     }
-    if (nextKind === "TRACKING" && nextDiscount < 0) {
-      throw new AppError("INVALID_PROMO", "Rabatt kan ikke være negativ", 400);
+    if (nextKind === "DISCOUNT" && (data.discountType ?? existing.discountType) === "PERCENTAGE" && nextDiscount > 10000) {
+      throw new AppError("INVALID_PROMO", "Prosentrabatt kan ikke overstige 100%", 400);
     }
 
     const updated = await prisma.promoCode.update({
@@ -138,8 +142,10 @@ export class PromoService {
         ...(data.code ? { code: normalizeCode(data.code) } : {}),
         ...(data.label !== undefined ? { label: data.label?.trim() || null } : {}),
         ...(data.kind != null ? { kind: nextKind } : {}),
-        ...(data.discountType ? { discountType: data.discountType } : {}),
-        ...(data.discountValue != null ? { discountValue: data.discountValue } : {}),
+        ...(data.discountType && nextKind !== "TRACKING" ? { discountType: data.discountType } : {}),
+        ...(nextKind === "TRACKING" || data.discountValue != null
+          ? { discountValue: nextDiscount }
+          : {}),
         ...(data.eventId !== undefined ? { eventId: data.eventId } : {}),
         ...(data.ticketTypeId !== undefined ? { ticketTypeId: data.ticketTypeId } : {}),
         ...(data.maxUses !== undefined ? { maxUses: data.maxUses } : {}),
