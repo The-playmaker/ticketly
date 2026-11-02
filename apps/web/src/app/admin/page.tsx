@@ -1,23 +1,26 @@
+import { Suspense } from "react";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { EventService } from "@/services/event-service";
+import { requireAdminPageSession } from "@/lib/auth/session";
 import { formatMoney } from "@/lib/utils";
 import { SalesCharts } from "@/components/admin/sales-charts";
 import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { NoOrganizationPanel } from "@/components/admin/no-organization-panel";
-import { organizationIdWhere } from "@/lib/admin/org-context";
+import { getCachedDashboardBundle } from "@/lib/cache/cached-reads";
 import { PageHeader } from "@/components/ui/page-header";
 import { KpiStat } from "@/components/ui/kpi-stat";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusPill, statusTone } from "@/components/ui/status-pill";
 import { Button } from "@/components/ui/button";
+import {
+  AdminKpiSkeleton,
+  AdminTableSkeleton,
+} from "@/components/admin/admin-loading-skeleton";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
-  const session = await auth();
-  const scope = await resolveOrgScopeForUser(session!.user.id, session!.user.globalRole);
+  const user = await requireAdminPageSession();
+  const scope = await resolveOrgScopeForUser(user.id, user.globalRole);
 
   if (scope.mode === "none" && !scope.isPlatformAdmin) {
     return (
@@ -40,39 +43,62 @@ export default async function AdminDashboardPage() {
     );
   }
 
-  const orgFilter = organizationIdWhere(scope.organizationId);
-  const [stats, events, paidOrders] = await Promise.all([
-    EventService.getOrgDashboardStats(scope.organizationId),
-    prisma.event.findMany({
-      where: orgFilter,
-      include: { organization: { select: { id: true, name: true } } },
-      orderBy: { startsAt: "asc" },
-      take: 10,
-    }),
-    prisma.order.findMany({
-      where: {
-        ...orgFilter,
-        OR: [
-          { paidAt: { not: null } },
-          { paymentStatus: { in: ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"] } },
-        ],
-      },
-      select: { total: true, paidAt: true, createdAt: true },
-      orderBy: { createdAt: "asc" },
-    }),
-  ]);
-
-  const byDayMap = new Map<string, number>();
-  for (const o of paidOrders) {
-    const d = (o.paidAt ?? o.createdAt).toISOString().slice(0, 10);
-    byDayMap.set(d, (byDayMap.get(d) ?? 0) + o.total);
-  }
-  const salesPerDay = [...byDayMap.entries()].map(([date, amount]) => ({ date, amount }));
-
   const scopeLabel =
     scope.mode === "global"
       ? "Alle organisasjoner"
       : (scope.organizations.find((o) => o.id === scope.organizationId)?.name ?? "Organisasjon");
+
+  return (
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Live transaksjonsmonitor"
+        title="Oversikt & salgsytelse"
+        description={`Salg og innsjekking · ${scopeLabel} · oppdateres hvert ~20s`}
+        actions={
+          <Button asChild size="sm">
+            <Link href="/admin/events/new">+ Opprett arrangement</Link>
+          </Button>
+        }
+      />
+
+      <Suspense fallback={<DashboardKpisFallback />}>
+        <DashboardBody
+          organizationId={scope.organizationId}
+          showOrgColumn={scope.mode === "global"}
+        />
+      </Suspense>
+    </div>
+  );
+}
+
+function DashboardKpisFallback() {
+  return (
+    <div className="space-y-8">
+      <AdminKpiSkeleton count={4} />
+      <AdminKpiSkeleton count={8} />
+      <SkeletonChart />
+      <AdminTableSkeleton rows={5} />
+    </div>
+  );
+}
+
+function SkeletonChart() {
+  return (
+    <div className="rounded-lg border border-[color:var(--outline)]/30 bg-[color:var(--surface-container)] p-4">
+      <div className="mb-3 h-4 w-32 animate-pulse rounded bg-[color:var(--surface-high)]" />
+      <div className="h-48 animate-pulse rounded bg-[color:var(--surface-high)]" />
+    </div>
+  );
+}
+
+async function DashboardBody({
+  organizationId,
+  showOrgColumn,
+}: {
+  organizationId: string | null;
+  showOrgColumn: boolean;
+}) {
+  const { stats, events, salesPerDay } = await getCachedDashboardBundle(organizationId);
 
   const primaryKpis = [
     { label: "Brutto salg i dag", value: formatMoney(stats.revenueToday) },
@@ -97,18 +123,7 @@ export default async function AdminDashboardPage() {
   ];
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        eyebrow="Live transaksjonsmonitor"
-        title="Oversikt & salgsytelse"
-        description={`Live salg og innsjekking · ${scopeLabel}`}
-        actions={
-          <Button asChild size="sm">
-            <Link href="/admin/events/new">+ Opprett arrangement</Link>
-          </Button>
-        }
-      />
-
+    <>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {primaryKpis.map((c) => (
           <KpiStat key={c.label} label={c.label} value={c.value} />
@@ -146,7 +161,6 @@ export default async function AdminDashboardPage() {
           />
         ) : (
           <>
-            {/* Mobile cards */}
             <ul className="space-y-3 md:hidden">
               {events.map((e) => (
                 <li
@@ -156,13 +170,13 @@ export default async function AdminDashboardPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-medium text-foreground">{e.name}</p>
-                      {scope.mode === "global" ? (
+                      {showOrgColumn ? (
                         <p className="mt-0.5 text-xs text-[color:var(--muted)]">
                           {e.organization.name}
                         </p>
                       ) : null}
                       <p className="mt-1 text-xs text-[color:var(--muted)]">
-                        {e.startsAt.toLocaleString("nb-NO")}
+                        {new Date(e.startsAt).toLocaleString("nb-NO")}
                       </p>
                     </div>
                     <StatusPill tone={statusTone(e.status)}>{e.status}</StatusPill>
@@ -177,13 +191,12 @@ export default async function AdminDashboardPage() {
               ))}
             </ul>
 
-            {/* Desktop table */}
             <div className="tl-table-wrap hidden md:block">
               <table>
                 <thead>
                   <tr>
                     <th>Navn</th>
-                    {scope.mode === "global" ? <th>Organisasjon</th> : null}
+                    {showOrgColumn ? <th>Organisasjon</th> : null}
                     <th>Status</th>
                     <th>Start</th>
                     <th />
@@ -193,14 +206,14 @@ export default async function AdminDashboardPage() {
                   {events.map((e) => (
                     <tr key={e.id}>
                       <td className="font-medium text-foreground">{e.name}</td>
-                      {scope.mode === "global" ? (
+                      {showOrgColumn ? (
                         <td className="text-[color:var(--muted)]">{e.organization.name}</td>
                       ) : null}
                       <td>
                         <StatusPill tone={statusTone(e.status)}>{e.status}</StatusPill>
                       </td>
                       <td className="whitespace-nowrap text-[color:var(--muted)]">
-                        {e.startsAt.toLocaleString("nb-NO")}
+                        {new Date(e.startsAt).toLocaleString("nb-NO")}
                       </td>
                       <td className="text-right">
                         <Link
@@ -218,6 +231,6 @@ export default async function AdminDashboardPage() {
           </>
         )}
       </section>
-    </div>
+    </>
   );
 }
