@@ -17,6 +17,7 @@ import {
   emailTypoHint,
   normalizeEmail,
 } from "@ticketly/validation";
+import { toPaymentUserFacingError, toUserFacingError } from "@/lib/user-facing-error";
 
 const schema = z
   .object({
@@ -121,7 +122,7 @@ export function CheckoutForm({
       setPromoDiscount(data.discount ?? 0);
     } else {
       setPromoDiscount(0);
-      setError(data.error ?? "Ugyldig kampanjekode");
+      setError(toUserFacingError(data, "Ugyldig kampanjekode"));
     }
   }
 
@@ -161,11 +162,7 @@ export function CheckoutForm({
       });
       const data = await res.json();
       if (!res.ok) {
-        const msg =
-          data?.error?.message ??
-          (typeof data.error === "string" ? data.error : null) ??
-          "Checkout feilet";
-        throw new Error(msg);
+        throw new Error(toPaymentUserFacingError(data));
       }
 
       if (data.integrationType === "HostedPaymentPage" && data.checkoutUrl && !data.checkoutKey) {
@@ -190,7 +187,7 @@ export function CheckoutForm({
 
       throw new Error("Mangler betalingsøkt fra server");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Noe gikk galt");
+      setError(toPaymentUserFacingError(e));
       setLoading(false);
     }
   }
