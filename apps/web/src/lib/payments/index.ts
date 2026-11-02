@@ -5,63 +5,26 @@ import { MockStripePaymentProvider } from "./mock-stripe-provider";
 import { VippsPaymentProvider } from "./vipps-provider";
 import { NexiCheckoutProvider } from "./nexi-provider";
 import { MockPaymentProvider } from "./mock-provider";
+import {
+  isMockPaymentMode,
+  isStripeMockMode,
+  resolvePaymentProviderType,
+} from "./resolve-provider";
 
-/**
- * Mock payments are allowed ONLY when PAYMENT_PROVIDER=mock (or legacy STRIPE_MOCK_MODE)
- * and never in production unless explicitly PAYMENT_PROVIDER=mock is forbidden there too.
- */
-export function isMockPaymentMode(): boolean {
-  const provider = (process.env.PAYMENT_PROVIDER ?? "").toLowerCase();
-  if (provider === "mock") {
-    return process.env.NODE_ENV !== "production";
-  }
-  // Legacy Stripe mock path
-  if (process.env.STRIPE_MOCK_MODE !== "true") return false;
-  if (process.env.NODE_ENV === "production") return false;
-  if (process.env.ALLOW_MOCK_PAYMENTS === "false") return false;
-  return true;
-}
+export {
+  isMockPaymentMode,
+  isStripeMockMode,
+  resolvePaymentProviderType,
+} from "./resolve-provider";
 
-/** @deprecated use isMockPaymentMode */
-export function isStripeMockMode(): boolean {
-  return isMockPaymentMode();
-}
-
-/**
- * Resolve active payment provider from env.
- * Production default: NEXI.
- * Stripe is optional/fallback. Mock never defaults in production.
- */
-export function resolvePaymentProviderType(): PaymentProviderType {
-  const raw = (process.env.PAYMENT_PROVIDER ?? "nexi").toLowerCase().trim();
-
-  if (process.env.NODE_ENV === "production") {
-    if (raw === "mock") {
-      throw new Error(
-        "PAYMENT_PROVIDER=mock is forbidden in production. Configure Nexi or Stripe."
-      );
-    }
-  }
-
-  switch (raw) {
-    case "nexi":
-    case "nets":
-    case "nets-easy":
-    case "nexi-checkout":
-      return PaymentProviderType.NEXI;
-    case "stripe":
-      return PaymentProviderType.STRIPE;
-    case "vipps":
-      return PaymentProviderType.VIPPS;
-    case "mock":
-      return PaymentProviderType.MOCK;
-    default:
-      if (process.env.NODE_ENV === "production") {
-        throw new Error(`Unknown PAYMENT_PROVIDER=${raw}`);
-      }
-      return PaymentProviderType.NEXI;
-  }
-}
+export {
+  resolveBackupProviderType,
+  isBackupConfigured,
+  classifyCreateCheckoutFailure,
+  shouldFailoverToBackup,
+  isNetsEasyPrimary,
+} from "./failover";
+export type { FailoverClass } from "./failover";
 
 export function getPaymentProvider(
   provider: PaymentProviderType = resolvePaymentProviderType()
@@ -90,7 +53,13 @@ export * from "./types";
 export * from "./nexi-config";
 export { NexiCheckoutProvider } from "./nexi-provider";
 export { NexiApiError } from "./nexi-client";
-export { StripePaymentProvider, stripeConfigHealth } from "./stripe-provider";
+export {
+  StripePaymentProvider,
+  stripeConfigHealth,
+  STRIPE_CHECKOUT_SCRIPT_URL,
+  getStripePublishableKey,
+  retrieveStripeCheckoutClientSecret,
+} from "./stripe-provider";
 export { MockStripePaymentProvider } from "./mock-stripe-provider";
 export {
   createLiveStripeLookupClient,
@@ -107,3 +76,11 @@ export type {
   StripeRefundSnapshot,
 } from "./stripe-lookup";
 export { withStripeRetry, mapWithConcurrency } from "./stripe-retry";
+export {
+  lookupNexiForPayment,
+  nexiPaymentIsPaid,
+  nexiPaymentIsFailed,
+  nexiPaymentIsCancelledOrExpired,
+  type NexiOrderLookup,
+  type NexiLookupClient,
+} from "./nexi-lookup";
