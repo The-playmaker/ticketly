@@ -1,27 +1,48 @@
 # Payments — Ticketly
 
-## Production current
+## Production target
 
-**Stripe Checkout Form** (`ui_mode=form`) is the **current** production payment provider.
+**Nets Easy (Nexi Checkout)** is the **primary** payment provider.
+**Stripe Checkout Form** (`ui_mode=form`) is the **create-time backup**.
 
 ```
-PAYMENT_PROVIDER=stripe
+PAYMENT_PROVIDER=nexi
+PAYMENT_BACKUP_PROVIDER=stripe
+# alias: PAYMENT_STRIPE_BACKUP=true
 ```
-
-Nexi Checkout remains available as a **future / optional** cutover target — not the live PSP today.
 
 Architecture:
 
 ```
 PaymentProvider
-├── StripePaymentProvider  ← current production
-├── NexiCheckoutProvider   ← future / optional
+├── NexiCheckoutProvider   ← primary (Nets Easy)
+├── StripePaymentProvider  ← backup (before payment creation only)
 └── MockPaymentProvider    ← local only (PAYMENT_PROVIDER=mock)
 ```
 
 All provider-specific HTTP, webhook parsing, and status mapping live under
 `apps/web/src/lib/payments/`. Order / checkout / ticket services call the
-abstraction only.
+abstraction only. Each checkout attempt persists its own `Payment` row with
+the provider actually used (including failover metadata).
+
+## Failover rules (strict)
+
+Use Stripe **only** when Nets Easy is **definitively unavailable before** a
+payment object is created:
+
+| Situation | Failover? |
+|-----------|-----------|
+| Missing / placeholder Nexi keys, config assert failure | Yes (if backup configured) |
+| Nexi API 401 / 403 | Yes |
+| Network timeout / unreachable (status 0) | **No** (unknown) |
+| Nexi 5xx / 429 | **No** (unknown) |
+| Validation 4xx (amount/items) | **No** |
+| Pending / open checkout already exists | **No** — reuse or wait |
+| After Payment row created / mid-payment | **Never** |
+
+Before any new attempt: check original provider status. If already charged →
+`markOrderPaid` (never create a second charge path). Open sessions are reused.
+Expired/cancelled attempts allow a new independent attempt (new idempotency key).
 
 ## Auth / capture strategy
 
@@ -37,6 +58,9 @@ We do **not** use shipping-based authorize-then-capture for event tickets.
 Cancellation of an uncaptured reservation (if charge were false) is modeled as
 **provider cancel**, not a refund — see audit action `PAYMENT_CANCELLED`.
 
+**Never downgrade PAID** (or PARTIALLY_REFUNDED / REFUNDED) when a delayed
+failure/cancel webhook arrives.
+
 ## Money
 
 - Internal amounts: integer **øre** (minor units). Example: 438 NOK = `43800`
@@ -51,8 +75,8 @@ order status until PAID or timeout.
 
 ## Refunds
 
-- Full order, single-ticket, or partial monetary refunds via Nexi
-  `POST /v1/charges/{chargeId}/refunds`
+- Always via the **original** payment’s provider (`Payment.provider`)
+- Full order, single-ticket, or partial monetary refunds
 - Local refund stays `PENDING` until the provider accepts the operation;
   ticket state updates after provider acceptance
 - Double-refund and over-refund are blocked against paid/captured amount
@@ -86,42 +110,57 @@ See also comments on `getReleasedAvailable` / `RefundService.refundOrder`.
 - Mock requires explicit `PAYMENT_PROVIDER=mock` (or legacy `STRIPE_MOCK_MODE=true` in non-prod)
 - **Never** silently fall back to mock when Nexi keys are missing in production
 - Missing production config → `PAYMENT_CONFIG_ERROR` and checkout blocked
+  (unless create-time backup is configured **and** the failure is definitive)
 
-## Stripe (current production)
+## Required credentials
 
-Required for live sales: `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`,
-`STRIPE_WEBHOOK_SECRET`, `STRIPE_MOCK_MODE=false`, plus `APP_URL` /
-`NEXT_PUBLIC_APP_URL` (production: `https://billett.xodrammen.no`).
-Webhook: `{APP_URL}/api/payments/stripe/webhook`.
+### Nets Easy (primary)
+
+| Variable | Notes |
+|----------|------|
+| `PAYMENT_PROVIDER=nexi` | Primary |
+| `NEXI_ENVIRONMENT` | `test` \| `production` |
+| `NEXI_SECRET_API_KEY` | Server only |
+| `NEXI_CHECKOUT_KEY` | Client-safe |
+| `NEXI_WEBHOOK_SECRET` | 8–64 alphanumeric (official Authorization header) |
+| `NEXI_MERCHANT_ID` | Optional |
+| `APP_URL` / `NEXT_PUBLIC_APP_URL` | Public HTTPS origin |
+
+Webhook: `{APP_URL}/api/payments/nexi/webhook`
+
+### Stripe (backup)
+
+| Variable | Notes |
+|----------|------|
+| `PAYMENT_BACKUP_PROVIDER=stripe` | Or `PAYMENT_STRIPE_BACKUP=true` |
+| `STRIPE_SECRET_KEY` | `sk_live_…` / `sk_test_…` |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_…` |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_…` |
+| `STRIPE_MOCK_MODE=false` | Never true in production |
+
+Webhook: `{APP_URL}/api/payments/stripe/webhook`
 
 ## Payment reconciliation
 
-Stripe is authoritative for **payment** state; Ticketly for **order/ticket** state.
-Successful payments always go through `PaymentService.markOrderPaid` (exactly-once
-fulfillment). Reconciliation never creates tickets directly.
+Both PSPs: successful payments always go through `PaymentService.markOrderPaid`
+(exactly-once fulfillment). Reconciliation never creates tickets directly.
 
 - CLI (dry-run default): `npm run payments:reconcile -- --since-hours 24`
+- Provider filter: `--provider stripe` \| `nexi` \| `all` (default)
 - Apply: `npm run payments:reconcile -- --apply --since-hours 24`
-- Cron route: `GET/POST /api/cron/payments-reconcile` (`CRON_SECRET`); Vercel `crons` schedule omitted on Hobby — re-enable `*/10` in `vercel.json` on Pro
-- Admin UI (SUPER_ADMIN): `/admin/platform/payments/reconciliation`
+- Cron route: `GET/POST /api/cron/payments-reconcile` (`CRON_SECRET`); Vercel
+  `crons` schedule omitted on Hobby — invoke externally (do **not** add Hobby
+  crons to `vercel.json`)
+- Admin UI (SUPER_ADMIN): `/admin/platform/payments/reconciliation` (Stripe UI);
+  Nexi via CLI/cron; order detail shows all payment attempts + failover
 
 Reservation inventory cleanup uses the same `CRON_SECRET` pattern — see
-[RESERVATIONS.md](./RESERVATIONS.md) (`/api/cron/reservations-cleanup`; schedule
-externally, do not add Hobby crons to `vercel.json`).
-
-Candidates: PENDING, FAILED, REVIEW_REQUIRED, AUTHORIZED, PARTIALLY_REFUNDED,
-plus PAID from the last 24h for verification. Audit actions:
-`PAYMENT_RECONCILED`, `PAYMENT_REVIEW_REQUIRED`, `PAYMENT_RECONCILIATION_MISMATCH`.
-
-## Nexi (future / optional)
-
-When cutting over later, set `PAYMENT_PROVIDER=nexi` with Nexi production keys.
-Do **not** migrate historical Stripe payments.
+[RESERVATIONS.md](./RESERVATIONS.md).
 
 ## Further reading
 
+- [NEXI_CHECKOUT.md](./NEXI_CHECKOUT.md) — keys, webhooks, sandbox
 - [STRIPE_INTEGRATION_TODO.md](../STRIPE_INTEGRATION_TODO.md) — Checkout Form wiring
-- [NEXI_CHECKOUT.md](./NEXI_CHECKOUT.md) — keys, webhooks, sandbox (future)
 - [MOBILE_PAYMENTS.md](./MOBILE_PAYMENTS.md) — Expo path (may be partial for web launch)
 - [LAUNCH_CHECKLIST.md](./LAUNCH_CHECKLIST.md)
 - [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md)
