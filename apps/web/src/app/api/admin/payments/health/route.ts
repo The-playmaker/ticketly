@@ -4,6 +4,8 @@ import {
   nexiConfigHealth,
   stripeConfigHealth,
   resolvePaymentProviderType,
+  resolveBackupProviderType,
+  isBackupConfigured,
   getPaymentProvider,
   isMockPaymentMode,
 } from "@/lib/payments";
@@ -12,7 +14,9 @@ import { PaymentProviderType, WebhookProcessStatus } from "@prisma/client";
 
 /**
  * Safe payment health — config status only, no expensive payment API calls.
- * Reports Nexi and Stripe separately. Active provider is explicit — never auto-failover.
+ * Reports Nexi and Stripe separately.
+ * Create-time failover only when PAYMENT_BACKUP_PROVIDER is set and primary is
+ * definitively unavailable before payment creation (never mid-payment).
  */
 export async function GET() {
   const session = await auth();
@@ -21,6 +25,8 @@ export async function GET() {
   }
 
   const activeProvider = resolvePaymentProviderType();
+  const backupProvider = resolveBackupProviderType(activeProvider);
+  const backupReady = backupProvider ? isBackupConfigured(backupProvider) : false;
   const nexi = nexiConfigHealth();
   const stripe = stripeConfigHealth();
 
@@ -69,14 +75,21 @@ export async function GET() {
 
   return NextResponse.json({
     activeProvider,
+    backupProvider,
+    backupReady,
     mockMode: isMockPaymentMode(),
-    note: "Provider is selected before checkout and stored on Payment. No automatic failover.",
+    note:
+      "Primary provider is selected before checkout and stored on each Payment attempt. " +
+      "Create-time failover to backup only when primary is definitively unavailable " +
+      "(config/auth) before payment creation — never on unknown/pending or mid-payment.",
     nexiCheckout: {
       status: statusFor(nexi.status, nexiFailed, nexiActive),
       environment: nexi.environment,
       message: nexi.message,
       recentFailedWebhooks24h: nexiFailed,
       activeForNewCheckouts: nexiActive,
+      role:
+        nexiActive ? "primary" : backupProvider === PaymentProviderType.NEXI ? "backup" : "inactive",
     },
     stripe: {
       status: statusFor(stripe.status, stripeFailed, stripeActive),
@@ -84,6 +97,12 @@ export async function GET() {
       message: stripeRuntimeMessage,
       recentFailedWebhooks24h: stripeFailed,
       activeForNewCheckouts: stripeActive,
+      role:
+        stripeActive
+          ? "primary"
+          : backupProvider === PaymentProviderType.STRIPE
+            ? "backup"
+            : "inactive",
     },
   });
 }
