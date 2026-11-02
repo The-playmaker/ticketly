@@ -82,8 +82,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (token.disabled || !token.id || !token.isActive) {
-        // Force unauthenticated session for disabled / revoked users
-        return { ...session, user: undefined as unknown as typeof session.user };
+        // Force unauthenticated session for disabled / revoked users.
+        const { user: _drop, ...rest } = session as typeof session & { user?: unknown };
+        return { ...rest, user: undefined } as unknown as typeof session;
       }
       if (session.user) {
         session.user.id = token.id;

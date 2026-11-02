@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
 import { canManageEvents, assertAuthorized, isSuperAdmin } from "@/lib/auth/rbac";
+import { requireAdminPageSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { EventAdminNav } from "@/components/admin/event-admin-nav";
 import { Badge } from "@/components/ui/badge";
@@ -13,21 +13,12 @@ type Props = {
 
 export default async function EventAdminLayout({ children, params }: Props) {
   const { id } = await params;
-  const session = await auth();
+  const user = await requireAdminPageSession(`/admin/events/${id}`);
   const event = await prisma.event.findUnique({
     where: { id },
     include: { organization: { select: { name: true } } },
   });
   if (!event) notFound();
-
-  const user = {
-    id: session!.user.id,
-    email: session!.user.email!,
-    name: session!.user.name,
-    globalRole: session!.user.globalRole,
-    isActive: session!.user.isActive !== false,
-    memberships: session!.user.memberships,
-  };
 
   try {
     assertAuthorized(canManageEvents(user, event.organizationId) || isSuperAdmin(user));
