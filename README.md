@@ -28,6 +28,19 @@ npm run dev:mobile       # Expo (port 8082)
 
 Docker: `docker compose up --build` (web + Postgres).
 
+
+## Production: promoter tracking migration
+
+Before using **Promotører** in production, deploy pending Prisma migrations:
+
+```bash
+npm run db:migrate
+# equivalent: npm run migrate -w @ticketly/database
+# (runs `prisma migrate deploy` — applies `20261102150000_promo_promoter_tracking`)
+```
+
+This adds `PromoCodeKind` and `PromoCode.label` / `PromoCode.kind`. Until migrated, admin promoters pages show «Database-migrasjon mangler» instead of crashing.
+
 ## Payments
 
 Production default: **Nexi Checkout** (`PAYMENT_PROVIDER=nexi`). Stripe is optional/fallback.
