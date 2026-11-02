@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/layout/site-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { Badge } from "@/components/ui/badge";
 import { EventService } from "@/services/event-service";
 import { formatEventDate, formatEventTime } from "@/lib/time";
@@ -111,21 +112,22 @@ export default async function EventDetailPage({ params }: Props) {
   const allBlockedForWaitlist = typeStatuses.every((t) => !t.status.purchasable);
 
   return (
-    <div>
+    <div className="min-h-dvh">
       <TrackPageView eventId={event.id} organizationId={event.organizationId} />
       <SiteHeader />
       <main>
-        <div className="relative aspect-[16/9] max-h-[52vh] min-h-[240px] w-full overflow-hidden border-b border-[color:var(--outline)]/30 sm:max-h-[560px]">
+        <div className="relative aspect-[16/10] max-h-[48vh] min-h-[220px] w-full overflow-hidden border-b border-[color:var(--outline)]/30 sm:aspect-[21/9] sm:max-h-[560px]">
           {cover ? (
             <Image src={cover} alt={event.name} fill className="object-cover" priority sizes="100vw" />
           ) : (
-            <div className="h-full bg-[color:var(--surface-high)]" />
+            <div className="h-full bg-gradient-to-br from-[color:var(--surface-high)] to-[color:var(--background)]" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/50 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 mx-auto max-w-6xl px-4 pb-8">
-            <p className="text-sm uppercase tracking-wider text-[color:var(--accent-soft)]">{event.organization.name}</p>
-            <h1 className="font-display text-4xl text-white sm:text-5xl">{event.name}</h1>
-            <div className="mt-3 flex flex-wrap gap-2 text-sm text-zinc-300">
+          <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--background)] via-[color:var(--background)]/55 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0">
+          <div className="tl-page pb-7 sm:pb-10">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--accent-soft)] sm:text-sm">{event.organization.name}</p>
+            <h1 className="mt-1 font-display text-3xl font-bold text-white sm:text-5xl">{event.name}</h1>
+            <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm text-[color:var(--muted)]">
               <span>{formatEventDate(event.startsAt, event.timezone)}</span>
               <span>·</span>
               <span>
@@ -144,29 +146,32 @@ export default async function EventDetailPage({ params }: Props) {
               ) : null}
             </div>
           </div>
+          </div>
         </div>
 
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 lg:grid-cols-[1.2fr_0.8fr]">
-          <div>
-            <h2 className="font-display text-2xl">Om arrangementet</h2>
-            <p className="mt-3 whitespace-pre-wrap text-zinc-300 leading-relaxed">
+        <div className="tl-page grid gap-8 py-8 lg:grid-cols-[1.15fr_0.85fr] lg:gap-10 lg:py-12">
+          <div className="min-w-0">
+            <h2 className="font-display text-xl font-semibold sm:text-2xl">Om arrangementet</h2>
+            <p className="mt-3 whitespace-pre-wrap text-[color:var(--muted)] leading-relaxed">
               {event.description ?? event.shortDescription}
             </p>
-            <div className="mt-6 space-y-1 text-sm text-zinc-400">
-              <p>
+            <div className="mt-6 rounded-lg border border-[color:var(--outline)]/25 bg-[color:var(--surface-low)]/60 px-4 py-3 text-sm text-[color:var(--muted)]">
+              <p className="text-xs font-medium uppercase tracking-wide text-[color:var(--muted)]/80">Sted</p>
+              <p className="mt-1 text-foreground">
+                {event.venue?.name ? `${event.venue.name} · ` : null}
                 {event.address}, {event.postalCode} {event.city}
               </p>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[color:var(--outline)]/30 bg-zinc-900/50 p-5">
-            <h2 className="font-display text-xl">Billetter</h2>
+          <aside className="tl-panel h-fit p-4 sm:p-5 lg:sticky lg:top-20">
+            <h2 className="font-display text-lg font-semibold sm:text-xl">Billetter</h2>
             {!anyPurchasable ? (
               <div className="mt-4">
                 <TicketAvailabilityStatus status={overall} />
               </div>
             ) : null}
-            <ul className="mt-4 space-y-3">
+            <ul className="mt-4 space-y-0">
               {typeStatuses.map(({ type: tt, status }) => {
                 const hint = status.purchasable
                   ? inventoryHint(tt.available, {
@@ -177,10 +182,10 @@ export default async function EventDetailPage({ params }: Props) {
                 return (
                   <li
                     key={tt.id}
-                    className="flex items-start justify-between gap-3 border-b border-[color:var(--outline)]/30/80 pb-3 last:border-0"
+                    className="flex items-start justify-between gap-3 border-b border-[color:var(--outline)]/25 py-3 last:border-0"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-zinc-100">{tt.name}</p>
+                      <p className="font-medium text-foreground">{tt.name}</p>
                       {tt.description ? (
                         <p className="text-xs text-[color:var(--muted)]">{tt.description}</p>
                       ) : null}
@@ -204,7 +209,7 @@ export default async function EventDetailPage({ params }: Props) {
                 );
               })}
             </ul>
-            <div className="mt-6">
+            <div className="mt-5">
               {anyPurchasable ? (
                 <TicketSelector
                   eventId={event.id}
@@ -231,9 +236,10 @@ export default async function EventDetailPage({ params }: Props) {
                 </div>
               ) : null}
             </div>
-          </div>
+          </aside>
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }
