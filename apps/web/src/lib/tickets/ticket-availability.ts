@@ -89,6 +89,38 @@ function toDate(value: Date | string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/**
+ * ISO string (or null) for Client Component props.
+ * Passing Prisma `Date` across the RSC → client boundary throws in production
+ * as React minified error #441 ("An error occurred in the Server Components render…").
+ */
+export function toIsoDate(value: Date | string | null | undefined): string | null {
+  const d = toDate(value);
+  return d ? d.toISOString() : null;
+}
+
+/** Strip Date instances from event sales context for TicketSelector / client props. */
+export function serializeEventSalesContext(event: EventSalesContext): EventSalesContext {
+  return {
+    ...event,
+    salesStartAt: toIsoDate(event.salesStartAt),
+    salesEndAt: toIsoDate(event.salesEndAt),
+    salesPausedAt: toIsoDate(event.salesPausedAt),
+  };
+}
+
+/** Strip Date instances from ticket-type sales context for client props. */
+export function serializeTicketTypeSalesContext(
+  ticketType: TicketTypeSalesContext
+): TicketTypeSalesContext {
+  return {
+    ...ticketType,
+    salesStartAt: toIsoDate(ticketType.salesStartAt),
+    salesEndAt: toIsoDate(ticketType.salesEndAt),
+    salesPausedAt: toIsoDate(ticketType.salesPausedAt),
+  };
+}
+
 function formatOpensDescription(opensAt: Date, timezone: string): string {
   const date = formatEventDate(opensAt, timezone, "d. MMMM yyyy");
   const time = formatEventTime(opensAt, timezone);
