@@ -88,6 +88,7 @@ export function TicketSelector({
   );
 
   const total = selected.reduce((s, t) => s + t.price * t.quantity, 0);
+  const ticketCount = selected.reduce((s, t) => s + t.quantity, 0);
   const hasSelection = selected.length > 0;
   const anyPurchasable = statuses.some((s) => s.status.purchasable);
 
@@ -160,30 +161,39 @@ export function TicketSelector({
         const value = qty[t.id] ?? 0;
         const disabled = !status.purchasable;
         return (
-          <div key={t.id} className="flex items-start justify-between gap-3">
+          <div
+            key={t.id}
+            className="flex items-center justify-between gap-3 rounded-lg border border-[color:var(--outline)]/20 bg-[color:var(--surface-low)]/40 px-3 py-2.5"
+          >
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">{t.name}</p>
-              <p className="text-xs text-zinc-500">{formatMoney(t.price)}</p>
+              <p className="text-sm font-medium text-foreground">{t.name}</p>
+              <p className="text-xs tabular-nums text-[color:var(--muted)]">{formatMoney(t.price)}</p>
               {!status.purchasable ? (
                 <TicketAvailabilityStatus status={status} variant="inline" className="mt-1.5" />
               ) : null}
             </div>
-            <div className="flex items-center gap-2 pt-0.5">
+            <div className="flex items-center gap-1.5" role="group" aria-label={`Antall ${t.name}`}>
               <Button
                 type="button"
                 size="icon"
                 variant="outline"
+                className="h-11 w-11 sm:h-10 sm:w-10"
                 disabled={disabled || value <= 0}
+                aria-label={`Fjern en ${t.name}`}
                 onClick={() => setQty((q) => ({ ...q, [t.id]: Math.max(0, value - 1) }))}
               >
                 −
               </Button>
-              <span className="w-6 text-center text-sm">{value}</span>
+              <span className="w-8 text-center text-sm font-semibold tabular-nums" aria-live="polite">
+                {value}
+              </span>
               <Button
                 type="button"
                 size="icon"
                 variant="outline"
+                className="h-11 w-11 sm:h-10 sm:w-10"
                 disabled={disabled || value >= Math.min(t.maxPerOrder, t.available)}
+                aria-label={`Legg til en ${t.name}`}
                 onClick={() =>
                   setQty((q) => ({
                     ...q,
@@ -199,10 +209,15 @@ export function TicketSelector({
       })}
 
       {hasSelection ? (
-        <p className="text-sm text-zinc-400">
-          Sum billetter: <span className="text-zinc-100">{formatMoney(total)}</span>
-          <span className="text-zinc-500"> + serviceavgift i checkout</span>
-        </p>
+        <div className="rounded-lg border border-[color:var(--outline)]/25 bg-[color:var(--surface-high)]/40 px-3 py-3">
+          <div className="flex items-baseline justify-between gap-3 text-sm">
+            <span className="text-[color:var(--muted)]">
+              {ticketCount} {ticketCount === 1 ? "billett" : "billetter"}
+            </span>
+            <span className="font-semibold tabular-nums text-foreground">{formatMoney(total)}</span>
+          </div>
+          <p className="mt-1 text-xs text-[color:var(--muted)]">Serviceavgift beregnes i checkout</p>
+        </div>
       ) : null}
 
       {feedback ? (

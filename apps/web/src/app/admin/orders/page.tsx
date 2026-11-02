@@ -5,6 +5,11 @@ import { formatMoney } from "@/lib/utils";
 import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { organizationIdWhere } from "@/lib/admin/org-context";
 import { NoOrganizationPanel } from "@/components/admin/no-organization-panel";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusPill, statusTone } from "@/components/ui/status-pill";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -24,13 +29,18 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
   const q = rawQ?.trim() ?? "";
 
   if (scope.mode === "none" && !scope.isPlatformAdmin) {
-    return <p className="text-sm text-[color:var(--muted)]">Ingen organisasjon tilknyttet.</p>;
+    return (
+      <EmptyState
+        title="Ingen organisasjon"
+        description="Kontoen din er ikke tilknyttet en organisasjon ennå."
+      />
+    );
   }
 
   if (scope.mode === "none" && scope.isPlatformAdmin) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold">Ordrer / Support</h1>
+        <PageHeader title="Ordrer / Support" />
         <NoOrganizationPanel showCreateCta />
       </div>
     );
@@ -81,101 +91,158 @@ export default async function AdminOrdersPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Ordrer / Support</h1>
-        <p className="mt-1 text-sm text-[color:var(--muted)]">
-          Søk på ordrenummer, billett-ID, e-post, telefon, navn, arrangement eller
-          betalingsreferanse.
-          {scope.mode === "global" ? " · Alle organisasjoner" : ""}
-        </p>
-      </div>
+      <PageHeader
+        title="Ordrer / Support"
+        description={
+          <>
+            Søk på ordrenummer, billett-ID, e-post, telefon, navn, arrangement eller
+            betalingsreferanse.
+            {scope.mode === "global" ? " · Alle organisasjoner" : ""}
+          </>
+        }
+      />
 
-      <form className="flex flex-wrap gap-2" method="get">
-        <input
+      <form className="flex flex-col gap-2 sm:flex-row sm:flex-wrap" method="get">
+        <Input
           name="q"
           defaultValue={q}
           placeholder="Søk…"
-          className="min-w-[240px] flex-1 rounded-md border border-[color:var(--outline)]/40 bg-[color:var(--surface-high)] px-3 py-2 text-sm"
+          className="min-w-0 flex-1 sm:min-w-[240px]"
+          aria-label="Søk i ordrer"
         />
-        <button
-          type="submit"
-          className="rounded-md bg-[color:var(--accent)] px-4 py-2 text-sm font-semibold text-[color:var(--accent-foreground)]"
-        >
-          Søk
-        </button>
-        {q ? (
-          <Link
-            href="/admin/orders"
-            className="rounded-md border border-[color:var(--outline)]/40 px-3 py-2 text-sm text-[color:var(--muted)]"
-          >
-            Nullstill
-          </Link>
-        ) : null}
+        <div className="flex gap-2">
+          <Button type="submit" className="flex-1 sm:flex-none">
+            Søk
+          </Button>
+          {q ? (
+            <Button asChild variant="outline" className="flex-1 sm:flex-none">
+              <Link href="/admin/orders">Nullstill</Link>
+            </Button>
+          ) : null}
+        </div>
       </form>
 
-      <div className="overflow-hidden rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)]">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-[color:var(--surface-high)] text-[color:var(--muted)]">
-            <tr>
-              <th className="px-4 py-3">Ordrenr</th>
-              <th className="px-4 py-3">Kunde</th>
-              {showOrg ? <th className="px-4 py-3">Organisasjon</th> : null}
-              <th className="px-4 py-3">Event</th>
-              <th className="px-4 py-3">Provider</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Totalt</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={showOrg ? 7 : 6}
-                  className="px-4 py-8 text-center text-[color:var(--muted)]"
+      {orders.length === 0 ? (
+        <EmptyState
+          title={q ? "Ingen treff" : "Ingen ordrer"}
+          description={
+            q
+              ? "Prøv et annet søkeord eller nullstill filteret."
+              : "Ordrer dukker opp her når kunder fullfører kjøp."
+          }
+        />
+      ) : (
+        <>
+          <ul className="space-y-3 lg:hidden">
+            {orders.map((o) => {
+              const pay = o.payments[0];
+              return (
+                <li
+                  key={o.id}
+                  className="rounded-lg border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-4"
                 >
-                  {q ? "Ingen treff" : "Ingen ordrer"}
-                </td>
-              </tr>
-            ) : (
-              orders.map((o) => {
-                const pay = o.payments[0];
-                return (
-                  <tr key={o.id} className="border-t border-[color:var(--outline)]/20">
-                    <td className="px-4 py-3 font-mono text-xs">
-                      <a
-                        className="text-[color:var(--accent)] underline"
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link
                         href={`/admin/orders/${o.orderNumber}`}
+                        className="font-mono text-sm font-medium text-[color:var(--accent)]"
                       >
                         {o.orderNumber}
-                      </a>
-                    </td>
-                    <td className="px-4 py-3">
-                      {o.customerFirstName} {o.customerLastName}
-                      <div className="text-xs text-[color:var(--muted)]">{o.customerEmail}</div>
-                    </td>
-                    {showOrg ? (
-                      <td className="px-4 py-3 text-[color:var(--muted)]">{o.organization.name}</td>
-                    ) : null}
-                    <td className="px-4 py-3">{o.event.name}</td>
-                    <td className="px-4 py-3 text-xs">
-                      {pay?.provider ?? "—"}
-                      {pay?.providerPaymentId ? (
-                        <div className="font-mono text-[10px] text-[color:var(--muted)]">
-                          {maskRef(pay.providerPaymentId)}
-                        </div>
+                      </Link>
+                      <p className="mt-1 truncate text-sm text-foreground">
+                        {o.customerFirstName} {o.customerLastName}
+                      </p>
+                      <p className="truncate text-xs text-[color:var(--muted)]">
+                        {o.customerEmail}
+                      </p>
+                      <p className="mt-1 text-xs text-[color:var(--muted)]">{o.event.name}</p>
+                      {showOrg ? (
+                        <p className="text-xs text-[color:var(--muted)]">{o.organization.name}</p>
                       ) : null}
-                    </td>
-                    <td className="px-4 py-3">
-                      {o.paymentStatus} / {o.orderStatus}
-                    </td>
-                    <td className="px-4 py-3">{formatMoney(o.total, o.currency)}</td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-semibold tabular-nums">
+                        {formatMoney(o.total, o.currency)}
+                      </p>
+                      <div className="mt-1.5 flex flex-col items-end gap-1">
+                        <StatusPill tone={statusTone(o.paymentStatus)}>
+                          {o.paymentStatus}
+                        </StatusPill>
+                      </div>
+                    </div>
+                  </div>
+                  {pay?.provider ? (
+                    <p className="mt-2 text-[10px] text-[color:var(--muted)]">
+                      {pay.provider}
+                      {pay.providerPaymentId ? ` · ${maskRef(pay.providerPaymentId)}` : ""}
+                    </p>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="tl-table-wrap hidden lg:block">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ordrenr</th>
+                  <th>Kunde</th>
+                  {showOrg ? <th>Organisasjon</th> : null}
+                  <th>Event</th>
+                  <th>Provider</th>
+                  <th>Status</th>
+                  <th>Totalt</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((o) => {
+                  const pay = o.payments[0];
+                  return (
+                    <tr key={o.id}>
+                      <td className="font-mono text-xs">
+                        <Link
+                          className="text-[color:var(--accent)] underline-offset-2 hover:underline"
+                          href={`/admin/orders/${o.orderNumber}`}
+                        >
+                          {o.orderNumber}
+                        </Link>
+                      </td>
+                      <td>
+                        {o.customerFirstName} {o.customerLastName}
+                        <div className="text-xs text-[color:var(--muted)]">{o.customerEmail}</div>
+                      </td>
+                      {showOrg ? (
+                        <td className="text-[color:var(--muted)]">{o.organization.name}</td>
+                      ) : null}
+                      <td>{o.event.name}</td>
+                      <td className="text-xs">
+                        {pay?.provider ?? "—"}
+                        {pay?.providerPaymentId ? (
+                          <div className="font-mono text-[10px] text-[color:var(--muted)]">
+                            {maskRef(pay.providerPaymentId)}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td>
+                        <div className="flex flex-wrap gap-1">
+                          <StatusPill tone={statusTone(o.paymentStatus)}>
+                            {o.paymentStatus}
+                          </StatusPill>
+                          <StatusPill tone={statusTone(o.orderStatus)}>
+                            {o.orderStatus}
+                          </StatusPill>
+                        </div>
+                      </td>
+                      <td className="tabular-nums">{formatMoney(o.total, o.currency)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }
