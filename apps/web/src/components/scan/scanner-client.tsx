@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatEventTime } from "@/lib/time";
+import { cn } from "@/lib/utils";
 
 type ScanResult = {
   result: string;
@@ -22,15 +23,12 @@ type ScanResult = {
   previousCheckedInByName?: string | null;
 };
 
-const resultStyles: Record<string, string> = {
-  SUCCESS: "bg-emerald-600",
-  ALREADY_USED: "bg-red-600",
-  INVALID: "bg-red-700",
-  WRONG_EVENT: "bg-orange-500",
-  CANCELLED: "bg-red-700",
-  REFUNDED: "bg-red-700",
-  EVENT_CANCELLED: "bg-red-700",
-};
+function resultPanelClass(result: string) {
+  if (result === "SUCCESS") return "tl-scan-valid";
+  if (result === "ALREADY_USED") return "tl-scan-duplicate";
+  if (result === "WRONG_EVENT") return "tl-scan-duplicate";
+  return "tl-scan-invalid";
+}
 
 export function ScannerClient({
   eventId,
@@ -166,13 +164,13 @@ export function ScannerClient({
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-[390px] flex-col bg-[color:var(--background)] text-foreground">
+    <div className="mx-auto flex min-h-[calc(100dvh-3rem)] max-w-md flex-col bg-[color:var(--background)] text-foreground sm:max-w-lg">
       <header className="border-b border-[color:var(--outline)]/30 px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--accent)]">
             ● Station armed
           </p>
-          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+          <span className="rounded-md border border-emerald-500/25 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
             Online
           </span>
         </div>
@@ -181,16 +179,16 @@ export function ScannerClient({
         </h1>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <Button
-            size="lg"
-            className="h-12"
+            size="xl"
+            className="h-14 text-base"
             variant={mode === "scan" ? "default" : "secondary"}
             onClick={() => setMode("scan")}
           >
             Scan QR
           </Button>
           <Button
-            size="lg"
-            className="h-12"
+            size="xl"
+            className="h-14 text-base"
             variant={mode === "search" ? "default" : "secondary"}
             onClick={() => setMode("search")}
           >
@@ -199,28 +197,31 @@ export function ScannerClient({
         </div>
       </header>
 
-      <div className="flex-1 p-4">
+      <div className="flex-1 p-4 tl-safe-bottom">
         {mode === "scan" ? (
           <div>
-            <div className="relative overflow-hidden rounded-lg border border-[color:var(--accent)]/40 bg-black">
-              <div id="qr-reader" className="min-h-[280px]" />
+            <div className="relative overflow-hidden rounded-xl border border-[color:var(--accent)]/40 bg-black shadow-[var(--shadow-panel)]">
+              <div id="qr-reader" className="min-h-[min(52vh,22rem)]" />
               <div className="pointer-events-none absolute inset-0">
-                <div className="absolute left-6 top-6 h-8 w-8 border-l-2 border-t-2 border-[color:var(--accent)]" />
-                <div className="absolute right-6 top-6 h-8 w-8 border-r-2 border-t-2 border-[color:var(--accent)]" />
-                <div className="absolute bottom-6 left-6 h-8 w-8 border-b-2 border-l-2 border-[color:var(--accent)]" />
-                <div className="absolute bottom-6 right-6 h-8 w-8 border-b-2 border-r-2 border-[color:var(--accent)]" />
+                <div className="absolute left-5 top-5 h-9 w-9 border-l-2 border-t-2 border-[color:var(--accent)]" />
+                <div className="absolute right-5 top-5 h-9 w-9 border-r-2 border-t-2 border-[color:var(--accent)]" />
+                <div className="absolute bottom-5 left-5 h-9 w-9 border-b-2 border-l-2 border-[color:var(--accent)]" />
+                <div className="absolute bottom-5 right-5 h-9 w-9 border-b-2 border-r-2 border-[color:var(--accent)]" />
                 <div className="absolute inset-x-10 top-1/2 h-px -translate-y-1/2 bg-[color:var(--accent)]/80" />
               </div>
-              <p className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--accent-soft)]">
+              <p className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-md bg-black/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--accent-soft)]">
                 ● Sentrer QR-kode
               </p>
             </div>
             {cameraError ? (
-              <p className="mt-3 text-sm text-[color:var(--warning)]">{cameraError}</p>
+              <p className="mt-3 text-sm text-[color:var(--warning)]" role="status">
+                {cameraError}
+              </p>
             ) : null}
             <div className="mt-4">
               <Input
                 placeholder="Lim inn token / URL"
+                className="h-12 text-base"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     void validateToken((e.target as HTMLInputElement).value);
@@ -235,8 +236,12 @@ export function ScannerClient({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Navn, e-post, telefon, billettnr, ordre…"
+              className="h-12 text-base"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void search();
+              }}
             />
-            <Button className="h-12 w-full" size="lg" onClick={search}>
+            <Button className="h-14 w-full text-base" size="xl" onClick={search}>
               Søk gjest
             </Button>
             <ul className="space-y-2">
@@ -246,15 +251,16 @@ export function ScannerClient({
                   className="rounded-lg border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-3"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <p className="font-medium">{r.holderName}</p>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{r.holderName}</p>
                       <p className="text-xs text-[color:var(--muted)]">
                         {r.ticketType} · {r.publicId} · {r.status}
                       </p>
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex shrink-0 flex-col gap-1">
                       <Button
                         size="sm"
+                        className="min-h-10"
                         disabled={busy || r.status === "CHECKED_IN"}
                         onClick={() => void manualCheckIn(r.id)}
                       >
@@ -264,6 +270,7 @@ export function ScannerClient({
                         <Button
                           size="sm"
                           variant="secondary"
+                          className="min-h-10"
                           disabled={busy}
                           onClick={() => {
                             setOverrideTicketId(r.id);
@@ -292,40 +299,52 @@ export function ScannerClient({
 
       {result ? (
         <div
-          className={`px-4 py-8 text-center ${resultStyles[result.result] ?? "bg-[color:var(--surface-high)]"}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label={result.message}
+          className={cn(
+            "fixed inset-x-0 bottom-0 z-50 max-h-[92dvh] overflow-y-auto px-4 py-10 text-center animate-scale-in tl-safe-bottom sm:inset-x-auto sm:left-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:rounded-t-2xl",
+            resultPanelClass(result.result)
+          )}
           onClick={() => setResult(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setResult(null);
+          }}
         >
-          <p className="font-display text-4xl font-bold tracking-wide">{result.message}</p>
+          <p className="font-display text-4xl font-bold tracking-wide sm:text-5xl">
+            {result.message}
+          </p>
           {result.result === "SUCCESS" && result.ticket ? (
-            <div className="mx-auto mt-5 max-w-sm space-y-2 text-left text-sm text-white">
+            <div className="mx-auto mt-6 max-w-sm space-y-3 text-left text-base">
               {result.ticket.requireIdCheck || result.ticket.ageLimit != null ? (
-                <div className="rounded-lg bg-black/25 px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-white/70">
+                <div className="rounded-lg bg-black/25 px-4 py-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide opacity-70">
                     Alderskrav
                   </p>
-                  <p className="text-lg font-semibold">
+                  <p className="text-2xl font-semibold">
                     {result.ticket.ageLimit != null ? `${result.ticket.ageLimit}+` : "—"}
                   </p>
-                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-amber-200">
+                  <p className="mt-1 text-sm font-semibold uppercase tracking-wide text-amber-100">
                     KONTROLLER LEGITIMASJON
                   </p>
                 </div>
               ) : null}
-              <p>
-                <span className="text-white/70">Navn:</span> {result.ticket.holderName ?? "—"}
+              <p className="text-lg">
+                <span className="opacity-70">Navn:</span>{" "}
+                <span className="font-semibold">{result.ticket.holderName ?? "—"}</span>
               </p>
               <p>
-                <span className="text-white/70">Billettype:</span> {result.ticket.ticketType}
+                <span className="opacity-70">Billettype:</span> {result.ticket.ticketType}
               </p>
               {result.ticket.accessNote ? (
                 <p>
-                  <span className="text-white/70">Sone / merknad:</span> {result.ticket.accessNote}
+                  <span className="opacity-70">Sone / merknad:</span> {result.ticket.accessNote}
                 </p>
               ) : null}
             </div>
           ) : null}
           {result.result === "ALREADY_USED" ? (
-            <div className="mx-auto mt-3 max-w-sm space-y-2 text-sm text-white/90">
+            <div className="mx-auto mt-4 max-w-sm space-y-2 text-left text-base opacity-95">
               <p>
                 Tidligere skannet{" "}
                 {formatEventTime(
@@ -336,21 +355,22 @@ export function ScannerClient({
                 )}
               </p>
               {result.previousDeviceId || result.previousCheckedInByName ? (
-                <p className="text-white/80">
+                <p className="opacity-90">
                   Forrige scanner: {result.previousCheckedInByName ?? "—"}
                   {result.previousDeviceId ? ` · ${result.previousDeviceId}` : ""}
                 </p>
               ) : null}
               {overrideTicketId ? (
-                <div className="space-y-2 text-left" onClick={(e) => e.stopPropagation()}>
+                <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
                   <Input
                     value={overrideReason}
                     onChange={(e) => setOverrideReason(e.target.value)}
                     placeholder="Begrunnelse for override (påkrevd)"
-                    className="bg-white text-zinc-900"
+                    className="h-12 bg-white text-zinc-900"
                   />
                   <Button
-                    size="sm"
+                    size="lg"
+                    className="w-full"
                     disabled={busy || overrideReason.trim().length < 3}
                     onClick={() =>
                       void manualCheckIn(overrideTicketId, {
@@ -366,9 +386,9 @@ export function ScannerClient({
             </div>
           ) : null}
           {result.result !== "SUCCESS" && result.ticket?.holderName ? (
-            <p className="mt-3 text-sm text-white/80">{result.ticket.holderName}</p>
+            <p className="mt-4 text-lg font-medium opacity-90">{result.ticket.holderName}</p>
           ) : null}
-          <p className="mt-4 text-xs text-white/70">Trykk for å scanne neste</p>
+          <p className="mt-6 text-sm opacity-80">Trykk for å scanne neste</p>
         </div>
       ) : null}
     </div>
