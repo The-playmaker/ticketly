@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -24,6 +24,11 @@ import {
   type TicketAvailabilityPresentation,
 } from "@/lib/tickets/ticket-availability";
 import { TicketAvailabilityStatus } from "@/components/tickets/ticket-availability-status";
+import {
+  readPromoterRefClient,
+  readRefFromSearchParams,
+  setPromoterRefCookie,
+} from "@/lib/promoter";
 
 const schema = z
   .object({
@@ -117,6 +122,34 @@ export function CheckoutForm({
     return hint;
   }, [watchedEmail, typoDismissed]);
 
+  // Prefill promoter / promo code from ?ref= cookie or URL (never blocks checkout).
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const fromUrl = readRefFromSearchParams(params);
+      if (fromUrl) setPromoterRefCookie(fromUrl);
+      const existing = form.getValues("promoCode");
+      if (existing?.trim()) return;
+      const code = fromUrl ?? readPromoterRefClient();
+      if (code) {
+        form.setValue("promoCode", code);
+        void (async () => {
+          const res = await fetch("/api/promos/validate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code, eventId, subtotal: estimatedTotal }),
+          });
+          if (!res.ok) return;
+          const data = await res.json();
+          setPromoDiscount(data.discount ?? 0);
+        })();
+      }
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount for attribution
+  }, []);
+
   async function validatePromo() {
     const code = form.getValues("promoCode");
     if (!code) return;
@@ -128,6 +161,7 @@ export function CheckoutForm({
     const data = await res.json();
     if (res.ok) {
       setPromoDiscount(data.discount ?? 0);
+      setError(null);
     } else {
       setPromoDiscount(0);
       setError(toUserFacingError(data, "Ugyldig kampanjekode"));
@@ -142,6 +176,12 @@ export function CheckoutForm({
       const params = new URLSearchParams(
         typeof window !== "undefined" ? window.location.search : ""
       );
+      // Prefer typed code; fall back to cookie/URL ref so attribution survives empty field.
+      const attributedCode =
+        values.promoCode?.trim() ||
+        readRefFromSearchParams(params) ||
+        readPromoterRefClient() ||
+        undefined;
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -154,7 +194,7 @@ export function CheckoutForm({
           email: values.email,
           emailConfirm: values.emailConfirm,
           phone: values.phone,
-          promoCode: values.promoCode,
+          promoCode: attributedCode,
           createAccount: values.createAccount,
           termsAccepted: true,
           termsVersion: LEGAL_VERSIONS.terms,
@@ -327,7 +367,7 @@ export function CheckoutForm({
               {...form.register("emailConfirm")}
             />
             {form.formState.errors.emailConfirm ? (
-              <p className="mt for="emailConfirm" className="mt-1 text-sm text-[color:var(--destructive)]">
+              <p className="mt-1 text-sm text-[color:var(--destructive)]">
                 {form.formState.errors.emailConfirm.message}
               </p>
             ) : null}
