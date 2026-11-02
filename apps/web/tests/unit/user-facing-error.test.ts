@@ -14,9 +14,9 @@ describe("toUserFacingError", () => {
   it("extracts message from API { error: { code, message } }", () => {
     expect(
       toUserFacingError({
-        error: { code: "TICKET_SOLD_OUT", message: "Denne billettypen er utsolgt." },
+        error: { code: "TICKET_SOLD_OUT", message: "Denne billettypen er dessverre utsolgt." },
       })
-    ).toBe("Denne billettypen er utsolgt.");
+    ).toBe("Denne billettypen er dessverre utsolgt.");
   });
 
   it("extracts string from { error: string }", () => {
@@ -100,14 +100,14 @@ describe("toPaymentUserFacingError", () => {
 describe("checkout UI regression: structured error must render as readable string", () => {
   it("coerces reserve/checkout API body the way UI components do before setError", () => {
     const apiBody = {
-      error: { code: "TICKET_SOLD_OUT", message: "Denne billettypen er utsolgt." },
+      error: { code: "TICKET_SOLD_OUT", message: "Denne billettypen er dessverre utsolgt." },
     };
     // Old bug: throw new Error(data.error) → setError(e.message) → "[object Object]"
     const legacy = new Error(apiBody.error as unknown as string);
     expect(legacy.message).toBe("[object Object]");
 
     const fixed = toPaymentUserFacingError(apiBody);
-    expect(fixed).toBe("Denne billettypen er utsolgt.");
+    expect(fixed).toBe("Denne billettypen er dessverre utsolgt.");
     expect(fixed).not.toContain("object Object");
   });
 });
