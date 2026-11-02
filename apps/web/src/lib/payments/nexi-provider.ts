@@ -14,6 +14,7 @@ import {
   normalizeNexiPaymentMethod,
   parseNexiAmount,
 } from "./nexi-status";
+import { nexiCreateIdempotencyKey } from "./nexi-idempotency";
 import type {
   CancelPaymentInput,
   CancelPaymentResult,
@@ -88,7 +89,6 @@ function buildOrderItems(input: CreateCheckoutInput) {
     }));
   }
 
-  // Single line fallback from order total (still server-calculated)
   return [
     {
       reference: sanitizeText(input.orderNumber),
@@ -211,7 +211,7 @@ export class NexiCheckoutProvider implements PaymentProvider {
         method: "POST",
         path: "/v1/payments",
         body: payload,
-        idempotencyKey: `create_${input.orderId}`.slice(0, 64),
+        idempotencyKey: nexiCreateIdempotencyKey(input),
       });
     } catch (e) {
       if (e instanceof NexiApiError) {
@@ -244,7 +244,6 @@ export class NexiCheckoutProvider implements PaymentProvider {
 
     const chargeId = input.providerChargeId;
     if (!chargeId) {
-      // Attempt to resolve charge from payment retrieve
       const payment = await this.retrievePayment(input.providerPaymentId);
       const fromCharges = payment.payment?.charges?.[0]?.chargeId;
       if (!fromCharges) {
@@ -285,7 +284,7 @@ export class NexiCheckoutProvider implements PaymentProvider {
       });
       return {
         providerRefundId: result.refundId,
-        status: "PENDING", // confirmed via payment.refund.completed webhook
+        status: "PENDING",
         amount: input.amount,
       };
     } catch (e) {
@@ -355,10 +354,8 @@ export class NexiCheckoutProvider implements PaymentProvider {
       (data.order as { reference?: string } | undefined)?.reference ??
       (typeof data.merchantReference === "string" ? data.merchantReference : undefined);
 
-    // myReference / order reference is our order number or order id
     let orderId: string | undefined;
     if (typeof data.myReference === "string" && data.myReference.startsWith("c")) {
-      // cuid-like — treat as orderId when we stored orderId in myReference
       orderId = data.myReference;
     }
 
@@ -368,7 +365,6 @@ export class NexiCheckoutProvider implements PaymentProvider {
       (data.cardDetails ? "CARD" : undefined) ??
       (typeof data.paymentType === "string" ? data.paymentType : undefined);
 
-    // Vipps hints in payload
     const vippsHint =
       JSON.stringify(data).toLowerCase().includes("vipps") ? "VIPPS" : paymentMethodRaw;
 
@@ -398,7 +394,6 @@ export class NexiCheckoutProvider implements PaymentProvider {
         orderReference: orderRef,
         amount,
         currency,
-        // Intentionally omit full consumer/card details from stored raw
       },
     };
   }
@@ -412,7 +407,6 @@ export class NexiCheckoutProvider implements PaymentProvider {
   }
 }
 
-/** Helper for tests / verification after webhook */
 export async function verifyNexiPaymentAmounts(
   paymentId: string,
   expectedAmount: number,
