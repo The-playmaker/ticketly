@@ -9,26 +9,11 @@ import { organizationIdWhere } from "@/lib/admin/org-context";
 import { isSuperAdmin } from "@/lib/auth/rbac";
 import { expectedTicketCountForItems } from "@/lib/tickets/expected-count";
 import { OrderCustomerEmailPanel } from "@/components/admin/order-customer-email-panel";
-
-function providerLabel(provider: string) {
-  switch (provider) {
-    case "NEXI":
-    case "NETS":
-      return "Nexi Checkout";
-    case "STRIPE":
-      return "Stripe";
-    case "MOCK":
-      return "Mock (dev)";
-    default:
-      return provider;
-  }
-}
-
-function maskRef(ref: string | null | undefined) {
-  if (!ref) return "—";
-  if (ref.length <= 12) return ref;
-  return `${ref.slice(0, 8)}…${ref.slice(-4)}`;
-}
+import {
+  AdminPaymentAttemptsList,
+  providerLabel,
+  maskRef,
+} from "@/components/admin/admin-payment-attempts-list";
 
 type Props = { params: Promise<{ orderNumber: string }> };
 
@@ -147,8 +132,12 @@ export default async function AdminOrderDetailPage({ params }: Props) {
           <h2 className="text-sm font-medium text-[color:var(--muted)]">Betaling</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between gap-4">
-              <dt className="text-[color:var(--muted)]">Provider</dt>
+              <dt className="text-[color:var(--muted)]">Provider (siste forsøk)</dt>
               <dd>{payment ? providerLabel(payment.provider) : "—"}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-[color:var(--muted)]">Forsøk</dt>
+              <dd>{order.payments.length}</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-[color:var(--muted)]">Method</dt>
@@ -204,11 +193,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
           <ol className="mt-3 space-y-2 text-sm">
             <li>Opprettet {order.createdAt.toISOString()}</li>
             {order.paidAt ? <li>Betalt {order.paidAt.toISOString()}</li> : null}
-            {order.payments.map((p) => (
-              <li key={p.id}>
-                Payment {p.status} · {providerLabel(p.provider)} · {p.createdAt.toISOString()}
-              </li>
-            ))}
+            <AdminPaymentAttemptsList payments={order.payments} />
             {order.refunds.map((r) => (
               <li key={r.id}>
                 Refund {r.status} {formatMoney(r.amount, r.currency)} · {r.createdAt.toISOString()}
