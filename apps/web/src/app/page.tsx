@@ -3,6 +3,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { EventCard } from "@/components/events/event-card";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { EventService } from "@/services/event-service";
 
 export const dynamic = "force-dynamic";
@@ -15,10 +16,16 @@ export default async function HomePage() {
       <SiteHeader />
       <main>
         <section className="relative overflow-hidden border-b border-[color:var(--outline)]/30">
-          <div className="relative mx-auto flex min-h-[70vh] max-w-6xl flex-col justify-center px-4 py-20 sm:py-28">
-            <p className="animate-fade-up text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--accent)]">
-              Din neste billettplattform
-            </p>
+          <div
+            className="pointer-events-none absolute inset-0 opacity-60"
+            aria-hidden
+            style={{
+              background:
+                "radial-gradient(ellipse 80% 50% at 50% 100%, rgba(255,90,31,0.12), transparent 70%)",
+            }}
+          />
+          <div className="tl-page relative flex min-h-[min(70vh,44rem)] flex-col justify-center py-16 sm:py-24">
+            <p className="animate-fade-up tl-eyebrow">Din neste billettplattform</p>
             <h1 className="animate-fade-up-delay mt-4 max-w-3xl font-display text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl md:text-7xl">
               Finn neste{" "}
               <span className="text-[color:var(--accent)]">opplevelse.</span>
@@ -37,10 +44,10 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-4 py-16">
-          <div className="mb-8 flex items-end justify-between gap-4">
+        <section className="tl-page tl-section">
+          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="font-display text-3xl font-semibold text-foreground">
+              <h2 className="font-display text-2xl font-semibold text-foreground sm:text-3xl">
                 Kommende arrangementer
               </h2>
               <p className="mt-1 text-[color:var(--muted)]">
@@ -55,11 +62,12 @@ export default async function HomePage() {
             </Link>
           </div>
           {events.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-[color:var(--outline)]/40 p-10 text-center text-[color:var(--muted)]">
-              Ingen publiserte arrangementer akkurat nå.
-            </p>
+            <EmptyState
+              title="Ingen publiserte arrangementer"
+              description="Kom tilbake snart — nye events dukker opp her når de publiseres."
+            />
           ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {events.map((event) => (
                 <EventCard key={event.id} event={event} />
               ))}
@@ -68,14 +76,14 @@ export default async function HomePage() {
         </section>
 
         <section className="border-y border-[color:var(--outline)]/25 bg-[color:var(--surface-container)]">
-          <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-14 sm:flex-row sm:items-center sm:justify-between">
+          <div className="tl-page flex flex-col gap-6 py-12 sm:flex-row sm:items-center sm:justify-between sm:py-14">
             <div>
               <h2 className="font-display text-2xl font-semibold sm:text-3xl">Er du arrangør?</h2>
               <p className="mt-2 max-w-lg text-[color:var(--muted)]">
                 Selg billetter med full kontroll, sanntids batch-styring og mobil dørskanning.
               </p>
             </div>
-            <Button asChild size="lg">
+            <Button asChild size="lg" className="w-full sm:w-auto">
               <Link href="/login?callbackUrl=/admin">Opprett arrangement</Link>
             </Button>
           </div>
