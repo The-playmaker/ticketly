@@ -58,12 +58,12 @@ export function TicketQrCard({ ticket, event, orderNumber, hidePdfButton }: Prop
   }, [qrValue]);
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-[color:var(--outline)]/30 bg-gradient-to-b from-zinc-900 to-zinc-950">
-      <div className="border-b border-[color:var(--outline)]/30 bg-zinc-900/80 px-5 py-4">
+    <article className="overflow-hidden rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] shadow-[var(--shadow-panel)]">
+      <div className="border-b border-[color:var(--outline)]/30 bg-[color:var(--surface-high)]/50 px-4 py-4 sm:px-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-display text-xl text-white">{event.name}</p>
-            <p className="text-sm text-zinc-400">
+            <p className="font-display text-lg font-semibold text-foreground sm:text-xl">{event.name}</p>
+            <p className="mt-0.5 text-sm text-[color:var(--muted)]">
               {formatEventDateTime(event.startsAt, event.timezone)}
             </p>
             <p className="text-sm text-[color:var(--muted)]">{event.venue}</p>
@@ -105,30 +105,30 @@ export function TicketQrCard({ ticket, event, orderNumber, hidePdfButton }: Prop
           <p>
             <span className="text-[color:var(--muted)]">Billettype</span>
             <br />
-            <span className="font-medium text-white">{ticket.ticketTypeName}</span>
+            <span className="font-medium text-foreground">{ticket.ticketTypeName}</span>
           </p>
           <p>
             <span className="text-[color:var(--muted)]">Navn</span>
             <br />
-            <span className="font-medium text-white">{ticket.holderName ?? "—"}</span>
+            <span className="font-medium text-foreground">{ticket.holderName ?? "—"}</span>
           </p>
           <p>
             <span className="text-[color:var(--muted)]">Dato</span>
             <br />
-            <span className="font-medium text-white">
+            <span className="font-medium text-foreground">
               {formatEventDateTime(event.startsAt, event.timezone)}
             </span>
           </p>
           <p>
             <span className="text-[color:var(--muted)]">Sted</span>
             <br />
-            <span className="font-medium text-white">{event.venue || "—"}</span>
+            <span className="font-medium text-foreground">{event.venue || "—"}</span>
           </p>
           {event.ageLimit != null ? (
             <p>
               <span className="text-[color:var(--muted)]">Alderskrav</span>
               <br />
-              <span className="font-medium text-white">
+              <span className="font-medium text-foreground">
                 {event.ageLimit}+ · Gyldig legitimasjon kreves
               </span>
             </p>
@@ -136,12 +136,12 @@ export function TicketQrCard({ ticket, event, orderNumber, hidePdfButton }: Prop
           <p>
             <span className="text-[color:var(--muted)]">Ordre</span>
             <br />
-            <span className="font-mono text-xs text-zinc-300">{orderNumber}</span>
+            <span className="font-mono text-xs text-[color:var(--muted)]">{orderNumber}</span>
           </p>
           <p>
             <span className="text-[color:var(--muted)]">Billett-ID</span>
             <br />
-            <span className="font-mono text-xs text-zinc-300">{ticket.publicId}</span>
+            <span className="font-mono text-xs text-[color:var(--muted)]">{ticket.publicId}</span>
           </p>
           {!hidePdfButton ? (
             <div className="flex flex-wrap gap-2 pt-2">
