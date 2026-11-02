@@ -93,9 +93,7 @@ export function validateServerEnv(env: NodeJS.ProcessEnv = process.env): ServerE
   const isProd = data.NODE_ENV === "production";
   const force = env.FORCE_ENV_VALIDATE === "true";
 
-  // When Nexi is selected, fail clearly — never silently fall back to mock/Stripe.
   if (isNexi && (isProd || force || env.PAYMENT_PROVIDER)) {
-    // Skip strict throw only for Vitest unit suites that inject keys themselves mid-test.
     if (env.VITEST !== "true" || force || isProd) {
       try {
         assertNexiEnv(env, data);
