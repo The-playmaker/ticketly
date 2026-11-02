@@ -8,9 +8,17 @@ export function SiteFooter({
   supportPhone?: string | null;
 } = {}) {
   return (
-    <footer className="border-t border-[color:var(--outline)]/25 py-10">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 text-sm text-[color:var(--muted)] sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex flex-wrap gap-x-4 gap-y-2">
+    <footer className="border-t border-[color:var(--outline)]/25 bg-[color:var(--surface-low)]/40 py-10 tl-safe-bottom">
+      <div className="tl-page flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="font-display text-sm font-semibold uppercase tracking-[0.16em] text-foreground">
+            Ticketly
+          </p>
+          <p className="mt-2 max-w-sm text-sm text-[color:var(--muted)]">
+            Produksjonsklar billettplattform for arrangementer, konserter og nattklubber.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-[color:var(--muted)]">
           <Link href="/terms" className="hover:text-foreground">
             Kjøpsvilkår
           </Link>
@@ -33,10 +41,10 @@ export function SiteFooter({
             Arrangørinnlogging
           </Link>
         </div>
-        <div className="space-y-1 text-xs sm:text-right">
+        <div className="space-y-1 text-xs text-[color:var(--muted)] sm:text-right">
           {supportPhone ? <p>Telefon: {supportPhone}</p> : null}
           {supportEmail ? <p>{supportEmail}</p> : null}
-          <p>Ticketly — billettplattform</p>
+          <p>© {new Date().getFullYear()} Ticketly</p>
         </div>
       </div>
     </footer>
