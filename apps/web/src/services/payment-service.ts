@@ -1,1 +1,1 @@
-{{file:/tmp/payment-service-restore.ts}}
+export { PaymentService } from "./payment-service-body";
