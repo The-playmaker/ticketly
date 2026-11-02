@@ -196,6 +196,8 @@ describe("pricing & capacity", () => {
       eventId: "evt1",
       ticketTypeId: null,
       code: "VIP20",
+      label: null,
+      kind: "DISCOUNT" as const,
       discountType: "PERCENTAGE" as const,
       discountValue: 2000,
       maxUses: 100,
