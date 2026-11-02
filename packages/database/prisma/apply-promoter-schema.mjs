@@ -18,20 +18,20 @@ if (schema.includes("enum PromoCodeKind")) {
 const enumNeedle = `enum DiscountType {
   PERCENTAGE
   FIXED
-};
+}
 
 enum CheckInResult {`;
 
 const enumInsert = `enum DiscountType {
   PERCENTAGE
   FIXED
-};
+}
 
 /// DISCOUNT = classic promo; TRACKING = promoter attribution (discount may be 0).
 enum PromoCodeKind {
   DISCOUNT
   TRACKING
-};
+}
 
 enum CheckInResult {`;
 
