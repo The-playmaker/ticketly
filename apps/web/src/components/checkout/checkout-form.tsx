@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -123,6 +123,7 @@ export function CheckoutForm({
   }, [watchedEmail, typoDismissed]);
 
   // Prefill promoter / promo code from ?ref= cookie or URL (never blocks checkout).
+  // startTransition: avoid Suspense/hydration early-update (React #421) while siblings hydrate.
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -132,7 +133,9 @@ export function CheckoutForm({
       if (existing?.trim()) return;
       const code = fromUrl ?? readPromoterRefClient();
       if (code) {
-        form.setValue("promoCode", code);
+        startTransition(() => {
+          form.setValue("promoCode", code);
+        });
         void (async () => {
           const res = await fetch("/api/promos/validate", {
             method: "POST",
@@ -141,7 +144,9 @@ export function CheckoutForm({
           });
           if (!res.ok) return;
           const data = await res.json();
-          setPromoDiscount(data.discount ?? 0);
+          startTransition(() => {
+            setPromoDiscount(data.discount ?? 0);
+          });
         })();
       }
     } catch {
