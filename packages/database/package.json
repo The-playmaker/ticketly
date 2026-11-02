@@ -9,7 +9,7 @@
     "./client": "./src/index.ts"
   },
   "scripts": {
-    "generate": "prisma generate",
+    "generate": "node prisma/apply-promoter-schema.mjs && prisma generate",
     "migrate": "prisma migrate deploy",
     "migrate:dev": "prisma migrate dev",
     "seed": "tsx prisma/seed.ts",
