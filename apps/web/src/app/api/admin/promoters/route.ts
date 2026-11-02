@@ -5,6 +5,7 @@ import { canManageEvents, isSuperAdmin } from "@/lib/auth/rbac";
 import { PromoService } from "@/services/promo-service";
 import { resolveOrgIdParam } from "@/lib/admin/org-access";
 import { jsonError, AppError } from "@/lib/api-error";
+import { isMissingPromoMigrationError } from "@/lib/promo-migration";
 
 /**
  * GET /api/admin/promoters?organizationId=&eventId=&kind=
@@ -45,6 +46,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ promoters });
   } catch (e) {
+    if (isMissingPromoMigrationError(e)) {
+      return jsonError(new AppError("DB_MIGRATION_REQUIRED", "Database-migrasjon mangler", 503, e));
+    }
     return jsonError(e);
   }
 }
@@ -100,6 +104,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ promo }, { status: 201 });
   } catch (e) {
+    if (isMissingPromoMigrationError(e)) {
+      return jsonError(new AppError("DB_MIGRATION_REQUIRED", "Database-migrasjon mangler", 503, e));
+    }
     return jsonError(e);
   }
 }

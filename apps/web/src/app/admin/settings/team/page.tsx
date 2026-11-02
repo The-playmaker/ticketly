@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { requireAdminPageSession } from "@/lib/auth/session";
 import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { canManageTeam, isSuperAdmin } from "@/lib/auth/rbac";
 import { UserAdminService } from "@/services/user-admin-service";
@@ -11,16 +11,7 @@ import { SelectOrganizationPrompt } from "@/components/admin/select-organization
 export const dynamic = "force-dynamic";
 
 export default async function TeamSettingsPage() {
-  const session = await auth();
-  if (!session?.user) redirect("/login?callbackUrl=/admin/settings/team");
-
-  const user = {
-    id: session.user.id,
-    email: session.user.email!,
-    globalRole: session.user.globalRole,
-    isActive: session.user.isActive !== false,
-    memberships: session.user.memberships,
-  };
+  const user = await requireAdminPageSession();
 
   const scope = await resolveOrgScopeForUser(user.id, user.globalRole);
 
