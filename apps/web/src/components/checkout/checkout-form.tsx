@@ -213,20 +213,20 @@ export function CheckoutForm({
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <div className="flex gap-2 text-xs uppercase tracking-wide text-[color:var(--muted)]">
-        <span className={step >= 1 ? "text-[color:var(--accent)]" : ""}>1. Billetter</span>
-        <span>·</span>
-        <span className={step >= 2 ? "text-[color:var(--accent)]" : ""}>2. Kontakt</span>
-        <span>·</span>
-        <span className={step >= 3 ? "text-[color:var(--accent)]" : ""}>3. Betaling</span>
-      </div>
+      <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--muted)]">
+        <li className={step >= 1 ? "text-[color:var(--accent)]" : undefined}>1. Billetter</li>
+        <li aria-hidden>·</li>
+        <li className={step >= 2 ? "text-[color:var(--accent)]" : undefined}>2. Kontakt</li>
+        <li aria-hidden>·</li>
+        <li className={step >= 3 ? "text-[color:var(--accent)]" : undefined}>3. Betaling</li>
+      </ol>
 
-      <div className="rounded-xl border border-[color:var(--outline)]/30 bg-zinc-900/50 p-4">
-        <p className="text-sm text-zinc-400">{eventName}</p>
-        <p className="mt-1 text-lg font-semibold">
+      <div className="tl-panel p-4">
+        <p className="text-sm text-[color:var(--muted)]">{eventName}</p>
+        <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
           {formatMoney(Math.max(0, estimatedTotal - promoDiscount))}
           {promoDiscount > 0 ? (
-            <span className="ml-2 text-sm font-normal text-emerald-400">
+            <span className="ml-2 text-sm font-normal text-[color:var(--success)]">
               −{formatMoney(promoDiscount)}
             </span>
           ) : null}
@@ -247,7 +247,7 @@ export function CheckoutForm({
 
       {step === 1 ? (
         <div className="space-y-4">
-          <p className="text-sm text-zinc-300">
+          <p className="text-sm leading-relaxed text-[color:var(--muted)]">
             Billetter er reservert i 10 minutter mens du fullfører kjøpet.
           </p>
           <Button className="w-full" size="lg" onClick={() => setStep(2)}>
@@ -285,18 +285,18 @@ export function CheckoutForm({
               })}
             />
             {form.formState.errors.email ? (
-              <p className="mt-1 text-sm text-red-400">{form.formState.errors.email.message}</p>
+              <p className="mt-1 text-sm text-[color:var(--destructive)]">{form.formState.errors.email.message}</p>
             ) : null}
             {typoHint ? (
               <p
-                className="mt-1.5 text-sm text-amber-200"
+                className="mt-1.5 text-sm text-[color:var(--warning)]"
                 role="status"
                 data-testid="email-typo-hint"
               >
                 {typoHint.message}{" "}
                 <button
                   type="button"
-                  className="underline underline-offset-2 hover:text-amber-100"
+                  className="underline underline-offset-2 hover:brightness-110"
                   onClick={() => {
                     form.setValue("email", typoHint.suggested, {
                       shouldValidate: true,
@@ -310,7 +310,7 @@ export function CheckoutForm({
                 <span className="text-[color:var(--muted)]"> · </span>
                 <button
                   type="button"
-                  className="text-[color:var(--muted)] underline underline-offset-2 hover:text-zinc-300"
+                  className="text-[color:var(--muted)] underline underline-offset-2 hover:text-foreground"
                   onClick={() => setTypoDismissed(typoHint.original)}
                 >
                   Nei
@@ -327,7 +327,7 @@ export function CheckoutForm({
               {...form.register("emailConfirm")}
             />
             {form.formState.errors.emailConfirm ? (
-              <p className="mt-1 text-sm text-red-400">
+              <p className="mt-1 text-sm text-[color:var(--destructive)]">
                 {form.formState.errors.emailConfirm.message}
               </p>
             ) : null}
@@ -347,14 +347,14 @@ export function CheckoutForm({
           </div>
 
           {ageLimit != null && ageLimit > 0 ? (
-            <label className="flex items-start gap-3 rounded-lg border border-[color:var(--outline)]/30 bg-zinc-950/40 p-3 text-sm">
+            <label className="flex items-start gap-3 rounded-lg border border-[color:var(--outline)]/30 bg-[color:var(--surface-low)]/60 p-3 text-sm">
               <input
                 type="checkbox"
                 className="mt-1"
                 {...form.register("ageConfirmed")}
               />
               <span>
-                <span className="font-medium text-zinc-100">
+                <span className="font-medium text-foreground">
                   Jeg bekrefter at billettbrukeren oppfyller arrangementets aldersgrense ({ageLimit}+).
                 </span>
                 <span className="mt-1 block text-xs text-[color:var(--muted)]">
@@ -366,7 +366,7 @@ export function CheckoutForm({
 
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" className="mt-1" {...form.register("termsAccepted")} />
-            <span className="text-zinc-300">
+            <span className="text-[color:var(--muted)]">
               Ved å fullføre kjøpet godtar du{" "}
               <Link href="/terms" className="text-[color:var(--accent-soft)] hover:underline" target="_blank">
                 Kjøpsvilkår
@@ -387,7 +387,7 @@ export function CheckoutForm({
             </span>
           </label>
 
-          <label className="flex items-start gap-3 text-sm text-zinc-400">
+          <label className="flex items-start gap-3 text-sm text-[color:var(--muted)]">
             <input type="checkbox" className="mt-1" {...form.register("marketingOptIn")} />
             <span>
               Ja, jeg vil motta nyheter og tilbud (valgfritt). Du kan melde deg av når som helst.
@@ -404,12 +404,12 @@ export function CheckoutForm({
               }
             />
           ) : null}
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          {error ? <p className="text-sm text-[color:var(--destructive)]">{error}</p> : null}
           {form.formState.errors.termsAccepted ? (
-            <p className="text-sm text-red-400">{form.formState.errors.termsAccepted.message}</p>
+            <p className="text-sm text-[color:var(--destructive)]">{form.formState.errors.termsAccepted.message}</p>
           ) : null}
           {form.formState.errors.ageConfirmed ? (
-            <p className="text-sm text-red-400">{form.formState.errors.ageConfirmed.message}</p>
+            <p className="text-sm text-[color:var(--destructive)]">{form.formState.errors.ageConfirmed.message}</p>
           ) : null}
 
           <Button className="w-full" size="lg" type="submit" disabled={loading}>
