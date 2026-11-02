@@ -58,17 +58,17 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   });
 
   return (
-    <div>
+    <div className="min-h-dvh">
       <SiteHeader />
-      <main className="mx-auto max-w-2xl px-4 py-12 max-[390px]:px-3">
+      <main className="tl-page max-w-2xl py-10 sm:py-12">
         {isPaid ? (
           <>
             <Badge variant="success">Betalt</Badge>
-            <h1 className="mt-3 font-display text-4xl text-white max-[390px]:text-3xl">
+            <h1 className="mt-3 font-display text-3xl font-semibold text-foreground sm:text-4xl">
               Billettene dine er klare
             </h1>
-            <p className="mt-2 text-zinc-400">
-              Ordrenummer <span className="font-mono text-zinc-200">{order.orderNumber}</span>
+            <p className="mt-2 text-[color:var(--muted)]">
+              Ordrenummer <span className="font-mono text-foreground">{order.orderNumber}</span>
             </p>
             {order.payments[0]?.paymentMethod ? (
               <p className="mt-1 text-sm text-[color:var(--muted)]">
@@ -83,7 +83,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           <>
             <Badge variant="warning">Under gjennomgang</Badge>
             <h1 className="mt-3 font-display text-3xl">Betaling under manuell gjennomgang</h1>
-            <p className="mt-2 text-zinc-400">
+            <p className="mt-2 text-[color:var(--muted)]">
               Ordren er midlertidig sperret. Kontakt support hvis du ble belastet.
             </p>
           </>
@@ -91,8 +91,8 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           <>
             <Badge variant="warning">Betalingen behandles</Badge>
             <h1 className="mt-3 font-display text-3xl">Vi bekrefter betalingen</h1>
-            <p className="mt-2 text-zinc-400">Dette tar vanligvis bare et øyeblikk.</p>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-2 text-[color:var(--muted)]">Dette tar vanligvis bare et øyeblikk.</p>
+            <p className="mt-1 text-sm text-[color:var(--muted)]">
               Vi venter fortsatt på bekreftelse fra betalingsleverandøren.
             </p>
             {hasAccessToken ? (
@@ -110,10 +110,10 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           </>
         )}
 
-        <div className="mt-8 rounded-2xl border border-[color:var(--outline)]/30 bg-zinc-900/50 p-5">
+        <div className="mt-8 tl-panel p-4 sm:p-5">
           <p className="text-sm text-[color:var(--muted)]">Arrangement</p>
           <p className="text-lg font-medium">{order.event.name}</p>
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-[color:var(--muted)]">
             {formatEventDateTime(order.event.startsAt, order.event.timezone)} ·{" "}
             {order.event.venue?.name ?? order.event.city}
           </p>
@@ -127,9 +127,9 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             {formatMoney(order.total, order.currency)}
           </p>
           {isPaid ? (
-            <p className="mt-4 text-sm text-zinc-400">
+            <p className="mt-4 text-sm text-[color:var(--muted)]">
               Billetter og kvittering er sendt til:{" "}
-              <span className="text-zinc-200">{order.customerEmail}</span>
+              <span className="text-foreground">{order.customerEmail}</span>
             </p>
           ) : null}
         </div>
@@ -155,14 +155,14 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             ) : null}
           </div>
         ) : isPaid && order.tickets.length > 0 ? (
-          <div className="mt-10 rounded-2xl border border-amber-900/50 bg-amber-950/30 p-5 text-sm text-amber-100">
+          <div className="mt-10 rounded-xl border border-[color:var(--warning)]/35 bg-[color:var(--warning)]/10 p-5 text-sm text-[color:var(--warning)]">
             Billetter er utstedt. Bruk lenken fra e-posten (eller logg inn som kjøper) for å vise
             QR-koder.
           </div>
         ) : null}
 
         <div className="mt-10 border-t border-[color:var(--outline)]/25 pt-6 text-sm text-[color:var(--muted)]">
-          <p className="font-medium text-zinc-400">Support</p>
+          <p className="font-medium text-[color:var(--muted)]">Support</p>
           <p className="mt-1">
             {(order.event.organization.customerServiceEmail ??
               order.event.organization.contactEmail) && (
