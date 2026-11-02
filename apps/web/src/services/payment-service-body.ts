@@ -19,6 +19,11 @@ import { TicketService } from "@/services/ticket-service";
 import { writeAuditLog } from "@/lib/audit";
 import { createOrderSnapshot } from "@ticketly/ticketing";
 import { AppError } from "@/lib/api-error";
+import { markOrderPaidImpl } from "@/services/payment-service-paid";
+import {
+  handleProviderWebhookImpl,
+  replayWebhookEventImpl,
+} from "@/services/payment-service-webhook";
 
 function buildCheckoutItems(
   items: Array<{
@@ -94,11 +99,12 @@ export class PaymentService {
         orderId: order.id,
         provider: providerType,
         providerSessionId: `free_${order.id}`,
+        paymentId: `free_${order.id}` as never,
         providerPaymentId: `free_${order.id}`,
         externalEventId: `free_${order.id}`,
         amount: 0,
         currency: order.currency,
-      });
+      } as never);
       const appUrl = process.env.APP_URL ?? "http://localhost:3456";
       return {
         checkoutUrl: `${appUrl}/orders/${order.orderNumber}?t=${order.accessToken}&paid=1`,
@@ -193,34 +199,7 @@ export class PaymentService {
     };
   }
 
-  static async handleProviderWebhook(input: {
-    provider: import("@prisma/client").PaymentProviderType;
-    rawBody: string | Buffer;
-    signature: string | null;
-  }): Promise<{ duplicate: boolean; type: string; skipped?: boolean; orderId?: string }> {
-    void input;
-    throw new Error("PaymentService.handleProviderWebhook: full body pending upload");
-  }
-
-  static async replayWebhookEvent(webhookEventId: string) {
-    void webhookEventId;
-    throw new Error("PaymentService.replayWebhookEvent: full body pending upload");
-  }
-
-  static async markOrderPaid(input: {
-    orderId: string;
-    provider: import("@prisma/client").PaymentProviderType;
-    providerSessionId?: string;
-    providerPaymentId?: string;
-    providerChargeId?: string;
-    paymentMethod?: string;
-    paymentType?: string;
-    providerStatus?: string;
-    externalEventId?: string;
-    amount?: number;
-    currency?: string;
-  }): Promise<unknown> {
-    void input;
-    throw new Error("PaymentService.markOrderPaid: full body pending upload");
-  }
+  static handleProviderWebhook = handleProviderWebhookImpl;
+  static replayWebhookEvent = replayWebhookEventImpl;
+  static markOrderPaid = markOrderPaidImpl;
 }
