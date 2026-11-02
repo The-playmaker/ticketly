@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { requireAdminPageSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { PromoService } from "@/services/promo-service";
@@ -9,8 +9,8 @@ import { SelectOrganizationPrompt } from "@/components/admin/select-organization
 export const dynamic = "force-dynamic";
 
 export default async function AdminPromosPage() {
-  const session = await auth();
-  const scope = await resolveOrgScopeForUser(session!.user.id, session!.user.globalRole);
+  const user = await requireAdminPageSession();
+  const scope = await resolveOrgScopeForUser(user.id, user.globalRole);
 
   if (scope.mode === "none") {
     return (

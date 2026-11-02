@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { requireAdminPageSession } from "@/lib/auth/session";
 import { isSuperAdmin } from "@/lib/auth/rbac";
 import { UserAdminService } from "@/services/user-admin-service";
 import { PlatformUsersClient } from "@/components/admin/platform-users-client";
@@ -13,16 +13,7 @@ type Props = {
 };
 
 export default async function PlatformUsersPage({ searchParams }: Props) {
-  const session = await auth();
-  if (!session?.user) redirect("/login?callbackUrl=/admin/platform/users");
-
-  const user = {
-    id: session.user.id,
-    email: session.user.email!,
-    globalRole: session.user.globalRole,
-    isActive: session.user.isActive !== false,
-    memberships: session.user.memberships,
-  };
+  const user = await requireAdminPageSession();
   if (!isSuperAdmin(user)) redirect("/admin");
 
   const sp = await searchParams;

@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { requireAdminPageSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { CreateEventWizard } from "@/components/admin/create-event-wizard";
 import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
@@ -8,8 +8,8 @@ import { CreateEventOrgPicker } from "@/components/admin/create-event-org-picker
 export const dynamic = "force-dynamic";
 
 export default async function NewEventPage() {
-  const session = await auth();
-  const scope = await resolveOrgScopeForUser(session!.user.id, session!.user.globalRole);
+  const user = await requireAdminPageSession();
+  const scope = await resolveOrgScopeForUser(user.id, user.globalRole);
 
   if (scope.mode === "none") {
     return (
