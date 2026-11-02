@@ -3,11 +3,15 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { EventService } from "@/services/event-service";
 import { formatMoney } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SalesCharts } from "@/components/admin/sales-charts";
 import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { NoOrganizationPanel } from "@/components/admin/no-organization-panel";
 import { organizationIdWhere } from "@/lib/admin/org-context";
+import { PageHeader } from "@/components/ui/page-header";
+import { KpiStat } from "@/components/ui/kpi-stat";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusPill, statusTone } from "@/components/ui/status-pill";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
@@ -16,18 +20,21 @@ export default async function AdminDashboardPage() {
   const scope = await resolveOrgScopeForUser(session!.user.id, session!.user.globalRole);
 
   if (scope.mode === "none" && !scope.isPlatformAdmin) {
-    return <p>Ingen organisasjon tilknyttet.</p>;
+    return (
+      <EmptyState
+        title="Ingen organisasjon"
+        description="Kontoen din er ikke tilknyttet en organisasjon ennå."
+      />
+    );
   }
 
   if (scope.mode === "none" && scope.isPlatformAdmin) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Oversikt</h1>
-          <p className="mt-1 text-sm text-[color:var(--muted)]">
-            Plattformadmin — opprett første organisasjon for å starte salg.
-          </p>
-        </div>
+        <PageHeader
+          title="Oversikt"
+          description="Plattformadmin — opprett første organisasjon for å starte salg."
+        />
         <NoOrganizationPanel showCreateCta />
       </div>
     );
@@ -67,19 +74,20 @@ export default async function AdminDashboardPage() {
       ? "Alle organisasjoner"
       : (scope.organizations.find((o) => o.id === scope.organizationId)?.name ?? "Organisasjon");
 
-  const cards = [
+  const primaryKpis = [
     { label: "Brutto salg i dag", value: formatMoney(stats.revenueToday) },
-    { label: "Brutto salg", value: formatMoney(stats.grossSales ?? stats.revenueTotal) },
-    { label: "Refundert beløp", value: formatMoney(stats.successfulRefundAmount ?? stats.refundedAmount) },
     { label: "Netto omsetning", value: formatMoney(stats.netRevenue ?? stats.revenueTotal - stats.refundedAmount) },
     { label: "Solgt / aktive billetter", value: String(stats.ticketsSold) },
     { label: "Ordrer (betalt)", value: String(stats.orderCount) },
+  ];
+
+  const secondaryKpis = [
+    { label: "Brutto salg", value: formatMoney(stats.grossSales ?? stats.revenueTotal) },
+    { label: "Refundert beløp", value: formatMoney(stats.successfulRefundAmount ?? stats.refundedAmount) },
     {
       label: "Konvertering",
       value:
-        stats.conversionPercent == null
-          ? "Ikke tilgjengelig"
-          : `${stats.conversionPercent}%`,
+        stats.conversionPercent == null ? "Ikke tilgjengelig" : `${stats.conversionPercent}%`,
     },
     { label: "Reservert", value: String(stats.activeReservations) },
     { label: "Feilede betalinger", value: String(stats.failedPayments) },
@@ -90,48 +98,33 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--accent)]">
-            Live transaksjonsmonitor
-          </p>
-          <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-            Oversikt &amp; salgsytelse
-          </h1>
-          <p className="mt-1 text-sm text-[color:var(--muted)]">
-            Live salg og innsjekking · {scopeLabel}
-          </p>
-        </div>
-        <Link
-          href="/admin/events/new"
-          className="rounded-md bg-[color:var(--accent)] px-3 py-2 text-sm font-semibold text-[color:var(--accent-foreground)]"
-        >
-          + Opprett arrangement
-        </Link>
+      <PageHeader
+        eyebrow="Live transaksjonsmonitor"
+        title="Oversikt & salgsytelse"
+        description={`Live salg og innsjekking · ${scopeLabel}`}
+        actions={
+          <Button asChild size="sm">
+            <Link href="/admin/events/new">+ Opprett arrangement</Link>
+          </Button>
+        }
+      />
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {primaryKpis.map((c) => (
+          <KpiStat key={c.label} label={c.label} value={c.value} />
+        ))}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {cards.map((c) => (
-          <Card
-            key={c.label}
-            className="border-[color:var(--outline)]/35 bg-[color:var(--surface-container)]"
-          >
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium uppercase tracking-wide text-[color:var(--muted)]">
-                {c.label}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="font-display text-2xl font-semibold">{c.value}</p>
-            </CardContent>
-          </Card>
+        {secondaryKpis.map((c) => (
+          <KpiStat key={c.label} label={c.label} value={c.value} className="sm:p-4" />
         ))}
       </div>
 
       <SalesCharts salesPerDay={salesPerDay} />
 
       <section>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="font-display text-lg font-semibold">Operativ arrangementsstatus</h2>
           <Link
             href="/admin/events"
@@ -140,43 +133,90 @@ export default async function AdminDashboardPage() {
             Se alle
           </Link>
         </div>
-        <div className="overflow-hidden rounded-lg border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)]">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-[color:var(--surface-high)] text-[color:var(--muted)]">
-              <tr>
-                <th className="px-4 py-3 font-medium">Navn</th>
-                {scope.mode === "global" ? (
-                  <th className="px-4 py-3 font-medium">Organisasjon</th>
-                ) : null}
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Start</th>
-                <th className="px-4 py-3 font-medium" />
-              </tr>
-            </thead>
-            <tbody>
+
+        {events.length === 0 ? (
+          <EmptyState
+            title="Ingen arrangementer"
+            description="Opprett ditt første arrangement for å starte salg."
+            action={
+              <Button asChild size="sm">
+                <Link href="/admin/events/new">Opprett arrangement</Link>
+              </Button>
+            }
+          />
+        ) : (
+          <>
+            {/* Mobile cards */}
+            <ul className="space-y-3 md:hidden">
               {events.map((e) => (
-                <tr key={e.id} className="border-t border-[color:var(--outline)]/20">
-                  <td className="px-4 py-3 font-medium">{e.name}</td>
-                  {scope.mode === "global" ? (
-                    <td className="px-4 py-3 text-[color:var(--muted)]">{e.organization.name}</td>
-                  ) : null}
-                  <td className="px-4 py-3 text-[color:var(--muted)]">{e.status}</td>
-                  <td className="px-4 py-3 text-[color:var(--muted)]">
-                    {e.startsAt.toLocaleString("nb-NO")}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/admin/events/${e.id}`}
-                      className="font-medium text-[color:var(--accent)] hover:brightness-110"
-                    >
-                      Åpne Event Control
-                    </Link>
-                  </td>
-                </tr>
+                <li
+                  key={e.id}
+                  className="rounded-lg border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-foreground">{e.name}</p>
+                      {scope.mode === "global" ? (
+                        <p className="mt-0.5 text-xs text-[color:var(--muted)]">
+                          {e.organization.name}
+                        </p>
+                      ) : null}
+                      <p className="mt-1 text-xs text-[color:var(--muted)]">
+                        {e.startsAt.toLocaleString("nb-NO")}
+                      </p>
+                    </div>
+                    <StatusPill tone={statusTone(e.status)}>{e.status}</StatusPill>
+                  </div>
+                  <Link
+                    href={`/admin/events/${e.id}`}
+                    className="mt-3 inline-flex text-sm font-medium text-[color:var(--accent)]"
+                  >
+                    Åpne Event Control →
+                  </Link>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </ul>
+
+            {/* Desktop table */}
+            <div className="tl-table-wrap hidden md:block">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Navn</th>
+                    {scope.mode === "global" ? <th>Organisasjon</th> : null}
+                    <th>Status</th>
+                    <th>Start</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {events.map((e) => (
+                    <tr key={e.id}>
+                      <td className="font-medium text-foreground">{e.name}</td>
+                      {scope.mode === "global" ? (
+                        <td className="text-[color:var(--muted)]">{e.organization.name}</td>
+                      ) : null}
+                      <td>
+                        <StatusPill tone={statusTone(e.status)}>{e.status}</StatusPill>
+                      </td>
+                      <td className="whitespace-nowrap text-[color:var(--muted)]">
+                        {e.startsAt.toLocaleString("nb-NO")}
+                      </td>
+                      <td className="text-right">
+                        <Link
+                          href={`/admin/events/${e.id}`}
+                          className="font-medium text-[color:var(--accent)] hover:brightness-110"
+                        >
+                          Åpne Event Control
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </section>
     </div>
   );
