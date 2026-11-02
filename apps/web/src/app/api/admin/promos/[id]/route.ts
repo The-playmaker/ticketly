@@ -35,6 +35,12 @@ export async function PATCH(req: Request, ctx: Ctx) {
       orgId!,
       {
         ...(body.code != null ? { code: String(body.code) } : {}),
+        ...(body.label !== undefined
+          ? { label: body.label == null ? null : String(body.label) }
+          : {}),
+        ...(body.kind != null
+          ? { kind: body.kind === "TRACKING" ? "TRACKING" : "DISCOUNT" }
+          : {}),
         ...(body.discountType != null
           ? {
               discountType:
@@ -42,6 +48,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
             }
           : {}),
         ...(body.discountValue != null ? { discountValue: Number(body.discountValue) } : {}),
+        ...(body.eventId !== undefined ? { eventId: body.eventId } : {}),
         ...(body.maxUses !== undefined
           ? { maxUses: body.maxUses == null ? null : Number(body.maxUses) }
           : {}),

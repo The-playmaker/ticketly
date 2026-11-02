@@ -48,12 +48,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const kind = body.kind === "TRACKING" ? "TRACKING" : "DISCOUNT";
   const promo = await PromoService.create(
     {
       organizationId: orgId!,
       code: String(body.code ?? ""),
+      label: body.label != null ? String(body.label) : null,
+      kind,
       discountType: body.discountType === "FIXED" ? DiscountType.FIXED : DiscountType.PERCENTAGE,
-      discountValue: Number(body.discountValue),
+      discountValue: Number(body.discountValue ?? 0),
       eventId: body.eventId ?? null,
       ticketTypeId: body.ticketTypeId ?? null,
       maxUses: body.maxUses != null ? Number(body.maxUses) : null,
