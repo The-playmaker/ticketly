@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { auth } from "@/lib/auth";
 import {
   canAccessOrgConsole,
@@ -64,49 +65,52 @@ function sessionUser(session: Awaited<ReturnType<typeof requireAdminSession>>): 
  * Resolve admin organization scope.
  * SUPER_ADMIN: cookie-selected org, or global (all orgs) — membership not required.
  * Others: active membership org (first if multiple); cookie ignored.
+ * Wrapped in React cache() so layout + page share one resolution per request.
  */
-export async function resolveOrgScopeForUser(
-  userId: string,
-  globalRole: string
-): Promise<AdminOrgScope> {
-  const isPlatformAdmin = globalRole === "SUPER_ADMIN";
+export const resolveOrgScopeForUser = cache(
+  async function resolveOrgScopeForUser(
+    userId: string,
+    globalRole: string
+  ): Promise<AdminOrgScope> {
+    const isPlatformAdmin = globalRole === "SUPER_ADMIN";
 
-  if (isPlatformAdmin) {
-    const organizations = await listAllOrganizations();
+    if (isPlatformAdmin) {
+      const organizations = await listAllOrganizations();
+      if (organizations.length === 0) {
+        return {
+          mode: "none",
+          organizationId: null,
+          isPlatformAdmin: true,
+          organizations: [],
+        };
+      }
+      const cookie = await readAdminOrgCookie();
+      const parsed = parseAdminOrgCookie(cookie, organizations);
+      return {
+        mode: parsed.mode,
+        organizationId: parsed.organizationId,
+        isPlatformAdmin: true,
+        organizations,
+      };
+    }
+
+    const organizations = await listMembershipOrganizations(userId);
     if (organizations.length === 0) {
       return {
         mode: "none",
         organizationId: null,
-        isPlatformAdmin: true,
+        isPlatformAdmin: false,
         organizations: [],
       };
     }
-    const cookie = await readAdminOrgCookie();
-    const parsed = parseAdminOrgCookie(cookie, organizations);
     return {
-      mode: parsed.mode,
-      organizationId: parsed.organizationId,
-      isPlatformAdmin: true,
+      mode: "organization",
+      organizationId: organizations[0]!.id,
+      isPlatformAdmin: false,
       organizations,
     };
   }
-
-  const organizations = await listMembershipOrganizations(userId);
-  if (organizations.length === 0) {
-    return {
-      mode: "none",
-      organizationId: null,
-      isPlatformAdmin: false,
-      organizations: [],
-    };
-  }
-  return {
-    mode: "organization",
-    organizationId: organizations[0]!.id,
-    isPlatformAdmin: false,
-    organizations,
-  };
-}
+);
 
 /**
  * Resolve a concrete organization id for org-scoped admin surfaces.
