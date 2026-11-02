@@ -16,6 +16,8 @@ import {
   inventoryHint,
   resolveEventAvailability,
   resolveTicketAvailability,
+  serializeEventSalesContext,
+  serializeTicketTypeSalesContext,
   type EventSalesContext,
 } from "@/lib/tickets/ticket-availability";
 import { TicketAvailabilityStatus } from "@/components/tickets/ticket-availability-status";
@@ -214,20 +216,26 @@ export default async function EventDetailPage({ params }: Props) {
                 <TicketSelector
                   eventId={event.id}
                   eventSlug={event.slug}
-                  eventSales={eventSales}
-                  ticketTypes={types.map((t) => ({
-                    id: t.id,
-                    name: t.name,
-                    price: t.currentPrice,
-                    available: t.available,
-                    minPerOrder: t.minPerOrder,
-                    maxPerOrder: t.maxPerOrder,
-                    salesStartAt: t.salesStartAt,
-                    salesEndAt: t.salesEndAt,
-                    salesPausedAt: t.salesPausedAt,
-                    isPubliclyPurchasable: t.isPubliclyPurchasable,
-                    isVisible: t.isVisible,
-                  }))}
+                  // Dates must be ISO strings — Prisma Date props to client = React #441 in prod.
+                  eventSales={serializeEventSalesContext(eventSales)}
+                  ticketTypes={types.map((t) => {
+                    const sales = serializeTicketTypeSalesContext({
+                      available: t.available,
+                      salesStartAt: t.salesStartAt,
+                      salesEndAt: t.salesEndAt,
+                      salesPausedAt: t.salesPausedAt,
+                      isPubliclyPurchasable: t.isPubliclyPurchasable,
+                      isVisible: t.isVisible,
+                    });
+                    return {
+                      id: t.id,
+                      name: t.name,
+                      price: t.currentPrice,
+                      minPerOrder: t.minPerOrder,
+                      maxPerOrder: t.maxPerOrder,
+                      ...sales,
+                    };
+                  })}
                 />
               ) : null}
               {event.waitlistEnabled && allBlockedForWaitlist ? (
