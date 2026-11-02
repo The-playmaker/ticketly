@@ -11,6 +11,7 @@ import { getAvailableQuantity, resolveUnitPrice } from "@/services/reservation-s
 import { TicketSelector } from "@/components/checkout/ticket-selector";
 import { WaitlistJoinForm } from "@/components/checkout/waitlist-join-form";
 import { TrackPageView } from "@/components/analytics/track-page-view";
+import { CapturePromoterRef } from "@/components/analytics/capture-promoter-ref";
 import {
   inventoryHint,
   resolveEventAvailability,
@@ -25,8 +26,6 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
-  // Skip inventory cleanup — metadata does not need live availability counters,
-  // and sharing the page+metadata path used to double-run repair work.
   const event = await EventService.getBySlug(slug, { skipInventoryCleanup: true });
   if (!event) return { title: "Arrangement" };
   const title = event.name;
@@ -114,6 +113,7 @@ export default async function EventDetailPage({ params }: Props) {
   return (
     <div className="min-h-dvh">
       <TrackPageView eventId={event.id} organizationId={event.organizationId} />
+      <CapturePromoterRef />
       <SiteHeader />
       <main>
         <div className="relative aspect-[16/10] max-h-[48vh] min-h-[220px] w-full overflow-hidden border-b border-[color:var(--outline)]/30 sm:aspect-[21/9] sm:max-h-[560px]">
