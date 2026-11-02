@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
 import { canAccessAdmin, isSuperAdmin } from "@/lib/auth/rbac";
+import { requireAdminPageSession } from "@/lib/auth/session";
 import { isDoorStaffOnly } from "@/lib/auth/event-access";
 import { formatMoney } from "@/lib/utils";
 import { EventService } from "@/services/event-service";
@@ -33,17 +33,7 @@ const platformNav = [
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login?callbackUrl=/admin");
-
-  const user = {
-    id: session.user.id,
-    email: session.user.email,
-    name: session.user.name,
-    globalRole: session.user.globalRole,
-    isActive: session.user.isActive !== false,
-    memberships: session.user.memberships,
-  };
+  const user = await requireAdminPageSession("/admin");
 
   if (!canAccessAdmin(user)) redirect("/");
 
@@ -54,6 +44,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const platform = isSuperAdmin(user);
   const nav = fullNav;
+  const email = user.email ?? "";
   const orgScope = platform
     ? await resolveOrgScopeForUser(user.id, user.globalRole)
     : null;
@@ -72,7 +63,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             >
               Ticketly Admin
             </Link>
-            <p className="mt-1 truncate text-xs text-[color:var(--muted)]">{session.user.email}</p>
+            <p className="mt-1 truncate text-xs text-[color:var(--muted)]">{email}</p>
             {platform && orgScope ? (
               <div className="mt-3">
                 <OrgContextSwitcher
@@ -129,7 +120,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <AdminMobileNav
                 nav={nav}
                 platformNav={platform ? platformNav : []}
-                email={session.user.email}
+                email={email}
               />
               <Link
                 href="/admin"
@@ -159,7 +150,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="muted" className="hidden max-w-[12rem] truncate lg:inline-flex">
-                {session.user.email}
+                {email}
               </Badge>
               <Link
                 href="/admin/events/new"
