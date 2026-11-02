@@ -50,8 +50,9 @@ export default async function AdminPromotersPage() {
       <div>
         <h1 className="text-2xl font-semibold">Promotører</h1>
         <p className="mt-1 text-sm text-[color:var(--muted)]">
-          Gi hver promotør en unik delingslenke. Salg tilskrives automatisk når kjøperen kommer via
-          lenken (eller skriver inn koden). Refusjoner trekkes fra netto.
+          Gi hver promotør en unik delingslenke for å bevise salg. Sporing gir ingen rabatt —
+          salg tilskrives når kjøperen kommer via lenken (eller skriver inn koden). Refusjoner
+          trekkes fra netto. Ekte rabattkoder opprettes under Kampanjer.
         </p>
       </div>
       <PromoterManager initialPromoters={promoters} events={events} />

@@ -51,7 +51,7 @@ export async function GET(req: Request) {
 
 /**
  * POST /api/admin/promoters — create a promoter tracking code (kind=TRACKING).
- * discountValue is basis points (PERCENTAGE) or øre (FIXED); 0 = attribution only.
+ * Attribution only: discount is always forced to 0 (use /api/admin/promos for real discounts).
  */
 export async function POST(req: Request) {
   try {
@@ -79,18 +79,15 @@ export async function POST(req: Request) {
       throw new AppError("INVALID_PROMO", "Kode er påkrevd", 400);
     }
 
-    const discountType =
-      body.discountType === "FIXED" ? DiscountType.FIXED : DiscountType.PERCENTAGE;
-    const discountValue = Number(body.discountValue ?? 0);
-
     const promo = await PromoService.create(
       {
         organizationId: orgId!,
         code,
         label: body.label != null ? String(body.label) : null,
         kind: "TRACKING",
-        discountType,
-        discountValue: Number.isFinite(discountValue) ? discountValue : 0,
+        discountType: DiscountType.PERCENTAGE,
+        // Ignore any client-supplied discount — promoters never discount.
+        discountValue: 0,
         eventId: body.eventId ?? null,
         ticketTypeId: body.ticketTypeId ?? null,
         maxUses: body.maxUses != null ? Number(body.maxUses) : null,

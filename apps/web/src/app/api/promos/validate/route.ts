@@ -45,7 +45,7 @@ export async function POST(req: Request) {
   }
 
   const discount = applyPromo(promo, parsed.data.subtotal);
-  // TRACKING codes may have 0 discount but still attribute the order.
+  // TRACKING is attribution-only (applyPromo always returns 0) but still valid for checkout.
   if (discount <= 0 && promo.kind !== "TRACKING") {
     return NextResponse.json({ error: "Kampanjekoden kan ikke brukes" }, { status: 400 });
   }
