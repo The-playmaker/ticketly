@@ -10,6 +10,13 @@ import { getAvailableQuantity, resolveUnitPrice } from "@/services/reservation-s
 import { TicketSelector } from "@/components/checkout/ticket-selector";
 import { WaitlistJoinForm } from "@/components/checkout/waitlist-join-form";
 import { TrackPageView } from "@/components/analytics/track-page-view";
+import {
+  inventoryHint,
+  resolveEventAvailability,
+  resolveTicketAvailability,
+  type EventSalesContext,
+} from "@/lib/tickets/ticket-availability";
+import { TicketAvailabilityStatus } from "@/components/tickets/ticket-availability-status";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -61,31 +68,47 @@ export default async function EventDetailPage({ params }: Props) {
   if (!event) notFound();
   const cover = withCoverCacheBust(event.coverImageUrl, event.updatedAt);
 
-  const salesPaused = Boolean(event.salesPausedAt) || event.status === "PAUSED";
-  const soldOutDisplay = event.soldOutDisplay;
-  const availabilityDisplay = event.availabilityDisplay;
-  const lowStockThreshold = event.lowStockThreshold ?? 10;
+  const eventSales: EventSalesContext = {
+    status: event.status,
+    salesStartAt: event.salesStartAt,
+    salesEndAt: event.salesEndAt,
+    salesPausedAt: event.salesPausedAt,
+    soldOutDisplay: event.soldOutDisplay,
+    timezone: event.timezone,
+  };
+
   const types = event.ticketTypes.map((tt) => ({
     ...tt,
     available: getAvailableQuantity(tt),
     currentPrice: resolveUnitPrice(tt),
-    typePaused: Boolean(tt.salesPausedAt),
   }));
 
-  function availabilityLabel(available: number, soldOut: boolean) {
-    if (salesPaused) return "Salget er midlertidig satt på pause";
-    if (soldOut) {
-      if (soldOutDisplay === "MORE_COMING") return "Flere billetter kommer";
-      if (soldOutDisplay === "PAUSED") return "Salget er midlertidig satt på pause";
-      return "Utsolgt";
-    }
-    if (availabilityDisplay === "HIDE") return null;
-    if (availabilityDisplay === "SHOW_EXACT") return `${available} igjen`;
-    if (available <= lowStockThreshold) {
-      return available <= 5 ? "Få igjen" : `${available} igjen`;
-    }
-    return null;
-  }
+  const typeStatuses = types.map((tt) => ({
+    type: tt,
+    status: resolveTicketAvailability(eventSales, {
+      available: tt.available,
+      salesStartAt: tt.salesStartAt,
+      salesEndAt: tt.salesEndAt,
+      salesPausedAt: tt.salesPausedAt,
+      isPubliclyPurchasable: tt.isPubliclyPurchasable,
+      isVisible: tt.isVisible,
+    }),
+  }));
+
+  const overall = resolveEventAvailability(
+    eventSales,
+    types.map((tt) => ({
+      available: tt.available,
+      salesStartAt: tt.salesStartAt,
+      salesEndAt: tt.salesEndAt,
+      salesPausedAt: tt.salesPausedAt,
+      isPubliclyPurchasable: tt.isPubliclyPurchasable,
+      isVisible: tt.isVisible,
+    }))
+  );
+
+  const anyPurchasable = typeStatuses.some((t) => t.status.purchasable);
+  const allBlockedForWaitlist = typeStatuses.every((t) => !t.status.purchasable);
 
   return (
     <div>
@@ -138,30 +161,43 @@ export default async function EventDetailPage({ params }: Props) {
 
           <div className="rounded-2xl border border-[color:var(--outline)]/30 bg-zinc-900/50 p-5">
             <h2 className="font-display text-xl">Billetter</h2>
-            {salesPaused ? (
-              <p className="mt-4 text-sm text-[color:var(--accent-soft)]">Salget er midlertidig satt på pause.</p>
+            {!anyPurchasable ? (
+              <div className="mt-4">
+                <TicketAvailabilityStatus status={overall} />
+              </div>
             ) : null}
             <ul className="mt-4 space-y-3">
-              {types.map((tt) => {
-                const soldOut = tt.available <= 0 || tt.typePaused;
-                const label = availabilityLabel(tt.available, soldOut);
+              {typeStatuses.map(({ type: tt, status }) => {
+                const hint = status.purchasable
+                  ? inventoryHint(tt.available, {
+                      availabilityDisplay: event.availabilityDisplay,
+                      lowStockThreshold: event.lowStockThreshold,
+                    })
+                  : null;
                 return (
                   <li
                     key={tt.id}
-                    className="flex items-center justify-between border-b border-[color:var(--outline)]/30/80 pb-3 last:border-0"
+                    className="flex items-start justify-between gap-3 border-b border-[color:var(--outline)]/30/80 pb-3 last:border-0"
                   >
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-medium text-zinc-100">{tt.name}</p>
                       {tt.description ? (
                         <p className="text-xs text-[color:var(--muted)]">{tt.description}</p>
                       ) : null}
-                      {label ? <p className="text-xs text-[color:var(--accent)]">{label}</p> : null}
+                      {status.purchasable && hint ? (
+                        <p className="mt-1 text-xs text-[color:var(--accent-soft)]">{hint}</p>
+                      ) : null}
+                      {!status.purchasable && !anyPurchasable ? (
+                        <TicketAvailabilityStatus status={status} variant="inline" className="mt-1.5" />
+                      ) : null}
                     </div>
-                    <div className="text-right">
-                      {soldOut ? (
-                        <Badge variant="danger">{label ?? "Utsolgt"}</Badge>
+                    <div className="shrink-0 text-right">
+                      {status.purchasable ? (
+                        <p className="font-semibold text-[color:var(--accent-soft)]">
+                          {formatMoney(tt.currentPrice)}
+                        </p>
                       ) : (
-                        <p className="font-semibold text-[color:var(--accent-soft)]">{formatMoney(tt.currentPrice)}</p>
+                        <Badge variant="muted">{status.heading}</Badge>
                       )}
                     </div>
                   </li>
@@ -169,25 +205,30 @@ export default async function EventDetailPage({ params }: Props) {
               })}
             </ul>
             <div className="mt-6">
-              {salesPaused ? null : (
+              {anyPurchasable ? (
                 <TicketSelector
                   eventId={event.id}
                   eventSlug={event.slug}
-                  ticketTypes={types
-                    .filter((t) => !t.typePaused)
-                    .map((t) => ({
-                      id: t.id,
-                      name: t.name,
-                      price: t.currentPrice,
-                      available: t.available,
-                      minPerOrder: t.minPerOrder,
-                      maxPerOrder: t.maxPerOrder,
-                    }))}
+                  eventSales={eventSales}
+                  ticketTypes={types.map((t) => ({
+                    id: t.id,
+                    name: t.name,
+                    price: t.currentPrice,
+                    available: t.available,
+                    minPerOrder: t.minPerOrder,
+                    maxPerOrder: t.maxPerOrder,
+                    salesStartAt: t.salesStartAt,
+                    salesEndAt: t.salesEndAt,
+                    salesPausedAt: t.salesPausedAt,
+                    isPubliclyPurchasable: t.isPubliclyPurchasable,
+                    isVisible: t.isVisible,
+                  }))}
                 />
-              )}
-              {event.waitlistEnabled &&
-              types.every((t) => t.available <= 0 || t.typePaused) ? (
-                <WaitlistJoinForm eventId={event.id} />
+              ) : null}
+              {event.waitlistEnabled && allBlockedForWaitlist ? (
+                <div className="mt-4">
+                  <WaitlistJoinForm eventId={event.id} />
+                </div>
               ) : null}
             </div>
           </div>
