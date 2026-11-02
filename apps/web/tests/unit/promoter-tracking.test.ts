@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { DiscountType, PaymentStatus, TicketStatus, type PromoCode } from "@prisma/client";
+import {
+  DiscountType,
+  PaymentStatus,
+  ServiceFeeMode,
+  TicketQrMode,
+  TicketStatus,
+  type Event,
+  type Organization,
+  type PromoCode,
+} from "@prisma/client";
 import {
   buildPromoterShortPath,
   buildPromoterTrackingPath,
@@ -8,6 +17,7 @@ import {
   readRefFromSearchParams,
 } from "@/lib/promoter";
 import { softResolvePromoApplicability } from "@/services/promo-service";
+import { applyPromo, calculatePricing } from "@/services/order-service";
 import {
   aggregateFinancialTotals,
   computeNetRevenue,
@@ -35,6 +45,92 @@ function basePromo(overrides: Partial<PromoCode> = {}): PromoCode {
   };
 }
 
+function mockOrg(overrides: Partial<Organization> = {}): Organization {
+  return {
+    id: "org_1",
+    name: "Titan",
+    slug: "titan",
+    description: null,
+    logoUrl: null,
+    website: null,
+    isActive: true,
+    allowRefunds: true,
+    defaultServiceFee: 2000,
+    defaultServiceFeeMode: ServiceFeeMode.ON_TOP,
+    defaultCurrency: "NOK",
+    legalName: "Titan Events AS",
+    organizationNumber: "999999999",
+    legalAddress: null,
+    legalPostalCode: null,
+    legalCity: null,
+    legalCountry: "NO",
+    contactEmail: null,
+    customerServiceEmail: null,
+    customerServicePhone: null,
+    vatRegistrationStatus: "REGISTERED",
+    termsVersion: "1.0",
+    refundPolicyType: "ORGANIZER_REFUND_POLICY",
+    refundPolicyText: null,
+    settlementConfig: null,
+    stripeConnectedAccountId: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+function mockEvent(overrides: Partial<Event> = {}): Event {
+  const now = new Date();
+  return {
+    id: "evt_1",
+    organizationId: "org_1",
+    sellerOrganizationId: "org_1",
+    venueId: null,
+    name: "Friday Night",
+    slug: "friday-night",
+    description: null,
+    shortDescription: null,
+    address: null,
+    postalCode: null,
+    city: "Oslo",
+    country: "NO",
+    timezone: "Europe/Oslo",
+    startsAt: now,
+    endsAt: now,
+    doorsOpenAt: null,
+    ageLimit: 20,
+    coverImageUrl: null,
+    capacity: 500,
+    status: "PUBLISHED",
+    visibility: "PUBLIC",
+    category: null,
+    salesStartAt: null,
+    salesEndAt: null,
+    publishAt: null,
+    salesPausedAt: null,
+    availabilityDisplay: "SHOW_LOW_STOCK_ONLY",
+    lowStockThreshold: 10,
+    soldOutDisplay: "SOLD_OUT",
+    allowTransfer: true,
+    qrMode: TicketQrMode.STATIC_QR,
+    dynamicQrTtlSeconds: 30,
+    serviceFee: 2000,
+    serviceFeeMode: ServiceFeeMode.ON_TOP,
+    currency: "NOK",
+    refundPolicyType: null,
+    refundPolicyText: null,
+    termsVersion: null,
+    waitlistEnabled: false,
+    waitlistOnReleaseSoldOut: false,
+    reminder24hEnabled: true,
+    reminder3hEnabled: false,
+    seriesId: null,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  } as Event;
+}
+
 describe("promoter tracking helpers", () => {
   it("builds shareable event ref links", () => {
     expect(buildPromoterTrackingPath("oslo-night", "ola20")).toBe(
@@ -52,6 +148,103 @@ describe("promoter tracking helpers", () => {
     expect(readRefFromSearchParams(new URLSearchParams("promo=VIP"))).toBe("VIP");
     expect(readRefFromSearchParams(new URLSearchParams("promoCode=x"))).toBeNull();
     expect(readRefFromSearchParams(new URLSearchParams(""))).toBeNull();
+  });
+});
+
+describe("TRACKING never discounts", () => {
+  it("applyPromo returns 0 for TRACKING even when discountValue is non-zero", () => {
+    const trackingWithFakeDiscount = basePromo({
+      discountType: DiscountType.PERCENTAGE,
+      discountValue: 5000, // 50% — must be ignored
+    });
+    expect(applyPromo(trackingWithFakeDiscount, 100_000)).toBe(0);
+
+    const trackingFixed = basePromo({
+      discountType: DiscountType.FIXED,
+      discountValue: 50_000,
+    });
+    expect(applyPromo(trackingFixed, 100_000)).toBe(0);
+  });
+
+  it("DISCOUNT promos still apply percentage/fixed discounts", () => {
+    expect(
+      applyPromo(
+        basePromo({
+          kind: "DISCOUNT",
+          discountType: DiscountType.PERCENTAGE,
+          discountValue: 2000,
+        }),
+        100_000
+      )
+    ).toBe(20_000);
+    expect(
+      applyPromo(
+        basePromo({
+          kind: "DISCOUNT",
+          discountType: DiscountType.FIXED,
+          discountValue: 15_000,
+        }),
+        100_000
+      )
+    ).toBe(15_000);
+  });
+
+  it("checkout total identical with vs without TRACKING ref", () => {
+    const now = new Date();
+    const ticketTypes = [
+      {
+        id: "tt_1",
+        eventId: "evt_1",
+        name: "Standard",
+        description: null,
+        price: 25_000,
+        quantityTotal: 100,
+        quantityReleased: 50,
+        quantitySold: 0,
+        quantityReserved: 0,
+        maxPerOrder: 4,
+        minPerOrder: 1,
+        salesStartAt: null,
+        salesEndAt: null,
+        salesPausedAt: null,
+        isVisible: true,
+        isPubliclyPurchasable: true,
+        releaseMode: "MANUAL" as const,
+        admissionCount: 1,
+        isBundle: false,
+        sortOrder: 0,
+        serviceFee: null,
+        createdAt: now,
+        updatedAt: now,
+        priceTiers: [],
+      },
+    ];
+    const items = [{ ticketTypeId: "tt_1", quantity: 2 }];
+
+    const withoutRef = calculatePricing({
+      organization: mockOrg(),
+      event: mockEvent(),
+      ticketTypes,
+      items,
+      promo: null,
+    });
+    const withTrackingRef = calculatePricing({
+      organization: mockOrg(),
+      event: mockEvent(),
+      ticketTypes,
+      items,
+      promo: basePromo({
+        discountType: DiscountType.PERCENTAGE,
+        discountValue: 5000,
+      }),
+    });
+
+    expect(withTrackingRef.discount).toBe(0);
+    expect(withTrackingRef.subtotal).toBe(withoutRef.subtotal);
+    expect(withTrackingRef.serviceFee).toBe(withoutRef.serviceFee);
+    expect(withTrackingRef.total).toBe(withoutRef.total);
+    expect(withTrackingRef.promoCodeId).toBe("promo_1");
+    expect(withoutRef.promoCodeId).toBeUndefined();
   });
 });
 
