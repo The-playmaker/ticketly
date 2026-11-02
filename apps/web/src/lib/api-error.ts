@@ -36,7 +36,12 @@ export function toErrorResponse(err: unknown): { status: number; body: ApiErrorB
   if (/utsolgt|Kun \d+ billetter|Billettypen er utsolgt/i.test(message)) {
     return {
       status: 409,
-      body: { error: { code: "TICKET_SOLD_OUT", message: "Denne billettypen er utsolgt." } },
+      body: {
+        error: {
+          code: "TICKET_SOLD_OUT",
+          message: "Denne billettypen er dessverre utsolgt.",
+        },
+      },
     };
   }
   if (/Unauthorized|Forbidden/i.test(message)) {
