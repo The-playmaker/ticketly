@@ -1,14 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 
 export function ReservationCountdown({ expiresAt }: { expiresAt: string }) {
-  const [remaining, setRemaining] = useState(() => msLeft(expiresAt));
+  // Null until mount so SSR HTML matches the first client paint (avoids Date.now drift).
+  const [remaining, setRemaining] = useState<number | null>(null);
 
   useEffect(() => {
+    startTransition(() => setRemaining(msLeft(expiresAt)));
     const id = setInterval(() => setRemaining(msLeft(expiresAt)), 1000);
     return () => clearInterval(id);
   }, [expiresAt]);
+
+  if (remaining == null) {
+    return (
+      <p className="mt-3 text-xs text-zinc-400" suppressHydrationWarning>
+        Reservert …
+      </p>
+    );
+  }
 
   if (remaining <= 0) {
     return (

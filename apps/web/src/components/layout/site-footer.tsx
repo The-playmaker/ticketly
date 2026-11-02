@@ -44,7 +44,7 @@ export function SiteFooter({
         <div className="space-y-1 text-xs text-[color:var(--muted)] sm:text-right">
           {supportPhone ? <p>Telefon: {supportPhone}</p> : null}
           {supportEmail ? <p>{supportEmail}</p> : null}
-          <p>© {new Date().getFullYear()} Ticketly</p>
+          <p suppressHydrationWarning>© {new Date().getFullYear()} Ticketly</p>
         </div>
       </div>
     </footer>
