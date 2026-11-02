@@ -4,6 +4,10 @@ import { formatEventDateTime } from "@/lib/time";
 import { formatMoney } from "@/lib/utils";
 import { withCoverCacheBust } from "@/lib/media/cover-url";
 import { getAvailableQuantity, resolveUnitPrice } from "@/services/reservation-service";
+import {
+  resolveEventAvailability,
+  type EventSalesContext,
+} from "@/lib/tickets/ticket-availability";
 import type { Event, Organization, TicketPriceTier, TicketType, Venue } from "@prisma/client";
 
 type EventCardProps = {
@@ -18,16 +22,49 @@ export function EventCard({ event }: EventCardProps) {
   const visible = event.ticketTypes.filter((t) => t.isVisible);
   const prices = visible.map((t) => resolveUnitPrice(t));
   const fromPrice = prices.length ? Math.min(...prices) : null;
-  const anyAvailable = visible.some((t) => getAvailableQuantity(t) > 0);
-  const soldOut = event.status === "SOLD_OUT" || !anyAvailable;
+
+  const eventSales: EventSalesContext = {
+    status: event.status,
+    salesStartAt: event.salesStartAt,
+    salesEndAt: event.salesEndAt,
+    salesPausedAt: event.salesPausedAt,
+    soldOutDisplay: event.soldOutDisplay,
+    timezone: event.timezone,
+  };
+
+  const availability = resolveEventAvailability(
+    eventSales,
+    visible.map((t) => ({
+      available: getAvailableQuantity(t),
+      salesStartAt: t.salesStartAt,
+      salesEndAt: t.salesEndAt,
+      salesPausedAt: t.salesPausedAt,
+      isPubliclyPurchasable: t.isPubliclyPurchasable,
+      isVisible: t.isVisible,
+    }))
+  );
+
+  const purchasable = availability.purchasable;
   const lowStock =
-    !soldOut &&
+    purchasable &&
     visible.some((t) => {
       const avail = getAvailableQuantity(t);
       return avail > 0 && avail <= Math.max(10, Math.floor(t.quantityReleased * 0.1));
     });
 
   const cover = withCoverCacheBust(event.coverImageUrl, event.updatedAt);
+  const statusChip =
+    !purchasable && availability.heading
+      ? availability.kind === "sold_out"
+        ? "Utsolgt"
+        : availability.kind === "sales_ended"
+          ? "Avsluttet"
+          : availability.kind === "sales_not_open"
+            ? "Åpner snart"
+            : availability.kind === "more_coming"
+              ? "Flere kommer"
+              : "Utilgjengelig"
+      : null;
 
   return (
     <Link
@@ -53,9 +90,9 @@ export function EventCard({ event }: EventCardProps) {
         <div className="absolute left-3 top-3 rounded bg-black/55 px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-white backdrop-blur-sm">
           {formatEventDateTime(event.startsAt, event.timezone)}
         </div>
-        {soldOut ? (
-          <div className="absolute right-3 top-3 rounded bg-red-950/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-red-200">
-            Utsolgt
+        {statusChip ? (
+          <div className="absolute right-3 top-3 rounded bg-black/55 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-200 backdrop-blur-sm">
+            {statusChip}
           </div>
         ) : lowStock ? (
           <div className="absolute right-3 top-3 rounded bg-[color:var(--accent)] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--accent-foreground)]">
@@ -74,8 +111,8 @@ export function EventCard({ event }: EventCardProps) {
       </div>
       <div className="flex items-center justify-between gap-3 border-t border-[color:var(--outline)]/25 px-4 py-3">
         <div>
-          {soldOut ? (
-            <span className="text-sm font-medium text-[color:var(--destructive)]">Utsolgt</span>
+          {!purchasable ? (
+            <span className="text-sm font-medium text-[color:var(--muted)]">{statusChip}</span>
           ) : fromPrice != null ? (
             <span className="text-sm text-[color:var(--muted)]">
               Fra <span className="font-semibold text-foreground">{formatMoney(fromPrice)}</span>
@@ -83,7 +120,7 @@ export function EventCard({ event }: EventCardProps) {
           ) : null}
         </div>
         <span className="text-xs font-medium uppercase tracking-wide text-[color:var(--accent)]">
-          Sikre billett →
+          {purchasable ? "Sikre billett →" : "Se detaljer →"}
         </span>
       </div>
     </Link>
