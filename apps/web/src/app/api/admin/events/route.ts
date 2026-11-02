@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { canManageEvents, isSuperAdmin } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/db";
@@ -7,6 +8,7 @@ import { EventService } from "@/services/event-service";
 import { jsonError, AppError } from "@/lib/api-error";
 import { slugify } from "@/lib/utils";
 import { writeAuditLog } from "@/lib/audit";
+import { revalidateAdminDataCaches } from "@/lib/cache/tags";
 
 const createSchema = z.object({
   organizationId: z.string().min(1),
@@ -121,6 +123,12 @@ export async function POST(req: Request) {
         entityId: event.id,
       });
     }
+
+    revalidatePath("/admin/events");
+    revalidatePath("/admin");
+    revalidatePath("/");
+    revalidatePath("/events");
+    revalidateAdminDataCaches(event.organizationId);
 
     return NextResponse.json({
       id: event.id,
