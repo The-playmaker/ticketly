@@ -9,6 +9,7 @@ const links = [
   { suffix: "/orders", label: "Ordrer" },
   { suffix: "/attendees", label: "Deltakere" },
   { suffix: "/waitlist", label: "Venteliste" },
+  { suffix: "/promoters", label: "Promotører" },
   { suffix: "/analytics", label: "Analyse" },
   { suffix: "/security", label: "Sikkerhet" },
   { suffix: "/settings", label: "Innstillinger" },
