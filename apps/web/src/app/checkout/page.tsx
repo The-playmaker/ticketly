@@ -14,11 +14,11 @@ export default async function CheckoutPage({ searchParams }: Props) {
   const params = await searchParams;
   if (!params.event || !params.session || !params.items) {
     return (
-      <div>
+      <div className="min-h-dvh">
         <SiteHeader />
-        <main className="mx-auto max-w-lg px-4 py-16 text-center">
-          <h1 className="font-display text-2xl">Ingen billetter valgt</h1>
-          <p className="mt-2 text-zinc-400">Gå tilbake til et arrangement og velg billetter.</p>
+        <main className="tl-page max-w-lg py-16 text-center">
+          <h1 className="font-display text-2xl font-semibold">Ingen billetter valgt</h1>
+          <p className="mt-2 text-[color:var(--muted)]">Gå tilbake til et arrangement og velg billetter.</p>
         </main>
       </div>
     );
@@ -52,12 +52,12 @@ export default async function CheckoutPage({ searchParams }: Props) {
   const cover = withCoverCacheBust(event.coverImageUrl, event.updatedAt);
 
   return (
-    <div>
+    <div className="min-h-dvh">
       <SiteHeader />
-      <main className="mx-auto max-w-lg px-4 py-10">
+      <main className="tl-page max-w-lg py-8 sm:py-10">
         {cover ? (
           <div
-            className="relative mb-6 aspect-[16/9] overflow-hidden rounded-lg border border-[color:var(--outline)]/30"
+            className="relative mb-6 aspect-[16/9] overflow-hidden rounded-xl border border-[color:var(--outline)]/30 shadow-[var(--shadow-soft)]"
             data-testid="checkout-cover"
           >
             <Image
@@ -69,12 +69,13 @@ export default async function CheckoutPage({ searchParams }: Props) {
             />
           </div>
         ) : null}
-        <h1 className="font-display text-3xl">Checkout</h1>
+        <p className="tl-eyebrow">Sikker betaling</p>
+        <h1 className="mt-1 font-display text-3xl font-semibold">Checkout</h1>
         <p className="mt-1 text-sm text-[color:var(--muted)]">{event.name}</p>
         {params.cancelled ? (
           <p className="mt-2 text-sm text-[color:var(--accent)]">Betaling avbrutt — billetter er fortsatt reservert en kort stund.</p>
         ) : null}
-        <div className="mt-8">
+        <div className="mt-6 sm:mt-8">
           <CheckoutForm
             eventId={event.id}
             eventName={event.name}
