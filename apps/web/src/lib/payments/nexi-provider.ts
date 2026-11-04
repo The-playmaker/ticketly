@@ -15,6 +15,7 @@ import {
   parseNexiAmount,
 } from "./nexi-status";
 import { nexiCreateIdempotencyKey } from "./nexi-idempotency";
+import { safeEqual } from "@/lib/security/safe-equal";
 import type {
   CancelPaymentInput,
   CancelPaymentResult,
@@ -324,7 +325,7 @@ export class NexiCheckoutProvider implements PaymentProvider {
     authorization: string | null
   ): Promise<WebhookHandleResult> {
     const expected = getNexiWebhookAuthorization();
-    if (!authorization || authorization !== expected) {
+    if (!authorization || !safeEqual(authorization, expected)) {
       throw new Error("Invalid Nexi webhook Authorization header");
     }
 
