@@ -4,10 +4,62 @@ import {
   WebhookProcessStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { getPaymentProvider, isMockPaymentMode } from "@/lib/payments";
+import {
+  getPaymentProvider,
+  isMockPaymentMode,
+  lookupNexiForPayment,
+  lookupStripeForPayment,
+  createLiveStripeLookupClient,
+} from "@/lib/payments";
 import { shouldIgnoreFailureForPaidOrder } from "@/services/payment-checkout-attempt";
 import { writeAuditLog } from "@/lib/audit";
 import { markOrderPaidImpl } from "@/services/payment-service-paid";
+import { PromoService } from "@/services/promo-service";
+
+/** When webhook payload omits amount/currency, fetch from Nexi/Stripe before markOrderPaid. */
+async function resolveWebhookAmountCurrency(input: {
+  provider: PaymentProviderType;
+  amount?: number;
+  currency?: string;
+  providerPaymentId?: string;
+  providerSessionId?: string;
+}): Promise<{ amount?: number; currency?: string }> {
+  let amount = input.amount;
+  let currency = input.currency;
+  if (amount != null && currency?.trim()) return { amount, currency };
+
+  try {
+    if (
+      (input.provider === PaymentProviderType.NEXI ||
+        input.provider === PaymentProviderType.NETS) &&
+      input.providerPaymentId
+    ) {
+      const lookup = await lookupNexiForPayment(input.providerPaymentId);
+      if (amount == null) {
+        amount = lookup.chargedAmount || lookup.amount || undefined;
+      }
+      currency = currency ?? lookup.currency ?? undefined;
+    } else if (input.provider === PaymentProviderType.STRIPE) {
+      const lookup = await lookupStripeForPayment(createLiveStripeLookupClient(), {
+        sessionId: input.providerSessionId,
+        paymentIntentId: input.providerPaymentId,
+      });
+      amount =
+        amount ??
+        lookup.paymentIntent?.amount ??
+        lookup.session?.amountTotal ??
+        undefined;
+      currency =
+        currency ??
+        lookup.paymentIntent?.currency ??
+        lookup.session?.currency ??
+        undefined;
+    }
+  } catch (e) {
+    console.error("[webhook] amount fetch failed", e);
+  }
+  return { amount, currency };
+}
 
 function assertMockAllowedImpl() {
   if (isMockPaymentMode() && process.env.NODE_ENV === "production") {
@@ -116,6 +168,13 @@ export async function handleProviderWebhookImpl(input: {
           },
         });
       } else {
+        const resolved = await resolveWebhookAmountCurrency({
+          provider: input.provider,
+          amount: parsed.amount,
+          currency: parsed.currency,
+          providerPaymentId: parsed.providerPaymentId,
+          providerSessionId: parsed.providerSessionId,
+        });
         await markOrderPaidImpl({
           orderId,
           provider: input.provider,
@@ -126,8 +185,8 @@ export async function handleProviderWebhookImpl(input: {
           paymentType: parsed.paymentType,
           providerStatus: parsed.providerStatus ?? parsed.type,
           externalEventId: parsed.externalEventId,
-          amount: parsed.amount,
-          currency: parsed.currency,
+          amount: resolved.amount,
+          currency: resolved.currency,
         });
       }
     }
@@ -154,6 +213,7 @@ export async function handleProviderWebhookImpl(input: {
           },
           data: { status: PaymentStatus.FAILED, providerStatus: parsed.type },
         });
+        await PromoService.releasePromoForOrder(orderId, undefined, "PAYMENT_FAILED");
       }
     }
     if (parsed.paymentStatus === PaymentStatus.CANCELLED && orderId) {
@@ -182,6 +242,7 @@ export async function handleProviderWebhookImpl(input: {
           },
           data: { status: PaymentStatus.CANCELLED, providerStatus: parsed.type },
         });
+        await PromoService.releasePromoForOrder(orderId, undefined, "PAYMENT_CANCELLED");
         await writeAuditLog({
           action: "PAYMENT_CANCELLED",
           entityType: "Order",
