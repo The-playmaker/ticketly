@@ -1,0 +1,274 @@
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([status, expiresAt])
+}
+
+model EventAssignment {
+  id        String   @id @default(cuid())
+  eventId   String
+  userId    String
+  role      OrgRole  @default(EVENT_MANAGER)
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId])
+}
+
+// ─── Venue & Event ───────────────────────────────────────────────────────────
+
+model Venue {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  address        String?
+  postalCode     String?
+  city           String?
+  country        String   @default("NO")
+  capacity       Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events       Event[]
+
+  @@index([organizationId])
+}
+
+model Event {
+  id                   String          @id @default(cuid())
+  organizationId       String // organizer (may differ from seller)
+  sellerOrganizationId String // juridisk selger / seller of record
+  venueId              String?
+  name                 String
+  slug                 String
+  description          String?         @db.Text
+  shortDescription     String?
+  address              String?
+  postalCode           String?
+  city                 String?
+  country              String          @default("NO")
+  timezone             String          @default("Europe/Oslo")
+  startsAt             DateTime
+  endsAt               DateTime
+  doorsOpenAt          DateTime?
+  ageLimit             Int?
+  coverImageUrl        String?
+  capacity             Int
+  status               EventStatus     @default(DRAFT)
+  visibility           Visibility      @default(PUBLIC)
+  category             String?
+  salesStartAt         DateTime?
+  salesEndAt           DateTime?
+  publishAt            DateTime?
+  /// Emergency / manual pause — blocks NEW reservations only
+  salesPausedAt        DateTime?
+  availabilityDisplay  AvailabilityDisplayMode @default(SHOW_LOW_STOCK_ONLY)
+  lowStockThreshold    Int             @default(10)
+  soldOutDisplay       SoldOutDisplayMode @default(SOLD_OUT)
+  allowTransfer        Boolean         @default(false)
+  /// QR credential mode — STATIC_QR is production default; DYNAMIC_QR requires ENABLE_DYNAMIC_QR=true
+  qrMode               TicketQrMode    @default(STATIC_QR)
+  /// Short-lived dynamic QR TTL in seconds (clamped 15–120 at runtime)
+  dynamicQrTtlSeconds  Int             @default(30)
+  serviceFee           Int?
+  serviceFeeMode       ServiceFeeMode?
+  currency             String          @default("NOK")
+  refundPolicyType     RefundPolicyType?
+  refundPolicyText     String?         @db.Text
+  termsVersion         String?
+  /// Waitlist when ticket type / release is sold out
+  waitlistEnabled      Boolean         @default(false)
+  /// If true, waitlist also when current release is sold out (unreleased remains)
+  waitlistOnReleaseSoldOut Boolean     @default(false)
+  /// Transactional event reminders (not marketing)
+  reminder24hEnabled   Boolean         @default(true)
+  reminder3hEnabled    Boolean         @default(false)
+  seriesId             String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  organization       Organization              @relation("EventOrganizer", fields: [organizationId], references: [id], onDelete: Cascade)
+  sellerOrganization Organization              @relation("EventSeller", fields: [sellerOrganizationId], references: [id], onDelete: Restrict)
+  venue              Venue?                    @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  series             EventSeries?              @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  images             EventImage[]
+  ticketTypes        TicketType[]
+  orders             Order[]
+  reservations       TicketReservation[]
+  checkIns           CheckIn[]
+  guestList          GuestListEntry[]
+  promoCodes         PromoCode[]
+  assignments        EventAssignment[]
+  tickets            Ticket[]
+  scannerSessions    ScannerSession[]
+  offlineBundles     OfflineValidationBundle[]
+  offlineCheckIns    OfflineCheckIn[]
+  analyticsEvents    AnalyticsEvent[]
+  waitlistEntries    WaitlistEntry[]
+  ticketBatches      TicketBatch[]
+  reminderJobs       EventReminderJob[]
+
+  @@unique([organizationId, slug])
+  @@index([slug])
+  @@index([status])
+  @@index([startsAt])
+  @@index([organizationId, status])
+  @@index([sellerOrganizationId])
+  @@index([visibility, status, startsAt])
+  @@index([seriesId])
+}
+
+/// Shared defaults for recurring / related events (Friday Night series, etc.)
+model EventSeries {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?  @db.Text
+  venueId        String?
+  coverImageUrl  String?
+  ageLimit       Int?
+  defaults       Json? // ticket type / tax / fee defaults snapshot
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  events       Event[]
+
+  @@index([organizationId])
+}
+
+model EventImage {
+  id        String   @id @default(cuid())
+  eventId   String
+  url       String
+  alt       String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
+
+// ─── Ticket types & pricing tiers ────────────────────────────────────────────
+
+model TicketType {
+  id               String    @id @default(cuid())
+  eventId          String
+  name             String
+  description      String?
+  price            Int // øre — base/ordinary price
+  vatRate          Int       @default(2500) // DEPRECATED: use taxTreatmentId
+  taxTreatmentId   String?
+  serviceFee       Int?
+  serviceFeeTaxTreatmentId String?
+  /// Event allocation cap for this type (≤ event capacity across types)
+  quantityTotal    Int
+  /// Currently released for sale (≤ quantityTotal). Available = released - sold - reserved
+  quantityReleased Int       @default(0)
+  quantitySold     Int       @default(0)
+  quantityReserved Int       @default(0)
+  maxPerOrder      Int       @default(10)
+  minPerOrder      Int       @default(1)
+  salesStartAt     DateTime?
+  salesEndAt       DateTime?
+  salesPausedAt    DateTime?
+  isVisible        Boolean   @default(true)
+  /// Free/guest types must set this false unless intentionally sold publicly at 0 kr
+  isPubliclyPurchasable Boolean @default(true)
+  /// MANUAL (default) or AUTOMATIC batch/price progression
+  releaseMode      String    @default("MANUAL")
+  /// Bundle: how many individual QR tickets to issue per purchased unit (4-pack → 4)
+  admissionCount   Int       @default(1)
+  isBundle         Boolean   @default(false)
+  sortOrder        Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  event              Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  taxTreatment       TaxTreatment?       @relation("TicketTax", fields: [taxTreatmentId], references: [id], onDelete: SetNull)
+  serviceFeeTaxTreatment TaxTreatment?   @relation("ServiceFeeTax", fields: [serviceFeeTaxTreatmentId], references: [id], onDelete: SetNull)
+  priceTiers         TicketPriceTier[]
+  orderItems         OrderItem[]
+  reservations       TicketReservation[]
+  tickets            Ticket[]
+  promoCodes         PromoCode[]
+  guestList          GuestListEntry[]
+  priceHistory       PriceHistory[]
+  batches            TicketBatch[]
+  waitlistEntries    WaitlistEntry[]
+
+  @@index([eventId, sortOrder])
+  @@index([eventId, isVisible])
+  @@index([taxTreatmentId])
+}
+
+/// Auditable price changes — never rewrite past orders/reservations
+model PriceHistory {
+  id           String   @id @default(cuid())
+  ticketTypeId String
+  oldPrice     Int
+  newPrice     Int
+  changedById  String?
+  reason       String?
+  ruleId       String? // optional automatic rule reference
+  changedAt    DateTime @default(now())
+
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+
+  @@index([ticketTypeId, changedAt])
+}
+
+/// Optional sales batches / drops (organizer-defined; not always shown to customer)
+model TicketBatch {
+  id           String    @id @default(cuid())
+  eventId      String
+  ticketTypeId String
+  name         String?
+  quantity     Int
+  price        Int // øre at batch open
+  sortOrder    Int       @default(0)
+  releasedAt   DateTime?
+  closedAt     DateTime?
+  autoOpen     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, sortOrder])
+  @@index([ticketTypeId])
+}
+
+enum WaitlistStatus {
+  WAITING
+  INVITED
+  CLAIMED
+  EXPIRED
+  REMOVED
+}
+
+model WaitlistEntry {
+  id                String         @id @default(cuid())
+  eventId           String
+  ticketTypeId      String?
+  email             String
+  name              String?
+  phone             String?
+  requestedQuantity Int            @default(1)
+  /// @deprecated use requestedQuantity
+  quantity          Int            @default(1)
+  status            WaitlistStatus @default(WAITING)
+  inviteToken       String?        @unique
+  inviteExpiresAt   DateTime?
+  claimedAt         DateTime?
+  notifiedAt        DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketType TicketType? @relation(fields: [ticketTypeId], references: [id], onDelete: SetNull)
