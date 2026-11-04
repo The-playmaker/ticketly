@@ -1,0 +1,423 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum GlobalRole {
+  SUPER_ADMIN
+  CUSTOMER
+}
+
+enum OrgRole {
+  ORGANIZER_ADMIN
+  EVENT_MANAGER
+  DOOR_STAFF
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum EventStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  PAUSED
+  SOLD_OUT
+  CANCELLED
+  COMPLETED
+}
+
+enum AvailabilityDisplayMode {
+  SHOW_EXACT
+  SHOW_LOW_STOCK_ONLY
+  HIDE
+}
+
+enum SoldOutDisplayMode {
+  SOLD_OUT
+  MORE_COMING
+  PAUSED
+}
+
+enum AnalyticsEventType {
+  PAGE_VIEW
+  TICKET_SELECTION
+  CHECKOUT_STARTED
+  PAYMENT_INITIATED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  RESERVATION_EXPIRED
+}
+
+enum Visibility {
+  PUBLIC
+  UNLISTED
+  HIDDEN
+}
+
+enum ServiceFeeMode {
+  ON_TOP // customer pays fee on top of ticket price
+  INCLUDED // fee is included in ticket price
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  REVIEW_REQUIRED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+enum TicketStatus {
+  VALID
+  CHECKED_IN
+  CANCELLED
+  REFUNDED
+  TRANSFERRED
+  RESERVED
+}
+
+/// Door QR presentation mode. Production default remains STATIC_QR until DYNAMIC_QR lifecycle is complete.
+enum TicketQrMode {
+  STATIC_QR
+  DYNAMIC_QR
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+/// DISCOUNT = classic promo; TRACKING = promoter attribution only (never discounts).
+enum PromoCodeKind {
+  DISCOUNT
+  TRACKING
+}
+
+enum CheckInResult {
+  SUCCESS
+  ALREADY_USED
+  INVALID
+  WRONG_EVENT
+  CANCELLED
+  REFUNDED
+  EVENT_CANCELLED
+}
+
+enum PaymentProviderType {
+  NEXI
+  STRIPE
+  VIPPS
+  NETS
+  ADYEN
+  KLARNA
+  MOCK
+}
+
+enum RefundStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum ReservationStatus {
+  ACTIVE
+  CONVERTED
+  EXPIRED
+  RELEASED
+}
+
+enum PartyRole {
+  PLATFORM
+  ORGANIZER
+  SELLER_OF_RECORD
+  PAYMENT_PROVIDER
+  CUSTOMER
+}
+
+enum VatRegistrationStatus {
+  REGISTERED
+  NOT_REGISTERED
+  EXEMPT
+  UNKNOWN
+}
+
+enum RefundPolicyType {
+  STATUTORY_CANCELLATION_RIGHT
+  ORGANIZER_REFUND_POLICY
+  EVENT_CANCELLED_REFUND
+  MANUAL_REFUND
+  NO_REFUND
+}
+
+enum ConsentPurpose {
+  MARKETING_EMAIL
+  MARKETING_SMS
+  MARKETING_PUSH
+  ANALYTICS
+  PERSONALIZATION
+  THIRD_PARTY_SHARING
+}
+
+enum ProcessingPurpose {
+  CONTRACT_FULFILLMENT
+  LEGAL_OBLIGATION_ACCOUNTING
+  CUSTOMER_SERVICE
+  EVENT_COMMUNICATION
+  ANALYTICS
+  MARKETING
+  SECURITY
+  CHECK_IN
+}
+
+enum NotificationChannel {
+  PUSH
+  EMAIL
+  SMS
+}
+
+enum NotificationCategory {
+  TRANSACTIONAL
+  SERVICE
+  MARKETING
+}
+
+enum OfflineSyncStatus {
+  PENDING
+  SYNCED
+  CONFLICT
+  REJECTED
+}
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+  WEB
+}
+
+// ─── Auth (NextAuth) ─────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  firstName     String?
+  lastName      String?
+  phone         String?
+  image         String?
+  passwordHash  String?
+  globalRole    GlobalRole @default(CUSTOMER)
+  isActive      Boolean   @default(true)
+  lastActiveAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts            Account[]
+  sessions            Session[]
+  memberships         OrganizationMember[]
+  orders              Order[]
+  checkIns            CheckIn[]
+  auditLogs           AuditLog[]
+  guestListCreated    GuestListEntry[]     @relation("GuestListCreatedBy")
+  ticketTransfersFrom TicketTransfer[]     @relation("TransferFrom")
+  ticketTransfersTo   TicketTransfer[]     @relation("TransferTo")
+  eventAssignments    EventAssignment[]
+  systemLogs          SystemLog[]
+  consentRecords      ConsentRecord[]
+  pushTokens          PushToken[]
+  notificationPrefs   NotificationPreference[]
+  dataRequests        DataSubjectRequest[]
+  scannerSessions     ScannerSession[]
+  offlineCheckIns     OfflineCheckIn[]     @relation("OfflineCheckInStaff")
+
+  @@index([email])
+  @@index([globalRole])
+  @@index([isActive])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+/// Password set / reset tokens (invite accept + forgot password). Store hash only.
+model AuthActionToken {
+  id        String   @id @default(cuid())
+  userId    String?
+  email     String
+  purpose   String // PASSWORD_RESET | INVITE_PASSWORD_SETUP
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([email, purpose])
+  @@index([expiresAt])
+}
+
+// ─── Multi-tenant ────────────────────────────────────────────────────────────
+
+model Organization {
+  id                    String               @id @default(cuid())
+  name                  String
+  slug                  String               @unique
+  description           String?
+  logoUrl               String?
+  website               String?
+  isActive              Boolean              @default(true)
+  allowRefunds          Boolean              @default(true)
+  defaultServiceFee     Int                  @default(2000) // øre — reporting/fee config, not a wallet balance
+  defaultServiceFeeMode ServiceFeeMode       @default(ON_TOP)
+  defaultCurrency       String               @default("NOK")
+  // Legal / seller-of-record fields (Norwegian/EEA)
+  legalName             String?
+  organizationNumber    String? // org.nr
+  legalAddress          String?
+  legalPostalCode       String?
+  legalCity             String?
+  legalCountry          String               @default("NO")
+  contactEmail          String?
+  customerServiceEmail  String?
+  customerServicePhone  String?
+  vatRegistrationStatus VatRegistrationStatus @default(UNKNOWN)
+  termsVersion          String               @default("1.0")
+  refundPolicyType      RefundPolicyType     @default(ORGANIZER_REFUND_POLICY)
+  refundPolicyText      String?              @db.Text
+  // Settlement config (reporting only — funds stay with licensed PSP)
+  settlementConfig      Json?
+  stripeConnectedAccountId String?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  members            OrganizationMember[]
+  venues             Venue[]
+  events             Event[]             @relation("EventOrganizer")
+  sellerEvents       Event[]             @relation("EventSeller")
+  eventSeries        EventSeries[]
+  orders             Order[]
+  promoCodes         PromoCode[]
+  auditLogs          AuditLog[]
+  invitations        OrganizationInvitation[]
+  devices            Device[]
+  taxTreatments      TaxTreatment[]
+  retentionPolicies  RetentionPolicy[]
+  offlineBundles     OfflineValidationBundle[]
+  paymentConfigs     OrganizationPaymentConfiguration[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@index([organizationNumber])
+}
+
+/// Per-organization payment account reference for future multi-merchant Nexi setups.
+/// NEVER store private/secret API keys as plaintext here — use secretRef to an env/vault alias.
+model OrganizationPaymentConfiguration {
+  id                 String              @id @default(cuid())
+  organizationId     String
+  provider           PaymentProviderType
+  /// Vault/env alias only (e.g. "env:NEXI_SECRET_API_KEY") — not the secret itself
+  secretRef          String?
+  /// Checkout key is client-safe (Nexi "checkout key")
+  checkoutKeyPublic  String?
+  merchantId         String?
+  environment        String? // test | production
+  isActive           Boolean             @default(true)
+  metadata           Json?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, provider])
+  @@index([organizationId, isActive])
+}
+
+model OrganizationMember {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  role           OrgRole
+  canRefund      Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId, role])
+}
+
+model OrganizationInvitation {
+  id             String           @id @default(cuid())
+  organizationId String
+  email          String
+  role           OrgRole
+  /// SHA-256 hash of the one-time invite token (never store raw token)
+  tokenHash      String           @unique
+  invitedById    String?
+  status         InvitationStatus @default(PENDING)
+  /// Optional event IDs this invite grants access to (door staff / event managers)
+  restrictedEventIds String[]     @default([])
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
