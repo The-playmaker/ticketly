@@ -2,6 +2,9 @@
  * Rate limit provider abstraction — Memory for single-node;
  * Upstash Redis (REST) when UPSTASH_REDIS_REST_URL + TOKEN are set.
  * Never Vercel KV (sunset).
+ *
+ * Always use `rateLimitAsync` — sync `rateLimit` is removed because Redis
+ * providers return Promises and a sync wrapper would silently ignore them.
  */
 
 export type RateLimitResult = {
@@ -16,8 +19,37 @@ export interface RateLimitProvider {
 
 type Bucket = { timestamps: number[] };
 
+const DEFAULT_MAX_KEYS = 10_000;
+
 export class MemoryRateLimitProvider implements RateLimitProvider {
   private buckets = new Map<string, Bucket>();
+  private readonly maxKeys: number;
+
+  constructor(opts?: { maxKeys?: number }) {
+    this.maxKeys = opts?.maxKeys ?? Number(process.env.RATE_LIMIT_MAX_KEYS ?? DEFAULT_MAX_KEYS);
+  }
+
+  /**
+   * Drop empty/expired buckets; if still over maxKeys, evict oldest by earliest
+   * timestamp (optionally keep `retainKey` so a just-incremented key survives).
+   */
+  private prune(now: number, windowMs: number, retainKey?: string) {
+    for (const [k, b] of this.buckets) {
+      b.timestamps = b.timestamps.filter((t) => now - t < windowMs);
+      if (b.timestamps.length === 0) this.buckets.delete(k);
+      else this.buckets.set(k, b);
+    }
+    if (this.buckets.size <= this.maxKeys) return;
+    const ranked = [...this.buckets.entries()]
+      .filter(([k]) => k !== retainKey)
+      .sort((a, b) => (a[1].timestamps[0] ?? 0) - (b[1].timestamps[0] ?? 0));
+    let overflow = this.buckets.size - this.maxKeys;
+    for (const [k] of ranked) {
+      if (overflow <= 0) break;
+      this.buckets.delete(k);
+      overflow -= 1;
+    }
+  }
 
   limit(
     key: string,
@@ -25,6 +57,8 @@ export class MemoryRateLimitProvider implements RateLimitProvider {
     windowMs = Number(process.env.RATE_LIMIT_WINDOW_MS ?? 60_000)
   ): RateLimitResult {
     const now = Date.now();
+    this.prune(now, windowMs);
+
     const bucket = this.buckets.get(key) ?? { timestamps: [] };
     bucket.timestamps = bucket.timestamps.filter((t) => now - t < windowMs);
 
@@ -36,11 +70,20 @@ export class MemoryRateLimitProvider implements RateLimitProvider {
 
     bucket.timestamps.push(now);
     this.buckets.set(key, bucket);
+    // Enforce max after insert — keep the key we just updated
+    if (this.buckets.size > this.maxKeys) {
+      this.prune(now, windowMs, key);
+    }
     return {
       success: true,
       remaining: limit - bucket.timestamps.length,
       resetAt: now + windowMs,
     };
+  }
+
+  /** Test helper — current number of tracked keys. */
+  size(): number {
+    return this.buckets.size;
   }
 }
 
@@ -105,17 +148,19 @@ export function setRateLimitProvider(p: RateLimitProvider) {
   provider = p;
 }
 
+/**
+ * @deprecated Use `rateLimitAsync` — sync wrapper cannot await Redis providers.
+ * Kept temporarily as a thin alias that throws if the provider returns a Promise
+ * without being awaited (should not be called from new code).
+ */
 export function rateLimit(
-  key: string,
-  limit = Number(process.env.RATE_LIMIT_MAX ?? 60),
-  windowMs = Number(process.env.RATE_LIMIT_WINDOW_MS ?? 60_000)
+  _key: string,
+  _limit = Number(process.env.RATE_LIMIT_MAX ?? 60),
+  _windowMs = Number(process.env.RATE_LIMIT_WINDOW_MS ?? 60_000)
 ): RateLimitResult {
-  const result = provider.limit(key, limit, windowMs);
-  if (result instanceof Promise) {
-    // Sync call sites: fall back to memory for unexpected async provider
-    return new MemoryRateLimitProvider().limit(key, limit, windowMs);
-  }
-  return result;
+  throw new Error(
+    "rateLimit() sync API removed — use await rateLimitAsync() so Redis providers are honoured"
+  );
 }
 
 export async function rateLimitAsync(
