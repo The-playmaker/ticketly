@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { forgotPasswordSchema } from "@ticketly/validation";
 import { UserAdminService } from "@/services/user-admin-service";
-import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import { clientIp, rateLimitAsync } from "@/lib/security/rate-limit";
 
 const GENERIC =
   "Hvis kontoen finnes, har vi sendt instruksjoner.";
 
 export async function POST(req: Request) {
   const ip = clientIp(req);
-  const rl = rateLimit(`forgot-password:${ip}`, 5);
+  const rl = await rateLimitAsync(`forgot-password:${ip}`, 5);
   if (!rl.success) {
     return NextResponse.json({ message: GENERIC });
   }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import { clientIp, rateLimitAsync } from "@/lib/security/rate-limit";
 import {
   isSensitiveTicketPath,
   sanitizeAnalyticsPath,
@@ -33,7 +33,7 @@ const schema = z.object({
 
 export async function POST(req: Request) {
   const ip = clientIp(req);
-  const rl = rateLimit(`analytics:${ip}`, 120);
+  const rl = await rateLimitAsync(`analytics:${ip}`, 120);
   if (!rl.success) {
     return NextResponse.json({ ok: false }, { status: 429 });
   }
