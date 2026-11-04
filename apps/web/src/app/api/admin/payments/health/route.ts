@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import {
   nexiConfigHealth,
   stripeConfigHealth,
@@ -11,17 +10,21 @@ import {
 } from "@/lib/payments";
 import { prisma } from "@/lib/db";
 import { PaymentProviderType, WebhookProcessStatus } from "@prisma/client";
+import { requireSuperAdmin } from "@/lib/admin/org-access";
+import { jsonError } from "@/lib/api-error";
 
 /**
  * Safe payment health — config status only, no expensive payment API calls.
  * Reports Nexi and Stripe separately.
  * Create-time failover only when PAYMENT_BACKUP_PROVIDER is set and primary is
  * definitively unavailable before payment creation (never mid-payment).
+ * SUPER_ADMIN only — same class as system/health.
  */
 export async function GET() {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    await requireSuperAdmin();
+  } catch (e) {
+    return jsonError(e);
   }
 
   const activeProvider = resolvePaymentProviderType();
