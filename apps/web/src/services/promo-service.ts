@@ -1,4 +1,5 @@
-import type { DiscountType, PromoCode, PromoCodeKind } from "@prisma/client";
+import type { DiscountType, PromoCode, PromoCodeKind, Prisma } from "@prisma/client";
+import { PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { AppError } from "@/lib/api-error";
 import { writeAuditLog } from "@/lib/audit";
@@ -312,6 +313,64 @@ export class PromoService {
         netRevenue: computeNetRevenue(totals.grossSales, totals.successfulRefundAmount),
       };
     });
+  }
+
+  /**
+   * Release a promo usedCount when a PENDING order expires, fails, or is cancelled.
+   * Idempotent via Order.promoReleasedAt — never decrements twice, never touches PAID.
+   */
+  static async releasePromoForOrder(
+    orderId: string,
+    tx?: Prisma.TransactionClient,
+    reason = "PENDING_RELEASE"
+  ): Promise<{ released: boolean }> {
+    const db = tx ?? prisma;
+    const order = await db.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        promoCodeId: true,
+        promoReleasedAt: true,
+        paymentStatus: true,
+        organizationId: true,
+      },
+    });
+    if (!order?.promoCodeId) return { released: false };
+    if (order.promoReleasedAt) return { released: false };
+    if (order.paymentStatus === PaymentStatus.PAID) return { released: false };
+
+    // Atomic claim: only one caller wins the promoReleasedAt write
+    const claimed = await db.order.updateMany({
+      where: {
+        id: orderId,
+        promoCodeId: { not: null },
+        promoReleasedAt: null,
+        paymentStatus: { not: PaymentStatus.PAID },
+      },
+      data: { promoReleasedAt: new Date() },
+    });
+    if (claimed.count === 0) return { released: false };
+
+    await db.promoCode.update({
+      where: { id: order.promoCodeId },
+      data: { usedCount: { decrement: 1 } },
+    });
+    // Clamp at 0 if counter drifted negative
+    await db.$executeRaw`
+      UPDATE "PromoCode"
+      SET "usedCount" = 0
+      WHERE id = ${order.promoCodeId} AND "usedCount" < 0
+    `;
+
+    await writeAuditLog({
+      action: "PROMO_USE_RELEASED",
+      entityType: "Order",
+      entityId: orderId,
+      organizationId: order.organizationId,
+      metadata: { promoCodeId: order.promoCodeId, reason },
+    });
+
+    return { released: true };
   }
 }
 
