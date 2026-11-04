@@ -1,5 +1,5 @@
 import { randomBytes } from "crypto";
-import { WaitlistStatus } from "@prisma/client";
+import { EventStatus, WaitlistStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { AppError } from "@/lib/api-error";
 import { writeAuditLog } from "@/lib/audit";
@@ -16,9 +16,30 @@ export class WaitlistService {
     phone?: string;
     requestedQuantity?: number;
   }) {
-    const event = await prisma.event.findUniqueOrThrow({ where: { id: input.eventId } });
+    const event = await prisma.event.findUnique({ where: { id: input.eventId } });
+    if (!event) {
+      throw new AppError("NOT_FOUND", "Arrangement ikke funnet", 404);
+    }
+    if (
+      event.visibility !== "PUBLIC" &&
+      event.visibility !== "UNLISTED"
+    ) {
+      throw new AppError("NOT_FOUND", "Arrangement ikke funnet", 404);
+    }
+    if (event.status !== EventStatus.PUBLISHED && event.status !== EventStatus.SOLD_OUT) {
+      throw new AppError("NOT_FOUND", "Arrangement ikke funnet", 404);
+    }
     if (!event.waitlistEnabled) {
       throw new AppError("WAITLIST_DISABLED", "Venteliste er ikke aktivert", 400);
+    }
+
+    if (input.ticketTypeId) {
+      const tt = await prisma.ticketType.findFirst({
+        where: { id: input.ticketTypeId, eventId: event.id },
+      });
+      if (!tt) {
+        throw new AppError("TICKET_TYPE_NOT_FOUND", "Billettype ikke funnet", 404);
+      }
     }
 
     const email = input.email.trim().toLowerCase();

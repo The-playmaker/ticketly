@@ -69,10 +69,30 @@ export async function assertCanAccessOrder(user: AuthUser, orderId: string) {
   return order;
 }
 
-export async function assertDeviceNotRevoked(deviceId: string | undefined | null) {
-  if (!deviceId) return;
+/**
+ * Device gate for scanners.
+ * - Web cookie scanner: deviceId optional; unknown legacy strings allowed.
+ * - Mobile bearer / offline: requireRegistered → missing/unknown/revoked → 403.
+ */
+export async function assertDeviceNotRevoked(
+  deviceId: string | undefined | null,
+  opts?: { requireRegistered?: boolean }
+) {
+  const requireRegistered = Boolean(opts?.requireRegistered);
+  if (!deviceId) {
+    if (requireRegistered) {
+      throw new AppError("DEVICE_REQUIRED", "Registrert scanner-enhet kreves", 403);
+    }
+    return;
+  }
   const device = await prisma.device.findUnique({ where: { id: deviceId } });
-  if (!device) return; // legacy web scanner device strings allowed
+  if (!device) {
+    if (requireRegistered) {
+      throw new AppError("DEVICE_UNKNOWN", "Ukjent scanner-enhet", 403);
+    }
+    // Legacy web scanner device strings allowed
+    return;
+  }
   if (device.revokedAt) {
     throw new AppError("DEVICE_REVOKED", "Denne scanneren er deaktivert", 403);
   }
