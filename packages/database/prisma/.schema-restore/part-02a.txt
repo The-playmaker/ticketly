@@ -1,0 +1,151 @@
+
+  @@index([eventId, status, createdAt])
+  @@index([eventId, email])
+  @@index([ticketTypeId, status])
+  @@index([inviteToken])
+}
+
+enum ReminderKind {
+  EVENT_24H
+  EVENT_3H
+  EVENT_CHANGED
+  EVENT_CANCELLED
+}
+
+enum ReminderJobStatus {
+  SCHEDULED
+  SENT
+  FAILED
+  CANCELLED
+  SKIPPED
+}
+
+model EventReminderJob {
+  id           String            @id @default(cuid())
+  eventId      String
+  orderId      String
+  kind         ReminderKind
+  scheduledFor DateTime
+  status       ReminderJobStatus @default(SCHEDULED)
+  sentAt       DateTime?
+  error        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, orderId, kind])
+  @@index([status, scheduledFor])
+  @@index([eventId, kind])
+}
+
+/// Lightweight funnel / traffic analytics (not financial SoT)
+model AnalyticsEvent {
+  id           String             @id @default(cuid())
+  eventId      String?
+  organizationId String?
+  type         AnalyticsEventType
+  sessionId    String?
+  orderId      String?
+  utmSource    String?
+  utmMedium    String?
+  utmCampaign  String?
+  utmContent   String?
+  utmTerm      String?
+  referrer     String?
+  path         String?
+  meta         Json?
+  createdAt    DateTime           @default(now())
+
+  event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, type, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+/// Early-bird / tiered pricing: first N tickets at price X, next M at Y, etc.
+model TicketPriceTier {
+  id           String   @id @default(cuid())
+  ticketTypeId String
+  name         String?
+  price        Int // øre
+  quantityFrom Int // inclusive sold count start (0-based)
+  quantityTo   Int // inclusive sold count end
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+
+  @@index([ticketTypeId, sortOrder])
+}
+
+// ─── Reservations (hold inventory during checkout) ───────────────────────────
+
+model TicketReservation {
+  id           String            @id @default(cuid())
+  eventId      String
+  ticketTypeId String
+  quantity     Int
+  sessionId    String
+  status       ReservationStatus @default(ACTIVE)
+  expiresAt    DateTime
+  orderId      String?
+  /// Locked unit price (øre) at reservation time — admin price changes do not affect this
+  unitPriceSnapshot Int?
+  serviceFeeSnapshot Int?
+  lineTotalSnapshot  Int?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+  order      Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId, status])
+  @@index([expiresAt, status])
+  @@index([ticketTypeId, status])
+  @@index([orderId])
+}
+
+// ─── Orders & payments ───────────────────────────────────────────────────────
+
+model Order {
+  id                   String        @id @default(cuid())
+  orderNumber          String        @unique
+  organizationId       String
+  sellerOrganizationId String?
+  eventId              String
+  customerId           String?
+  customerEmail        String
+  customerPhone        String?
+  customerFirstName    String
+  customerLastName     String
+  subtotal             Int // øre — gross ticket amount before platform fee split reporting
+  serviceFee           Int           @default(0) // platform fee charged to customer (reporting)
+  tax                  Int           @default(0)
+  discount             Int           @default(0)
+  total                Int
+  // Settlement reporting fields (NOT stored customer funds / wallets)
+  organizerAmount      Int           @default(0)
+  platformFeeAmount    Int           @default(0)
+  paymentProcessingFee Int           @default(0)
+  currency             String        @default("NOK")
+  paymentStatus        PaymentStatus @default(PENDING)
+  orderStatus          OrderStatus   @default(PENDING)
+  promoCodeId          String?
+  reservationSessionId String?
+  termsVersion         String?
+  termsAcceptedAt      DateTime?
+  privacyVersion       String?
+  refundPolicyVersion  String?
+  refundPolicyType     RefundPolicyType?
+  marketingOptIn       Boolean       @default(false) // NEVER auto-set from purchase alone
+  /// Unguessable token required to view QR / PDF for guest checkout
+  accessToken          String        @unique @default(cuid())
+  paymentAnomaly       Boolean       @default(false)
+  paymentAnomalyReason String?
+  paidAt               DateTime?
+  /// Set atomically when tickets are issued — exactly-once fulfillment marker (with Order FOR UPDATE)
+  ticketsFulfilledAt   DateTime?

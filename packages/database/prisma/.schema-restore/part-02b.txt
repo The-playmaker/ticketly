@@ -1,0 +1,146 @@
+  /// Set when promo usedCount is released after PENDING expire/fail/cancel (idempotent)
+  promoReleasedAt      DateTime?
+  cancelledAt          DateTime?
+  /// Privacy-conscious traffic attribution (optional; from landing/checkout)
+  utmSource            String?
+  utmMedium            String?
+  utmCampaign          String?
+  utmContent           String?
+  utmTerm              String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  event        Event               @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  customer     User?               @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  promoCode    PromoCode?          @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  items        OrderItem[]
+  tickets      Ticket[]
+  payments     Payment[]
+  refunds      Refund[]
+  reservations TicketReservation[]
+  snapshot     OrderSnapshot?
+
+  @@index([orderNumber])
+  @@index([accessToken])
+  @@index([customerEmail])
+  @@index([customerId])
+  @@index([eventId, paymentStatus])
+  @@index([organizationId, createdAt])
+  @@index([paymentStatus, orderStatus])
+}
+
+model OrderItem {
+  id           String @id @default(cuid())
+  orderId      String
+  ticketTypeId String
+  quantity     Int
+  unitPrice    Int // øre at time of purchase
+  serviceFee   Int    @default(0)
+  tax          Int    @default(0)
+  total        Int
+  name         String // snapshot of ticket type name
+
+  order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+  tickets    Ticket[]
+
+  @@index([orderId])
+  @@index([ticketTypeId])
+}
+
+model Payment {
+  id                    String              @id @default(cuid())
+  orderId               String
+  provider              PaymentProviderType
+  providerPaymentId     String?
+  providerSessionId     String?
+  /// Nexi charge id required for refunds after capture
+  providerChargeId      String?
+  /// Normalized method from provider (VIPPS, VISA, MASTERCARD, APPLEPAY, …)
+  paymentMethod         String?
+  /// CARD | WALLET | INVOICE | OTHER
+  paymentType           String?
+  /// Raw provider status string (not Ticketly domain state)
+  providerStatus        String?
+  amount                Int
+  currency              String              @default("NOK")
+  status                PaymentStatus       @default(PENDING)
+  providerMetadata      Json?
+  rawPayload            Json?
+  idempotencyKey        String?             @unique
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  refunds Refund[]
+
+  @@index([orderId])
+  @@index([providerPaymentId])
+  @@index([providerSessionId])
+  @@index([providerChargeId])
+  @@index([status])
+}
+
+model Refund {
+  id                String       @id @default(cuid())
+  orderId           String
+  paymentId         String?
+  amount            Int
+  currency          String       @default("NOK")
+  status            RefundStatus @default(PENDING)
+  reason            String?
+  /// Provider refund id — unique when set so webhook retries cannot double-count amounts
+  providerRefundId  String?      @unique
+  ticketIds         String[] // tickets included in this refund
+  processedById     String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([paymentId])
+  @@index([status])
+}
+
+enum WebhookProcessStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  SKIPPED
+  DUPLICATE
+}
+
+model WebhookEvent {
+  id          String               @id @default(cuid())
+  provider    PaymentProviderType
+  eventId     String // external event id for idempotency
+  eventType   String
+  paymentId   String? // provider payment id when present
+  orderId     String?
+  payload     Json
+  status      WebhookProcessStatus @default(RECEIVED)
+  error       String?
+  receivedAt  DateTime             @default(now())
+  processedAt DateTime?
+  createdAt   DateTime             @default(now())
+
+  @@unique([provider, eventId])
+  @@index([eventType])
+  @@index([paymentId])
+  @@index([status])
+  @@index([receivedAt])
+  @@index([createdAt])
+}
+
+// ─── Tickets ─────────────────────────────────────────────────────────────────
+
+model Ticket {
+  id              String       @id @default(cuid())
+  publicId        String       @unique // human-readable e.g. TKT-A1B2C3
+  /// SHA-256 hex of QR token — used for lookup; raw token not required for validation
+  tokenHash       String       @unique
+  /// Encrypted raw token for re-display (AES); never use for validation alone
+  tokenCipher     String?
