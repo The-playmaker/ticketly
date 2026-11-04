@@ -9,6 +9,7 @@ import {
 import { prisma } from "@/lib/db";
 import { writeAuditLog } from "@/lib/audit";
 import { PaymentService } from "@/services/payment-service";
+import { PromoService } from "@/services/promo-service";
 import { mapWithConcurrency } from "@/lib/payments/stripe-retry";
 import {
   createLiveNexiLookupClient,
@@ -147,6 +148,7 @@ export async function nexiReconcileOrder(
           where: { id: payment.id },
           data: { status: PaymentStatus.FAILED, providerStatus: "reconciled_failed" },
         });
+        await PromoService.releasePromoForOrder(order.id, undefined, "NEXI_RECONCILE_FAILED");
         applied = true;
       } else if (decision.action === "mark_cancelled") {
         await prisma.order.update({
@@ -160,6 +162,7 @@ export async function nexiReconcileOrder(
             providerStatus: "reconciled_cancelled",
           },
         });
+        await PromoService.releasePromoForOrder(order.id, undefined, "NEXI_RECONCILE_CANCELLED");
         applied = true;
       } else if (decision.action === "mark_review") {
         await prisma.order.update({

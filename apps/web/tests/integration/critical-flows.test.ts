@@ -41,7 +41,7 @@ describe("integration: reservation race & check-in", () => {
         maxPerOrder: 1,
         minPerOrder: 1,
         sortOrder: 99,
-        isVisible: false,
+        isVisible: true,
         isPubliclyPurchasable: true,
       },
     });
