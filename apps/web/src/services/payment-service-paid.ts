@@ -50,7 +50,35 @@ export async function markOrderPaidImpl(input: {
       throw new AppError("PAYMENT_ORDER_MISMATCH", "Betaling tilhører ikke ordren", 409);
     }
   }
-  if (input.amount != null && input.amount !== order.total) {
+  // amount + currency are required before marking PAID / issuing tickets
+  if (input.amount == null || !input.currency?.trim()) {
+    await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        paymentStatus: PaymentStatus.REVIEW_REQUIRED,
+        paymentAnomaly: true,
+        paymentAnomalyReason: "AMOUNT_MISSING",
+      },
+    });
+    await writeAuditLog({
+      action: "PAYMENT_AMOUNT_MISSING",
+      entityType: "Order",
+      entityId: order.id,
+      organizationId: order.organizationId,
+      metadata: {
+        reason: "AMOUNT_MISSING",
+        amount: input.amount ?? null,
+        currency: input.currency ?? null,
+        externalEventId: input.externalEventId,
+      },
+    });
+    throw new AppError(
+      "AMOUNT_MISSING",
+      "Betalingsbeløp eller valuta mangler — ordre krever manuell gjennomgang",
+      409
+    );
+  }
+  if (input.amount !== order.total) {
     await prisma.order.update({
       where: { id: order.id },
       data: {
@@ -73,7 +101,7 @@ export async function markOrderPaidImpl(input: {
     });
     throw new AppError("PAYMENT_AMOUNT_MISMATCH", "Betalingsbeløp matcher ikke ordre", 409);
   }
-  if (input.currency && input.currency.toUpperCase() !== order.currency.toUpperCase()) {
+  if (input.currency.toUpperCase() !== order.currency.toUpperCase()) {
     await prisma.order.update({
       where: { id: order.id },
       data: {
