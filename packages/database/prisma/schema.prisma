@@ -108,6 +108,12 @@ enum DiscountType {
   FIXED
 }
 
+/// DISCOUNT = classic promo; TRACKING = promoter attribution only (never discounts).
+enum PromoCodeKind {
+  DISCOUNT
+  TRACKING
+}
+
 enum CheckInResult {
   SUCCESS
   ALREADY_USED
@@ -1099,20 +1105,23 @@ model GuestListEntry {
 // ─── Promo codes ─────────────────────────────────────────────────────────────
 
 model PromoCode {
-  id             String       @id @default(cuid())
+  id             String        @id @default(cuid())
   organizationId String
   eventId        String?
   ticketTypeId   String?
   code           String
+  /// Display name for promoter / campaign (e.g. "Ola Nordmann")
+  label          String?
+  kind           PromoCodeKind @default(DISCOUNT)
   discountType   DiscountType
-  discountValue  Int // percentage basis points (2000=20%) or fixed øre
+  discountValue  Int // percentage basis points (2000=20%) or fixed øre; TRACKING always stored as 0
   maxUses        Int?
-  usedCount      Int          @default(0)
+  usedCount      Int           @default(0)
   startAt        DateTime?
   expiresAt      DateTime?
-  isActive       Boolean      @default(true)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   event        Event?       @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -1123,6 +1132,7 @@ model PromoCode {
   @@index([code])
   @@index([eventId])
   @@index([isActive])
+  @@index([kind])
 }
 
 // ─── Audit & system ──────────────────────────────────────────────────────────

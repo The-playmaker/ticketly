@@ -75,6 +75,7 @@ export function CreateOrganizationForm() {
 
     // Full document navigation reloads JWT (memberships refreshed on every jwt callback)
     // so /admin/settings immediately resolves the new org and team works.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- intentional hard reload to refresh JWT memberships
     window.location.assign("/admin/settings");
   }
 

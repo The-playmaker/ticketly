@@ -3,16 +3,24 @@ import { Geist_Mono, Space_Grotesk, Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+// Inter and Space Grotesk are variable fonts: omitting `weight` ships ONE variable
+// file per family instead of four static weight files (fewer font requests/bytes).
+// Mono is only used for order numbers/codes, so don't preload it on every page.
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+});
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 const inter = Inter({
   variable: "--font-body",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {

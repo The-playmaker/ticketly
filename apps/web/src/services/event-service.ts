@@ -71,6 +71,17 @@ export class EventService {
       return event;
     }
 
+    return EventService.withFreshInventory(event);
+  }
+
+  /**
+   * Run opportunistic reservation cleanup for an already-loaded event and, only if
+   * inventory actually changed, re-read its ticket types. Lets callers share one
+   * event query between metadata and page render.
+   */
+  static async withFreshInventory<
+    T extends { id: string; ticketTypes: unknown[] },
+  >(event: T): Promise<T> {
     // Opportunistic: expire/rebuild only outside throttle + when SQL invariant
     // detects drift. Avoids a full repair dry-run on every public page view.
     let cleaned = false;
@@ -93,7 +104,28 @@ export class EventService {
       orderBy: { sortOrder: "asc" },
       include: { priceTiers: { orderBy: { sortOrder: "asc" } } },
     });
-    return { ...event, ticketTypes };
+    return { ...event, ticketTypes } as T;
+  }
+
+  /**
+   * Public URLs are `/events/{slug}` (looked up without an org), so slugs must be
+   * unique across ALL organizations — otherwise two orgs' events collide and a
+   * buyer can land on the wrong event. Appends -2, -3, … until free.
+   */
+  static async uniqueSlug(base: string): Promise<string> {
+    const root = base || "arrangement";
+    const taken = new Set(
+      (
+        await prisma.event.findMany({
+          where: { slug: { startsWith: root } },
+          select: { slug: true },
+        })
+      ).map((e) => e.slug)
+    );
+    if (!taken.has(root)) return root;
+    let n = 2;
+    while (taken.has(`${root}-${n}`)) n++;
+    return `${root}-${n}`;
   }
 
   static async create(
@@ -103,7 +135,7 @@ export class EventService {
     const event = await prisma.event.create({
       data: {
         ...data,
-        slug: data.slug || slugify(data.name),
+        slug: await EventService.uniqueSlug(data.slug || slugify(data.name)),
       },
     });
 
@@ -297,12 +329,7 @@ export class EventService {
       },
     });
 
-    const baseSlug = `${source.slug}-kopi`;
-    let slug = baseSlug;
-    let n = 1;
-    while (await prisma.event.findFirst({ where: { organizationId: source.organizationId, slug } })) {
-      slug = `${baseSlug}-${n++}`;
-    }
+    const slug = await EventService.uniqueSlug(`${source.slug}-kopi`);
 
     const weekMs = 7 * 24 * 60 * 60_000;
     const created = await prisma.$transaction(async (tx) => {
@@ -529,8 +556,25 @@ export class EventService {
     const orgFilter = organizationId ? { organizationId } : {};
     const eventOrgFilter = organizationId ? { organizationId } : {};
 
+    const everPaidWhere = {
+      OR: [
+        { paidAt: { not: null } },
+        {
+          paymentStatus: {
+            in: [
+              PaymentStatus.PAID,
+              PaymentStatus.PARTIALLY_REFUNDED,
+              PaymentStatus.REFUNDED,
+            ],
+          },
+        },
+      ],
+    };
+
+    // All aggregates run in the database — never load every order/event row into memory.
     const [
-      orders,
+      revenueTodayAgg,
+      failedPayments,
       financials,
       ticketsSold,
       checkedIn,
@@ -538,22 +582,28 @@ export class EventService {
       refundsAgg,
       pageViews,
       checkoutStarts,
-      events,
+      capacityAgg,
+      soldAgg,
     ] = await Promise.all([
-      prisma.order.findMany({
+      // Ever-paid = reached capture (incl. later refunded). Do NOT filter to current PAID only.
+      // "Today" is keyed on (paidAt ?? createdAt) >= startOfDay.
+      prisma.order.aggregate({
         where: {
           ...orgFilter,
-          paymentStatus: {
-            in: [
-              PaymentStatus.PAID,
-              PaymentStatus.PARTIALLY_REFUNDED,
-              PaymentStatus.REFUNDED,
-              PaymentStatus.FAILED,
-              PaymentStatus.PENDING,
-            ],
-          },
+          AND: [
+            everPaidWhere,
+            {
+              OR: [
+                { paidAt: { gte: startOfDay } },
+                { paidAt: null, createdAt: { gte: startOfDay } },
+              ],
+            },
+          ],
         },
-        select: { total: true, createdAt: true, paidAt: true, paymentStatus: true },
+        _sum: { total: true },
+      }),
+      prisma.order.count({
+        where: { ...orgFilter, paymentStatus: PaymentStatus.FAILED },
       }),
       getOrgFinancialTotals(prisma, organizationId),
       prisma.ticket.count({
@@ -582,36 +632,22 @@ export class EventService {
       prisma.analyticsEvent.count({
         where: { type: "CHECKOUT_STARTED", event: eventOrgFilter },
       }),
-      prisma.event.findMany({
-        where: eventOrgFilter,
-        select: { capacity: true, ticketTypes: { select: { quantitySold: true } } },
+      prisma.event.aggregate({ where: eventOrgFilter, _sum: { capacity: true } }),
+      prisma.ticketType.aggregate({
+        where: { event: eventOrgFilter },
+        _sum: { quantitySold: true },
       }),
     ]);
 
-    // Ever-paid = reached capture (incl. later refunded). Do NOT filter to current PAID only.
-    const everPaid = orders.filter(
-      (o) =>
-        o.paidAt != null ||
-        o.paymentStatus === PaymentStatus.PAID ||
-        o.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED ||
-        o.paymentStatus === PaymentStatus.REFUNDED
-    );
-    const revenueToday = everPaid
-      .filter((o) => (o.paidAt ?? o.createdAt) >= startOfDay)
-      .reduce((s, o) => s + o.total, 0);
-
-    const failedPayments = orders.filter((o) => o.paymentStatus === PaymentStatus.FAILED).length;
+    const revenueToday = revenueTodayAgg._sum.total ?? 0;
 
     const conversion =
       pageViews > 0
         ? Math.round((financials.paidOrderCount / pageViews) * 1000) / 10
         : null;
 
-    const capacity = events.reduce((s, e) => s + e.capacity, 0);
-    const sold = events.reduce(
-      (s, e) => s + e.ticketTypes.reduce((a, t) => a + t.quantitySold, 0),
-      0
-    );
+    const capacity = capacityAgg._sum.capacity ?? 0;
+    const sold = soldAgg._sum.quantitySold ?? 0;
 
     return {
       revenueToday,

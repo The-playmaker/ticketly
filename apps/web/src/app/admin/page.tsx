@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { requireAdminPageSession } from "@/lib/auth/session";
 import { formatMoney } from "@/lib/utils";
-import { SalesCharts } from "@/components/admin/sales-charts";
+import { SalesChartsLazy as SalesCharts } from "@/components/admin/sales-charts-lazy";
 import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { NoOrganizationPanel } from "@/components/admin/no-organization-panel";
 import { getCachedDashboardBundle } from "@/lib/cache/cached-reads";
