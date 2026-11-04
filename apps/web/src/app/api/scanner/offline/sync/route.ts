@@ -24,8 +24,14 @@ export async function POST(req: Request) {
   }
 
   try {
-    await assertDeviceNotRevoked(parsed.data.deviceId);
-  } catch {
+    await assertDeviceNotRevoked(parsed.data.deviceId, { requireRegistered: true });
+  } catch (e) {
+    if (e instanceof AppError) {
+      return NextResponse.json(
+        { error: { code: e.code, message: e.message } },
+        { status: e.status }
+      );
+    }
     return NextResponse.json(
       { error: { code: "DEVICE_REVOKED", message: "Scanner deaktivert" } },
       { status: 403 }

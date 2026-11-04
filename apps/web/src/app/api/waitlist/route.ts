@@ -1,17 +1,45 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { WaitlistService } from "@/services/waitlist-service";
-import { AppError } from "@/lib/api-error";
+import { jsonError, AppError } from "@/lib/api-error";
+import { clientIp, rateLimitAsync } from "@/lib/security/rate-limit";
+import { emailSchema } from "@/lib/validators";
+
+const joinSchema = z.object({
+  eventId: z.string().min(1),
+  ticketTypeId: z.string().min(1).optional(),
+  email: emailSchema,
+  name: z.string().max(200).optional(),
+  phone: z.string().max(40).optional(),
+  requestedQuantity: z.number().int().min(1).max(20).default(1),
+});
 
 export async function POST(req: Request) {
+  const ip = clientIp(req);
   try {
-    const body = await req.json();
+    const json = await req.json();
+    const parsed = joinSchema.safeParse(json);
+    if (!parsed.success) {
+      throw new AppError("VALIDATION_ERROR", "Ugyldig forespørsel", 400, parsed.error.flatten());
+    }
+
+    const emailRl = await rateLimitAsync(
+      `waitlist:email:${parsed.data.email}`,
+      5,
+      15 * 60_000
+    );
+    const ipRl = await rateLimitAsync(`waitlist:ip:${ip}`, 20, 15 * 60_000);
+    if (!emailRl.success || !ipRl.success) {
+      throw new AppError("RATE_LIMITED", "For mange forespørsler. Prøv igjen senere.", 429);
+    }
+
     const result = await WaitlistService.join({
-      eventId: String(body.eventId ?? ""),
-      ticketTypeId: body.ticketTypeId ? String(body.ticketTypeId) : undefined,
-      email: String(body.email ?? ""),
-      name: body.name ? String(body.name) : undefined,
-      phone: body.phone ? String(body.phone) : undefined,
-      requestedQuantity: body.requestedQuantity ? Number(body.requestedQuantity) : 1,
+      eventId: parsed.data.eventId,
+      ticketTypeId: parsed.data.ticketTypeId,
+      email: parsed.data.email,
+      name: parsed.data.name,
+      phone: parsed.data.phone,
+      requestedQuantity: parsed.data.requestedQuantity,
     });
     return NextResponse.json({
       ok: true,
@@ -20,9 +48,6 @@ export async function POST(req: Request) {
       entryId: result.entry.id,
     });
   } catch (e) {
-    if (e instanceof AppError) {
-      return NextResponse.json({ error: e.message, code: e.code }, { status: e.status });
-    }
-    return NextResponse.json({ error: "Could not join waitlist" }, { status: 500 });
+    return jsonError(e);
   }
 }

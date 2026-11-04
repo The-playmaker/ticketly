@@ -4,7 +4,7 @@ import { CheckInService } from "@/services/check-in-service";
 import { requireSession } from "@/lib/auth/session";
 import { AuthorizationError } from "@/lib/auth/rbac";
 import { assertCanScanEvent } from "@/lib/auth/org-access";
-import { AppError } from "@/lib/api-error";
+import { AppError, jsonError } from "@/lib/api-error";
 
 const schema = z.object({
   eventId: z.string(),
@@ -36,10 +36,9 @@ export async function POST(req: Request) {
       })),
     });
   } catch (e) {
-    if (e instanceof AppError) {
-      return NextResponse.json({ error: e.message }, { status: e.status });
+    if (e instanceof AuthorizationError) {
+      return jsonError(new AppError("FORBIDDEN", "Ingen tilgang", 403));
     }
-    const status = e instanceof AuthorizationError ? 403 : 401;
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Error" }, { status });
+    return jsonError(e);
   }
 }

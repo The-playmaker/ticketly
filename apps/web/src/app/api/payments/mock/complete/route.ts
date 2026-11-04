@@ -3,13 +3,24 @@ import { PaymentProviderType, PaymentStatus } from "@prisma/client";
 import { PaymentService } from "@/services/payment-service";
 import { isMockPaymentMode, resolvePaymentProviderType } from "@/lib/payments";
 import { prisma } from "@/lib/db";
-import { jsonError } from "@/lib/api-error";
+import { AppError, jsonError } from "@/lib/api-error";
 
 /**
  * Completes a mock checkout session (local/demo only).
  * Simulates webhook confirmation — frontend redirect alone never marks paid.
  * Forbidden when NODE_ENV=production or mock mode is off.
+ *
+ * sessionId must match Payment.providerSessionId for the order.
+ * redirect must be a relative path starting with `/` (not `//`).
  */
+function isSafeRelativeRedirect(redirect: string | null): redirect is string {
+  if (!redirect) return false;
+  if (!redirect.startsWith("/")) return false;
+  if (redirect.startsWith("//")) return false;
+  if (redirect.includes("://")) return false;
+  return true;
+}
+
 export async function GET(req: Request) {
   try {
     if (!isMockPaymentMode()) {
@@ -40,6 +51,18 @@ export async function GET(req: Request) {
       );
     }
 
+    const payment = await prisma.payment.findFirst({
+      where: { orderId, providerSessionId: sessionId },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!payment) {
+      throw new AppError(
+        "SESSION_MISMATCH",
+        "Betalingsøkten matcher ikke ordren",
+        400
+      );
+    }
+
     let provider: PaymentProviderType;
     try {
       provider = resolvePaymentProviderType();
@@ -59,7 +82,7 @@ export async function GET(req: Request) {
         event: "mock.payment.completed",
         orderId,
         sessionId,
-        paymentId: `mock_pi_${sessionId}`,
+        paymentId: payment.providerPaymentId ?? `mock_pi_${sessionId}`,
         amount: order.total,
         currency: order.currency,
         paymentStatus: PaymentStatus.PAID,
@@ -67,11 +90,10 @@ export async function GET(req: Request) {
       signature: "mock",
     });
 
-    const target =
-      redirect ??
-      `${process.env.APP_URL ?? "http://localhost:3456"}/orders/${order.orderNumber}?t=${order.accessToken}&paid=1`;
+    const fallback = `/orders/${order.orderNumber}?t=${order.accessToken}&paid=1`;
+    const target = isSafeRelativeRedirect(redirect) ? redirect : fallback;
 
-    return NextResponse.redirect(target);
+    return NextResponse.redirect(new URL(target, url.origin));
   } catch (e) {
     return jsonError(e);
   }
