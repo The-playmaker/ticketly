@@ -1,0 +1,119 @@
+import {
+  EventStatus,
+  OrderStatus,
+  PaymentStatus,
+  type Prisma,
+} from "@prisma/client";
+import { prisma } from "@/lib/db";
+import { slugify } from "@/lib/utils";
+import { writeAuditLog } from "@/lib/audit";
+import { AppError } from "@/lib/api-error";
+import { sendEventCancelledEmail } from "@/lib/email/templates";
+import {
+  getEventFinancialTotals,
+  getOrgFinancialTotals,
+} from "@/lib/admin/event-financials";
+import { RefundService } from "@/services/refund-service";
+import { ReservationService } from "@/services/reservation-service";
+
+export class EventService {
+  static async listPublic(params?: { take?: number; city?: string }) {
+    const now = new Date();
+    return prisma.event.findMany({
+      where: {
+        status: { in: [EventStatus.PUBLISHED, EventStatus.PAUSED, EventStatus.SOLD_OUT] },
+        visibility: "PUBLIC",
+        startsAt: { gte: now },
+        ...(params?.city ? { city: { equals: params.city, mode: "insensitive" } } : {}),
+      },
+      include: {
+        organization: { select: { name: true, slug: true } },
+        venue: true,
+        ticketTypes: {
+          where: { isVisible: true },
+          orderBy: { sortOrder: "asc" },
+          include: { priceTiers: { orderBy: { sortOrder: "asc" } } },
+        },
+      },
+      orderBy: { startsAt: "asc" },
+      take: params?.take ?? 50,
+    });
+  }
+
+  static async getBySlug(
+    slug: string,
+    opts?: { skipInventoryCleanup?: boolean }
+  ) {
+    const event = await prisma.event.findFirst({
+      where: {
+        slug,
+        // HIDDEN events are admin-only (preview via /admin/events/[id], not public slug)
+        visibility: { in: ["PUBLIC", "UNLISTED"] },
+        OR: [
+          { status: { in: [EventStatus.PUBLISHED, EventStatus.PAUSED, EventStatus.SOLD_OUT] } },
+          { visibility: "UNLISTED", status: { not: EventStatus.DRAFT } },
+        ],
+      },
+      include: {
+        organization: true,
+        sellerOrganization: true,
+        venue: true,
+        images: { orderBy: { sortOrder: "asc" } },
+        ticketTypes: {
+          where: { isVisible: true },
+          orderBy: { sortOrder: "asc" },
+          include: { priceTiers: { orderBy: { sortOrder: "asc" } } },
+        },
+      },
+    });
+    if (!event) return null;
+
+    // Metadata / OG tags do not need live counters — skip opportunistic cleanup.
+    if (opts?.skipInventoryCleanup) {
+      return event;
+    }
+
+    return EventService.withFreshInventory(event);
+  }
+
+  /**
+   * Run opportunistic reservation cleanup for an already-loaded event and, only if
+   * inventory actually changed, re-read its ticket types. Lets callers share one
+   * event query between metadata and page render.
+   */
+  static async withFreshInventory<
+    T extends { id: string; ticketTypes: unknown[] },
+  >(event: T): Promise<T> {
+    // Opportunistic: expire/rebuild only outside throttle + when SQL invariant
+    // detects drift. Avoids a full repair dry-run on every public page view.
+    let cleaned = false;
+    try {
+      const result = await ReservationService.cleanupEventSafe(event.id);
+      cleaned = Boolean(
+        result &&
+          !result.dryRun &&
+          result.applied &&
+          (result.expiredCount > 0 || result.types.some((t) => t.delta !== 0))
+      );
+    } catch {
+      // Prefer returning inventory over failing the page
+    }
+
+    if (!cleaned) return event;
+
+    const ticketTypes = await prisma.ticketType.findMany({
+      where: { eventId: event.id, isVisible: true },
+      orderBy: { sortOrder: "asc" },
+      include: { priceTiers: { orderBy: { sortOrder: "asc" } } },
+    });
+    return { ...event, ticketTypes } as T;
+  }
+
+  /**
+   * Public URLs are `/events/{slug}` (looked up without an org), so slugs must be
+   * unique across ALL organizations — otherwise two orgs' events collide and a
+   * buyer can land on the wrong event. Appends -2, -3, … until free.
+   */
+  static async uniqueSlug(base: string): Promise<string> {
+    const root = base || "arrangement";
+    const take
