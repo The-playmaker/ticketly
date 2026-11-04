@@ -1,0 +1,151 @@
+  /// DEPRECATED plaintext — kept nullable during migration; prefer tokenHash/tokenCipher
+  secureToken     String?      @unique
+  orderId         String
+  orderItemId     String
+  eventId         String
+  ticketTypeId    String
+  holderName      String?
+  holderEmail     String?
+  status          TicketStatus @default(VALID)
+  checkedInAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  order      Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem  OrderItem         @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  event      Event             @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  ticketType TicketType        @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+  checkIns   CheckIn[]
+  transfers  TicketTransfer[]
+
+  @@index([tokenHash])
+  @@index([secureToken])
+  @@index([publicId])
+  @@index([orderId])
+  @@index([eventId, status])
+  @@index([holderEmail])
+  @@index([ticketTypeId])
+}
+
+/// Revocable mobile API sessions (HMAC token jti)
+model MobileSession {
+  id        String    @id @default(cuid())
+  jti       String    @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model TicketTransfer {
+  id            String   @id @default(cuid())
+  ticketId      String
+  fromUserId    String?
+  toUserId      String?
+  fromEmail     String
+  toEmail       String
+  toName        String
+  oldToken      String
+  newToken      String
+  transferredAt DateTime @default(now())
+
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fromUser User?  @relation("TransferFrom", fields: [fromUserId], references: [id], onDelete: SetNull)
+  toUser   User?  @relation("TransferTo", fields: [toUserId], references: [id], onDelete: SetNull)
+
+  @@index([ticketId])
+  @@index([toEmail])
+}
+
+// ─── Check-in ────────────────────────────────────────────────────────────────
+
+model CheckIn {
+  id          String        @id @default(cuid())
+  ticketId    String?
+  eventId     String
+  checkedInAt DateTime      @default(now())
+  checkedInBy String?
+  deviceId    String?
+  result      CheckInResult
+  note        String?
+  isManual    Boolean       @default(false)
+
+  ticket  Ticket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  staff   User?   @relation(fields: [checkedInBy], references: [id], onDelete: SetNull)
+
+  @@index([ticketId])
+  @@index([eventId, checkedInAt])
+  @@index([checkedInBy])
+  @@index([result])
+}
+
+// ─── Guest list ──────────────────────────────────────────────────────────────
+
+model GuestListEntry {
+  id           String    @id @default(cuid())
+  eventId      String
+  ticketTypeId String?
+  name         String
+  email        String?
+  phone        String?
+  comment      String?
+  partySize    Int       @default(1)
+  createdById  String?
+  checkedInAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketType TicketType? @relation(fields: [ticketTypeId], references: [id], onDelete: SetNull)
+  createdBy  User?       @relation("GuestListCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+  @@index([email])
+  @@index([phone])
+  @@index([name])
+}
+
+// ─── Promo codes ─────────────────────────────────────────────────────────────
+
+model PromoCode {
+  id             String        @id @default(cuid())
+  organizationId String
+  eventId        String?
+  ticketTypeId   String?
+  code           String
+  /// Display name for promoter / campaign (e.g. "Ola Nordmann")
+  label          String?
+  kind           PromoCodeKind @default(DISCOUNT)
+  discountType   DiscountType
+  discountValue  Int // percentage basis points (2000=20%) or fixed øre; TRACKING always stored as 0
+  maxUses        Int?
+  usedCount      Int           @default(0)
+  startAt        DateTime?
+  expiresAt      DateTime?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketType   TicketType?  @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+  orders       Order[]
+
+  @@unique([organizationId, code])
+  @@index([code])
+  @@index([eventId])
+  @@index([isActive])
+  @@index([kind])
+}
+
+// ─── Audit & system ──────────────────────────────────────────────────────────
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  actorId        String?
+  organizationId String?

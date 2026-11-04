@@ -1,0 +1,168 @@
+  action         String
+  entityType     String
+  entityId       String?
+  metadata       Json?
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+
+  actor        User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([organizationId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  level     String
+  message   String
+  context   Json?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([level, createdAt])
+  @@index([createdAt])
+}
+
+model OrderSequence {
+  id      String @id // e.g. "2026"
+  counter Int    @default(0)
+}
+
+// ─── Immutable purchase snapshot (receipt / legal record) ────────────────────
+
+/// Frozen seller, pricing, tax and terms at purchase time. Never rewrite on org rename.
+model OrderSnapshot {
+  id                   String   @id @default(cuid())
+  orderId              String   @unique
+  payload              Json // full immutable snapshot
+  sellerLegalName      String
+  sellerOrgNumber      String?
+  sellerAddress        String?
+  termsVersion         String
+  refundPolicyType     RefundPolicyType
+  eventName            String
+  eventStartsAt        DateTime
+  currency             String
+  createdAt            DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ─── Tax configuration (admin/accounting — not inferred from event name) ─────
+
+model TaxCode {
+  id          String   @id @default(cuid())
+  code        String   @unique // e.g. NO_VAT_STANDARD, NO_VAT_EXEMPT_CULTURE
+  name        String
+  description String?
+  country     String   @default("NO")
+  createdAt   DateTime @default(now())
+
+  rates      TaxRate[]
+  treatments TaxTreatment[]
+}
+
+model TaxRate {
+  id        String    @id @default(cuid())
+  taxCodeId String
+  rateBps   Int // basis points, 2500 = 25%
+  validFrom DateTime
+  validTo   DateTime?
+  createdAt DateTime  @default(now())
+
+  taxCode TaxCode @relation(fields: [taxCodeId], references: [id], onDelete: Cascade)
+
+  @@index([taxCodeId, validFrom])
+}
+
+model TaxTreatment {
+  id             String   @id @default(cuid())
+  organizationId String?
+  taxCodeId      String
+  name           String
+  description    String?
+  isPlatformFee  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  organization      Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  taxCode           TaxCode       @relation(fields: [taxCodeId], references: [id], onDelete: Restrict)
+  ticketTypes       TicketType[]  @relation("TicketTax")
+  serviceFeeTickets TicketType[]  @relation("ServiceFeeTax")
+
+  @@index([organizationId])
+  @@index([taxCodeId])
+}
+
+// ─── GDPR / privacy ──────────────────────────────────────────────────────────
+
+model ConsentRecord {
+  id          String         @id @default(cuid())
+  userId      String?
+  email       String? // guest checkout
+  purpose     ConsentPurpose
+  version     String
+  grantedAt   DateTime?
+  withdrawnAt DateTime?
+  source      String // checkout | settings | import | admin
+  ipAddress   String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, purpose])
+  @@index([email, purpose])
+  @@index([purpose, grantedAt])
+}
+
+model DataSubjectRequest {
+  id          String   @id @default(cuid())
+  userId      String?
+  email       String
+  type        String // ACCESS | EXPORT | RECTIFY | ERASE | WITHDRAW_CONSENT
+  status      String   @default("PENDING") // PENDING | IN_PROGRESS | COMPLETED | REJECTED
+  note        String?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([status])
+}
+
+model RetentionPolicy {
+  id             String   @id @default(cuid())
+  organizationId String?
+  dataCategory   String // SCANNER_LOGS | DEVICE_META | ANALYTICS | ORDERS | AUDIT | PII_MARKETING
+  retainDays     Int
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, dataCategory])
+}
+
+model PlatformTerms {
+  id        String   @id @default(cuid())
+  version   String   @unique
+  title     String
+  body      String   @db.Text
+  publishedAt DateTime @default(now())
+  isActive  Boolean  @default(true)
+}
+
+// ─── Push notifications ──────────────────────────────────────────────────────
+
+model PushToken {
+  id        String         @id @default(cuid())
+  userId    String?
