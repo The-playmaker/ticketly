@@ -59,3 +59,22 @@ Payments detail: [PAYMENTS.md](./PAYMENTS.md).
 - Never downgrade PAID / PARTIALLY_REFUNDED / REFUNDED on delayed failure
 - Refunds always via original payment provider
 - Do not add Vercel Hobby-blocked crons to `vercel.json` — invoke `/api/cron/*` externally with `CRON_SECRET`
+
+## GitHub Actions cron (`.github/workflows/cron.yml`)
+
+Schedules + `workflow_dispatch` call the deployed app’s `/api/cron/*` routes.
+
+Repository (or environment) secrets required:
+
+| Secret | Purpose |
+|--------|---------|
+| `CRON_SECRET` | `Authorization: Bearer …` for cron routes (timing-safe compare) |
+| `APP_URL` | Production base URL, e.g. `https://billett.xodrammen.no` |
+
+Jobs:
+
+- `reservations-cleanup` — expire/repair inventory
+- `payments-reconcile` — Stripe + Nexi reconciliation
+- `reminders` — due notification batch
+
+Manual run: Actions → **Ticketly cron** → Run workflow → pick job (or `all`).
