@@ -70,6 +70,8 @@ export async function GET(req: Request) {
   }
 
   const bundle = await OfflineScannerService.createBundle(eventId);
+  // Decrypt server-side to return entries to trusted staff device over TLS.
+  // Encrypted blob remains available for strict offline packaging if needed.
   const plaintext = decryptPayload(bundle.encryptedPayload, getOfflineBundleKey());
   const parsed = JSON.parse(plaintext) as {
     entries: { publicId: string; tokenHash: string; status: string; ticketTypeName: string }[];
@@ -85,5 +87,6 @@ export async function GET(req: Request) {
   });
 }
 
+// silence unused import if tree-shaken differently
 void TicketStatus;
 void createHash;

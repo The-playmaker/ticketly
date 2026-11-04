@@ -44,6 +44,8 @@ async function resolveUser(
   }
   const session = await getOptionalSession();
   if (!session) throw new AuthorizationError("Unauthorized");
+  // Always reload memberships + assignments from DB so scanner access
+  // reflects EventAssignment / role changes without waiting on a stale JWT.
   const fresh = await prisma.user.findUnique({
     where: { id: session.id },
     include: {
@@ -124,6 +126,7 @@ export async function POST(req: Request) {
       throw new AuthorizationError();
     }
 
+    // Accept full URL or raw token from QR — never log the raw credential
     const raw = parsed.data.token;
     let token = raw;
     if (looksLikeDynamicQrCredential(raw)) {
