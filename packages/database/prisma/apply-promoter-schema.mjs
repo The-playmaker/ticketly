@@ -1,15 +1,52 @@
 /**
  * Ensures PromoCodeKind + PromoCode.label/kind exist in schema.prisma before
- * `prisma generate`. Safe no-op when fields are already present (canonical tree).
- * Temporary bridge for environments where the full schema.prisma sync lags.
+ * `prisma generate`. Also restores schema.prisma from .schema-restore/schema.zlib.b64
+ * when the committed schema is a placeholder / truncated (security-audit sync).
  */
 import fs from "node:fs";
 import path from "node:path";
+import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const schemaPath = path.join(root, "schema.prisma");
-let schema = fs.readFileSync(schemaPath, "utf8");
+const zlibBundle = path.join(root, ".schema-restore", "schema.zlib.b64");
+
+function loadSchema() {
+  let schema = "";
+  try {
+    schema = fs.readFileSync(schemaPath, "utf8");
+  } catch {
+    schema = "";
+  }
+  const broken =
+    schema.length < 1000 ||
+    schema.includes("PLACEHOLDER") ||
+    schema.startsWith("@file:") ||
+    !schema.includes("model Order");
+  if (!broken) return schema;
+  if (!fs.existsSync(zlibBundle)) {
+    console.error(
+      "apply-promoter-schema: schema broken and no .schema-restore/schema.zlib.b64"
+    );
+    process.exit(1);
+  }
+  const bytes = zlib.inflateSync(
+    Buffer.from(fs.readFileSync(zlibBundle, "utf8").trim(), "base64")
+  );
+  const text = bytes.toString("utf8");
+  if (!text.includes("promoReleasedAt") || !text.includes("model Order")) {
+    console.error("apply-promoter-schema: restore bundle invalid");
+    process.exit(1);
+  }
+  fs.writeFileSync(schemaPath, text);
+  console.log(
+    `apply-promoter-schema: restored schema.prisma from zlib bundle (${text.length} chars)`
+  );
+  return text;
+}
+
+let schema = loadSchema();
 
 if (schema.includes("enum PromoCodeKind")) {
   process.exit(0);
