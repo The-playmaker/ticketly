@@ -24,6 +24,7 @@ describe("ticketSelectionSchema + merge", () => {
     ]);
     expect(merged).toEqual([{ ticketTypeId: "vip", quantity: 5 }]);
 
+    // Simulate reserve min/max check on merged sum (maxPerOrder=4)
     const maxPerOrder = 4;
     expect(merged[0]!.quantity).toBeGreaterThan(maxPerOrder);
   });
