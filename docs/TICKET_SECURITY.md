@@ -121,6 +121,17 @@
 4. Legacy plaintext `Ticket.secureToken` column still accepted as fallback during migration — finish backfill and stop reading plaintext.
 5. Web scanner uses device string `web-scanner` (not revocable Device row) — register web devices for full revoke coverage.
 
+### Backfill `tokenHash` / `tokenCipher`
+
+Dry-run first (default), then apply in batches. Idempotent — skips rows that already have both fields. **Do not remove the check-in `secureToken` fallback yet.**
+
+```bash
+npx tsx scripts/backfill-ticket-token-cipher.ts --dry-run
+npx tsx scripts/backfill-ticket-token-cipher.ts --apply --limit=500
+```
+
+Requires `DATABASE_URL` and `TICKET_TOKEN_SECRET` (or `AUTH_SECRET` ≥ 16 chars).
+
 ---
 
 ## 9. Test commands
