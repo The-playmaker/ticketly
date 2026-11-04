@@ -4,6 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import { authorizeCredentials } from "@/lib/auth/credentials-authorize";
 import { refreshAuthJwt } from "@/lib/auth/jwt-refresh";
+import { clientIp } from "@/lib/security/rate-limit";
 import type { GlobalRole, OrgRole } from "@prisma/client";
 
 declare module "next-auth" {
@@ -64,8 +65,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "E-post", type: "email" },
         password: { label: "Passord", type: "password" },
       },
-      async authorize(credentials) {
-        return authorizeCredentials(credentials);
+      async authorize(credentials, request) {
+        return authorizeCredentials(credentials, { ip: clientIp(request) });
       },
     }),
   ],
