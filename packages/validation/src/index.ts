@@ -64,7 +64,8 @@ export const ticketSelectionSchema = z.object({
         quantity: z.number().int().min(1).max(50),
       })
     )
-    .min(1),
+    .min(1)
+    .max(20),
   sessionId: z.string().min(8),
 });
 
