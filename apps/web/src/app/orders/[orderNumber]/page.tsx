@@ -10,23 +10,12 @@ import { PaymentStatusPoller } from "@/components/orders/payment-status-poller";
 import { ResendOrderEmailButton } from "@/components/orders/resend-order-email-button";
 import { getOptionalSession } from "@/lib/auth/session";
 import { TicketService } from "@/services/ticket-service";
-import { timingSafeEqual } from "crypto";
+import { safeEqual } from "@/lib/security/safe-equal";
 
 type Props = {
   params: Promise<{ orderNumber: string }>;
   searchParams: Promise<{ paid?: string; checkout?: string; t?: string }>;
 };
-
-function safeEqual(a: string, b: string) {
-  try {
-    const ba = Buffer.from(a);
-    const bb = Buffer.from(b);
-    if (ba.length !== bb.length) return false;
-    return timingSafeEqual(ba, bb);
-  } catch {
-    return false;
-  }
-}
 
 export default async function OrderConfirmationPage({ params, searchParams }: Props) {
   const { orderNumber } = await params;
