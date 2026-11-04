@@ -1,0 +1,29 @@
+name: restore-security-sync-once
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/restore-parts/security-sync/**
+      - scripts/restore-security-sync.mjs
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cursor/security-audit-2-9546
+      - run: node scripts/restore-security-sync.mjs
+        env:
+          FORCE_SECURITY_RESTORE: "1"
+      - run: |
+          git config user.name ticketly-bot
+          git config user.email bot@ticketly.local
+          git add apps/web/src/services/event-service.ts \
+                  apps/web/src/services/reservation-service.ts \
+                  apps/web/src/services/payment-reconciliation-service.ts \
+                  apps/web/tests/integration/hardening.test.ts
+          git diff --cached --quiet && echo nothing && exit 0
+          git commit -m "fix(security): materialize HIDDEN/promo/amount-missing service sync"
+          git push

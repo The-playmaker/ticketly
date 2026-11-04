@@ -1,0 +1,6 @@
+{
+  "apps/web/src/services/event-service.ts": ".github/restore-parts/security-sync/apps__web__src__services__event-service.ts.zlib.b64",
+  "apps/web/src/services/reservation-service.ts": ".github/restore-parts/security-sync/apps__web__src__services__reservation-service.ts.zlib.b64",
+  "apps/web/src/services/payment-reconciliation-service.ts": ".github/restore-parts/security-sync/apps__web__src__services__payment-reconciliation-service.ts.zlib.b64",
+  "apps/web/tests/integration/hardening.test.ts": ".github/restore-parts/security-sync/apps__web__tests__integration__hardening.test.ts.zlib.b64"
+}
