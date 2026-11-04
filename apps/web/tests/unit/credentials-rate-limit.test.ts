@@ -56,6 +56,7 @@ describe("credentials authorize rate limit", () => {
       { ip: "ip-distinct-11" }
     );
     expect(blocked).toBeNull();
+    // Rate limit fires before DB lookup on the 11th email attempt
     expect(findUnique).toHaveBeenCalledTimes(10);
   });
 

@@ -30,7 +30,7 @@ describe("POST /api/cron/reservations-cleanup", () => {
     expect(res.status).toBe(401);
   });
 
-  it("rejects wrong bearer token", async () => {
+  it("rejects wrong bearer token (timing-safe)", async () => {
     const res = await POST(
       new Request("http://localhost/api/cron/reservations-cleanup", {
         method: "POST",
@@ -38,6 +38,21 @@ describe("POST /api/cron/reservations-cleanup", () => {
       })
     );
     expect(res.status).toBe(401);
+  });
+
+  it("cron auth uses safeEqual/bearerMatches helper", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const cronAuth = fs.readFileSync(
+      path.resolve(__dirname, "../../src/lib/security/cron-auth.ts"),
+      "utf8"
+    );
+    expect(cronAuth).toContain("bearerMatches");
+    const safe = fs.readFileSync(
+      path.resolve(__dirname, "../../src/lib/security/safe-equal.ts"),
+      "utf8"
+    );
+    expect(safe).toContain("timingSafeEqual");
   });
 
   it("applies repair for a single event", async () => {

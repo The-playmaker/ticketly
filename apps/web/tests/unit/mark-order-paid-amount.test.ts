@@ -60,6 +60,7 @@ describe("markOrderPaid amount+currency required", () => {
         provider: PaymentProviderType.STRIPE,
         providerSessionId: "cs_x",
         currency: "NOK",
+        // amount omitted
       })
     ).rejects.toMatchObject({ code: "AMOUNT_MISSING" } satisfies Partial<AppError>);
 
