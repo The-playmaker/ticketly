@@ -3,7 +3,7 @@ import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { loginSchema } from "@ticketly/validation";
-import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import { clientIp, rateLimitAsync } from "@/lib/security/rate-limit";
 import { writeAuditLog } from "@/lib/audit";
 import { jsonError, AppError } from "@/lib/api-error";
 
@@ -19,39 +19,15 @@ function signMobileToken(userId: string, jti: string, exp: number): string {
   return `${payload}.${sig}`;
 }
 
-/** Sync signature check only — prefer verifyMobileSession for revocation. */
-export function verifyMobileToken(header: string | null): string | null {
-  if (!header?.startsWith("Bearer ")) return null;
-  const token = header.slice(7);
-  const [payload, sig] = token.split(".");
-  if (!payload || !sig) return null;
-  const secret = process.env.AUTH_SECRET ?? "dev";
-  const expected = createHmac("sha256", secret).update(payload).digest("base64url");
-  try {
-    if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
-  } catch {
-    return null;
-  }
-  try {
-    const data = JSON.parse(Buffer.from(payload, "base64url").toString()) as {
-      sub: string;
-      exp: number;
-      jti?: string;
-    };
-    if (data.exp < Date.now()) return null;
-    return data.sub;
-  } catch {
-    return null;
-  }
-}
-
 /** Full session validation including DB revocation + user active. */
 export async function verifyMobileSession(header: string | null): Promise<string | null> {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret || secret.length < 16) return null;
+
   if (!header?.startsWith("Bearer ")) return null;
   const token = header.slice(7);
   const [payload, sig] = token.split(".");
   if (!payload || !sig) return null;
-  const secret = process.env.AUTH_SECRET ?? "dev";
   const expected = createHmac("sha256", secret).update(payload).digest("base64url");
   try {
     if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
@@ -103,7 +79,7 @@ export async function revokeMobileSession(header: string | null): Promise<boolea
 
 export async function POST(req: Request) {
   const ip = clientIp(req);
-  const rl = rateLimit(`mobile-login:${ip}`, 20);
+  const rl = await rateLimitAsync(`mobile-login:${ip}`, 20);
   if (!rl.success) {
     return NextResponse.json(
       { error: { code: "RATE_LIMITED", message: "For mange forsøk" } },

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { OrderService } from "@/services/order-service";
 import { PaymentService } from "@/services/payment-service";
-import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import { clientIp, rateLimitAsync } from "@/lib/security/rate-limit";
 import { checkoutContactSchema } from "@/lib/validators";
 import { jsonError, AppError } from "@/lib/api-error";
 import { resolvePaymentProviderType } from "@/lib/payments";
@@ -42,7 +42,7 @@ const bodySchema = checkoutContactSchema
  */
 export async function POST(req: Request) {
   const ip = clientIp(req);
-  const rl = rateLimit(`checkout-pay:${ip}`, 20);
+  const rl = await rateLimitAsync(`checkout-pay:${ip}`, 20);
   if (!rl.success) {
     return NextResponse.json(
       { error: { code: "RATE_LIMITED", message: "For mange forespørsler" } },
