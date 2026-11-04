@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ReservationService } from "@/services/reservation-service";
+import { requireCronAuth } from "@/lib/security/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -13,17 +14,8 @@ export const maxDuration = 60;
  * See docs/RESERVATIONS.md for curl + external scheduler setup.
  */
 async function run(req: Request) {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) {
-    if (process.env.NODE_ENV === "production") {
-      return NextResponse.json({ error: "CRON_SECRET required" }, { status: 503 });
-    }
-  } else {
-    const auth = req.headers.get("authorization") ?? "";
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-  }
+  const denied = requireCronAuth(req);
+  if (denied) return denied;
 
   const url = new URL(req.url);
   const eventId = url.searchParams.get("event") ?? undefined;

@@ -3,11 +3,11 @@ import { promoValidateSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db";
 import { applyPromo } from "@/services/order-service";
 import { PromoService } from "@/services/promo-service";
-import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import { clientIp, rateLimitAsync } from "@/lib/security/rate-limit";
 
 export async function POST(req: Request) {
   const ip = clientIp(req);
-  const rl = rateLimit(`promo:${ip}`, 30);
+  const rl = await rateLimitAsync(`promo:${ip}`, 30);
   if (!rl.success) {
     return NextResponse.json({ error: "For mange forespørsler" }, { status: 429 });
   }
@@ -39,13 +39,11 @@ export async function POST(req: Request) {
     eventId: event.id,
     ticketTypeIds: [],
   });
-  // Skip ticket-type check here (cart may not send types); still enforce dates/usage.
   if (!applicable.ok && applicable.reason !== "wrong_ticket_type") {
     return NextResponse.json({ error: "Kampanjekoden kan ikke brukes" }, { status: 400 });
   }
 
   const discount = applyPromo(promo, parsed.data.subtotal);
-  // TRACKING is attribution-only (applyPromo always returns 0) but still valid for checkout.
   if (discount <= 0 && promo.kind !== "TRACKING") {
     return NextResponse.json({ error: "Kampanjekoden kan ikke brukes" }, { status: 400 });
   }
