@@ -1,0 +1,156 @@
+  token     String         @unique
+  platform  DevicePlatform
+  provider  String         @default("EXPO") // EXPO | APNS | FCM
+  isActive  Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model NotificationPreference {
+  id         String                @id @default(cuid())
+  userId     String
+  channel    NotificationChannel
+  category   NotificationCategory
+  enabled    Boolean               @default(true)
+  updatedAt  DateTime              @updatedAt
+  createdAt  DateTime              @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channel, category])
+}
+
+enum NotificationDeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
+model NotificationLog {
+  id         String                     @id @default(cuid())
+  userId     String?
+  orderId    String?
+  eventId    String?
+  channel    NotificationChannel
+  category   NotificationCategory
+  title      String
+  body       String
+  payload    Json?
+  status     NotificationDeliveryStatus @default(SENT)
+  sentAt     DateTime                   @default(now())
+  provider   String?
+  externalId String?
+  error      String?
+
+  @@index([userId, sentAt])
+  @@index([orderId, sentAt])
+  @@index([eventId, sentAt])
+  @@index([category, sentAt])
+  @@index([status, sentAt])
+}
+
+// ─── Devices & scanner sessions ──────────────────────────────────────────────
+
+model Device {
+  id             String         @id @default(cuid())
+  organizationId String
+  deviceName     String
+  platform       DevicePlatform
+  appVersion     String?
+  pushToken      String?
+  lastSeenAt     DateTime?
+  activatedAt    DateTime       @default(now())
+  revokedAt      DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  scannerSessions ScannerSession[]
+  offlineCheckIns OfflineCheckIn[]
+
+  @@index([organizationId, revokedAt])
+  @@index([lastSeenAt])
+}
+
+model ScannerSession {
+  id         String    @id @default(cuid())
+  deviceId   String
+  eventId    String
+  userId     String
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+  isActive   Boolean   @default(true)
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, isActive])
+  @@index([eventId, isActive])
+  @@index([userId])
+}
+
+/// Signed/encrypted validation dataset for offline door scanning (minimal PII).
+model OfflineValidationBundle {
+  id              String   @id @default(cuid())
+  organizationId  String
+  eventId         String
+  version         Int
+  /// Encrypted blob: ticket publicId + HMAC/token hash + status — NO names/emails/phones
+  encryptedPayload String  @db.Text
+  payloadChecksum String
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, version])
+  @@index([eventId, expiresAt])
+}
+
+model OfflineCheckIn {
+  id              String           @id @default(cuid())
+  localId         String           @unique // client-generated UUID
+  sequenceNumber  Int
+  eventId         String
+  ticketPublicId  String // NOT sequential DB id
+  ticketTokenHash String // hash of secure token — not the raw token long-term if possible
+  deviceId        String?
+  staffUserId     String?
+  localCheckedInAt DateTime
+  result          CheckInResult
+  syncStatus      OfflineSyncStatus @default(PENDING)
+  syncedCheckInId String?
+  conflictReason  String?
+  createdAt       DateTime         @default(now())
+  syncedAt        DateTime?
+
+  event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  device Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  staff  User?   @relation("OfflineCheckInStaff", fields: [staffUserId], references: [id], onDelete: SetNull)
+
+  @@index([eventId, syncStatus])
+  @@index([ticketPublicId])
+  @@index([deviceId])
+}
+
+/// Wallet pass issuance tracking — Apple/Google require certs; no fake passes.
+model WalletPass {
+  id           String   @id @default(cuid())
+  ticketId     String
+  provider     String // APPLE | GOOGLE
+  externalId   String?
+  status       String   @default("PENDING") // PENDING | ISSUED | FAILED | REVOKED
+  errorMessage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([ticketId, provider])
+  @@index([status])
+}
