@@ -18,6 +18,7 @@ import {
   resolveUnitPrice,
   type TicketTypeWithTiers,
 } from "@/services/reservation-service";
+import { mergeTicketSelectionItems } from "@/lib/ticket-selection";
 
 export type PricingLine = {
   ticketTypeId: string;
@@ -172,10 +173,7 @@ export class OrderService {
       utmTerm?: string;
     };
   }) {
-    const safeItems = input.items.map((i) => ({
-      ticketTypeId: i.ticketTypeId,
-      quantity: i.quantity,
-    }));
+    const safeItems = mergeTicketSelectionItems(input.items);
 
     if (input.termsAccepted !== true) {
       throw new AppError("TERMS_REQUIRED", "Du må godta vilkårene", 400);
