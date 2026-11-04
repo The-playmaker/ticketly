@@ -10,7 +10,7 @@ import {
 } from "@/lib/auth/rbac";
 import { canAccessAssignedEvent } from "@/lib/auth/event-access";
 import { prisma } from "@/lib/db";
-import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import { clientIp, rateLimitAsync } from "@/lib/security/rate-limit";
 import { verifyMobileSession } from "@/app/api/mobile/auth/login/route";
 import { assertDeviceNotRevoked } from "@/lib/auth/org-access";
 import { jsonError } from "@/lib/api-error";
@@ -18,7 +18,9 @@ import { looksLikeDynamicQrCredential } from "@/lib/tickets/dynamic-qr";
 
 async function resolveUser(
   req: Request
-): Promise<AuthUser & { eventAssignments?: { eventId: string }[] }> {
+): Promise<
+  AuthUser & { eventAssignments?: { eventId: string }[]; viaMobileBearer: boolean }
+> {
   const mobileId = await verifyMobileSession(req.headers.get("authorization"));
   if (mobileId) {
     const user = await prisma.user.findUniqueOrThrow({
@@ -37,12 +39,11 @@ async function resolveUser(
       isActive: user.isActive,
       memberships: user.memberships,
       eventAssignments: user.eventAssignments,
+      viaMobileBearer: true,
     };
   }
   const session = await getOptionalSession();
   if (!session) throw new AuthorizationError("Unauthorized");
-  // Always reload memberships + assignments from DB so scanner access
-  // reflects EventAssignment / role changes without waiting on a stale JWT.
   const fresh = await prisma.user.findUnique({
     where: { id: session.id },
     include: {
@@ -59,12 +60,13 @@ async function resolveUser(
     isActive: fresh.isActive,
     memberships: fresh.memberships,
     eventAssignments: fresh.eventAssignments,
+    viaMobileBearer: false,
   };
 }
 
 export async function POST(req: Request) {
   const ip = clientIp(req);
-  const rl = rateLimit(`qr-validate:${ip}`, 120);
+  const rl = await rateLimitAsync(`qr-validate:${ip}`, 120);
   if (!rl.success) {
     return NextResponse.json({ error: "Rate limited" }, { status: 429 });
   }
@@ -98,7 +100,9 @@ export async function POST(req: Request) {
         }
       }
 
-      await assertDeviceNotRevoked(parsed.data.deviceId);
+      await assertDeviceNotRevoked(parsed.data.deviceId, {
+        requireRegistered: user.viaMobileBearer,
+      });
 
       const result = await CheckInService.checkInByTicketId({
         ...parsed.data,
@@ -120,7 +124,6 @@ export async function POST(req: Request) {
       throw new AuthorizationError();
     }
 
-    // Accept full URL or raw token from QR — never log the raw credential
     const raw = parsed.data.token;
     let token = raw;
     if (looksLikeDynamicQrCredential(raw)) {
@@ -130,7 +133,9 @@ export async function POST(req: Request) {
       token = match?.[1] ?? raw;
     }
 
-    await assertDeviceNotRevoked(parsed.data.deviceId);
+    await assertDeviceNotRevoked(parsed.data.deviceId, {
+      requireRegistered: user.viaMobileBearer,
+    });
 
     const result = await CheckInService.checkInByToken({
       token,
