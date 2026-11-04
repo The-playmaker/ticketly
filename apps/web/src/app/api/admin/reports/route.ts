@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { canManageEvents, AuthorizationError } from "@/lib/auth/rbac";
 import { writeAuditLog } from "@/lib/audit";
+import { jsonError, AppError } from "@/lib/api-error";
+import { sanitizeSpreadsheetRow } from "@/lib/security/sanitize-spreadsheet-cell";
 
 const EXPORT_TYPES = [
   "orders",
@@ -179,6 +181,8 @@ export async function GET(req: Request) {
       }));
     }
 
+    rows = rows.map((r) => sanitizeSpreadsheetRow(r));
+
     await writeAuditLog({
       actorId: session.user.id,
       organizationId: event.organizationId,
@@ -225,7 +229,9 @@ export async function GET(req: Request) {
       },
     });
   } catch (e) {
-    const status = e instanceof AuthorizationError ? 403 : 500;
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Error" }, { status });
+    if (e instanceof AuthorizationError) {
+      return jsonError(new AppError("FORBIDDEN", "Ingen tilgang", 403));
+    }
+    return jsonError(e);
   }
 }
