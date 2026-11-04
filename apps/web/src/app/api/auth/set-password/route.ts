@@ -5,7 +5,7 @@ import { hashPassword, validateStrongPassword } from "@/lib/auth/password";
 import { consumeAuthActionToken, peekAuthActionToken } from "@/lib/auth/action-tokens";
 import { UserAdminService } from "@/services/user-admin-service";
 import { prisma } from "@/lib/db";
-import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import { clientIp, rateLimitAsync } from "@/lib/security/rate-limit";
 import { jsonError } from "@/lib/api-error";
 import { writeAuditLog } from "@/lib/audit";
 
@@ -34,7 +34,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const ip = clientIp(req);
-  const rl = rateLimit(`set-password:${ip}`, 10);
+  const rl = await rateLimitAsync(`set-password:${ip}`, 10);
   if (!rl.success) {
     return NextResponse.json({ error: "Rate limited" }, { status: 429 });
   }

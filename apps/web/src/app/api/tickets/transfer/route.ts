@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { getOptionalSession } from "@/lib/auth/session";
 import { transferTicketSchema } from "@/lib/validators";
 import { TicketService } from "@/services/ticket-service";
-import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import { clientIp, rateLimitAsync } from "@/lib/security/rate-limit";
 import { jsonError } from "@/lib/api-error";
 
 function safeEqual(a: string, b: string) {
@@ -25,7 +25,7 @@ function safeEqual(a: string, b: string) {
  */
 export async function POST(req: Request) {
   const ip = clientIp(req);
-  const rl = rateLimit(`ticket-transfer:${ip}`, 20);
+  const rl = await rateLimitAsync(`ticket-transfer:${ip}`, 20);
   if (!rl.success) {
     return NextResponse.json({ error: "Rate limited" }, { status: 429 });
   }

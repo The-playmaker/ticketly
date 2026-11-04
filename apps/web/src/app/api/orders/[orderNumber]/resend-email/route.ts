@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import { clientIp, rateLimitAsync } from "@/lib/security/rate-limit";
 import { AppError, jsonError } from "@/lib/api-error";
 import { sendOrderConfirmationEmail, sendTicketDeliveryEmail } from "@/lib/email/templates";
 import { formatEventDateTime } from "@/lib/time";
@@ -27,7 +27,7 @@ function safeEqual(a: string, b: string) {
 export async function POST(req: Request, ctx: Ctx) {
   const { orderNumber } = await ctx.params;
   const ip = clientIp(req);
-  const rl = rateLimit(`resend-email:${ip}:${orderNumber}`, 5);
+  const rl = await rateLimitAsync(`resend-email:${ip}:${orderNumber}`, 5);
   if (!rl.success) {
     return NextResponse.json(
       { error: { code: "RATE_LIMITED", message: "For mange forespørsler. Prøv igjen senere." } },

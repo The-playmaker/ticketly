@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { getOptionalSession } from "@/lib/auth/session";
 import { mintDynamicQrSchema } from "@/lib/validators";
 import { DynamicQrService } from "@/services/dynamic-qr-service";
-import { clientIp, rateLimit } from "@/lib/security/rate-limit";
+import { clientIp, rateLimitAsync } from "@/lib/security/rate-limit";
 import { jsonError } from "@/lib/api-error";
 
 function safeEqual(a: string, b: string) {
@@ -28,7 +28,7 @@ function safeEqual(a: string, b: string) {
  */
 export async function POST(req: Request) {
   const ip = clientIp(req);
-  const rl = rateLimit(`dqr-mint:${ip}`, 30);
+  const rl = await rateLimitAsync(`dqr-mint:${ip}`, 30);
   if (!rl.success) {
     return NextResponse.json({ error: "Rate limited" }, { status: 429 });
   }
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     }
 
     // Per-ticket mint rate limit (access-token / owner abuse)
-    const ticketRl = rateLimit(`dqr-mint-ticket:${ticket.id}`, 60);
+    const ticketRl = await rateLimitAsync(`dqr-mint-ticket:${ticket.id}`, 60);
     if (!ticketRl.success) {
       return NextResponse.json({ error: "Rate limited" }, { status: 429 });
     }
