@@ -1,0 +1,87 @@
+# External-style cron triggers for Ticketly ops endpoints.
+# Secrets required (repository or environment):
+#   CRON_SECRET  — Bearer token for /api/cron/*
+#   APP_URL      — production base URL (e.g. https://billett.example.com)
+#
+# These jobs call the deployed app; they do not run inside the Next.js process.
+# Vercel Hobby cannot schedule vercel.json crons — use this workflow or another scheduler.
+
+name: Ticketly cron
+
+on:
+  schedule:
+    # Reservations cleanup — every 10 minutes
+    - cron: "*/10 * * * *"
+    # Payment reconciliation — every 15 minutes
+    - cron: "*/15 * * * *"
+    # Reminders — hourly
+    - cron: "0 * * * *"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Which cron to run"
+        required: true
+        type: choice
+        options:
+          - reservations-cleanup
+          - payments-reconcile
+          - reminders
+          - all
+
+jobs:
+  reservations-cleanup:
+    if: >
+      github.event_name == 'schedule' ||
+      inputs.job == 'reservations-cleanup' ||
+      inputs.job == 'all'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger reservations cleanup
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "${APP_URL:-}" || { echo "APP_URL secret missing"; exit 1; }
+          test -n "${CRON_SECRET:-}" || { echo "CRON_SECRET secret missing"; exit 1; }
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL%/}/api/cron/reservations-cleanup"
+
+  payments-reconcile:
+    if: >
+      github.event_name == 'schedule' ||
+      inputs.job == 'payments-reconcile' ||
+      inputs.job == 'all'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger payments reconcile
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "${APP_URL:-}" || { echo "APP_URL secret missing"; exit 1; }
+          test -n "${CRON_SECRET:-}" || { echo "CRON_SECRET secret missing"; exit 1; }
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL%/}/api/cron/payments-reconcile"
+
+  reminders:
+    if: >
+      github.event_name == 'schedule' ||
+      inputs.job == 'reminders' ||
+      inputs.job == 'all'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger reminders
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "${APP_URL:-}" || { echo "APP_URL secret missing"; exit 1; }
+          test -n "${CRON_SECRET:-}" || { echo "CRON_SECRET secret missing"; exit 1; }
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL%/}/api/cron/reminders"
