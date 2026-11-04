@@ -7,8 +7,20 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+
+function restoreSecuritySync() {
+  const restore = path.resolve(root, "../../../scripts/restore-security-sync.mjs");
+  if (!fs.existsSync(restore)) return;
+  const r = spawnSync(process.execPath, [restore], { stdio: "inherit" });
+  if (r.status && r.status !== 0) {
+    console.warn("apply-promoter-schema: restore-security-sync exited", r.status);
+  }
+}
+restoreSecuritySync();
+
 const schemaPath = path.join(root, "schema.prisma");
 const zlibBundle = path.join(root, ".schema-restore", "schema.zlib.b64");
 
