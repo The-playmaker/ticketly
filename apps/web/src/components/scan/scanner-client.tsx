@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatEventTime } from "@/lib/time";
@@ -21,6 +22,10 @@ type ScanResult = {
   previousCheckInAt?: string | null;
   previousDeviceId?: string | null;
   previousCheckedInByName?: string | null;
+  suggestedEventId?: string;
+  suggestedEventName?: string;
+  resolvedEventId?: string;
+  resolvedEventName?: string;
 };
 
 function resultPanelClass(result: string) {
@@ -37,8 +42,10 @@ export function ScannerClient({
   eventId: string;
   eventName: string;
 }) {
+  const router = useRouter();
   const [mode, setMode] = useState<"scan" | "search">("scan");
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [activeEventName, setActiveEventName] = useState(eventName);
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<
     {
@@ -57,6 +64,21 @@ export function ScannerClient({
   const scannerRef = useRef<{ stop: () => Promise<void> } | null>(null);
   const lastToken = useRef<string>("");
 
+  useEffect(() => {
+    setActiveEventName(eventName);
+  }, [eventName]);
+
+  function applyResolvedEvent(data: ScanResult) {
+    if (
+      data.resolvedEventId &&
+      data.resolvedEventId !== eventId &&
+      data.resolvedEventName
+    ) {
+      setActiveEventName(data.resolvedEventName);
+      router.replace(`/scan?event=${data.resolvedEventId}`);
+    }
+  }
+
   async function validateToken(token: string) {
     if (busy || token === lastToken.current) return;
     lastToken.current = token;
@@ -73,6 +95,7 @@ export function ScannerClient({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Feil");
+      applyResolvedEvent(data);
       setResult(data);
     } catch (e) {
       setResult({
@@ -155,6 +178,7 @@ export function ScannerClient({
         });
         return;
       }
+      applyResolvedEvent(data);
       setResult(data);
       setOverrideTicketId(null);
       setOverrideReason("");
@@ -175,7 +199,7 @@ export function ScannerClient({
           </span>
         </div>
         <h1 className="mt-1 truncate font-display text-xl font-semibold">
-          <span className="text-[color:var(--accent)]">●</span> {eventName}
+          <span className="text-[color:var(--accent)]">●</span> {activeEventName}
         </h1>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <Button
