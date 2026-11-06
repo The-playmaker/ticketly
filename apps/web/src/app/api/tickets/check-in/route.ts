@@ -15,17 +15,6 @@ import { verifyMobileSession } from "@/app/api/mobile/auth/login/route";
 import { assertDeviceNotRevoked } from "@/lib/auth/org-access";
 import { jsonError } from "@/lib/api-error";
 import { looksLikeDynamicQrCredential } from "@/lib/tickets/dynamic-qr";
-import type { CheckInEventAccess } from "@/services/check-in-service";
-
-function eventAccessFor(
-  user: AuthUser & { eventAssignments?: { eventId: string }[] }
-): CheckInEventAccess {
-  return {
-    canAccessEvent: (event) =>
-      canScanTickets(user, event.organizationId) &&
-      canAccessAssignedEvent(user, event),
-  };
-}
 
 async function resolveUser(
   req: Request
@@ -114,7 +103,6 @@ export async function POST(req: Request) {
       const result = await CheckInService.checkInByTicketId({
         ...parsed.data,
         checkedInBy: user.id,
-        eventAccess: eventAccessFor(user),
       });
       return NextResponse.json(result);
     }
@@ -149,7 +137,6 @@ export async function POST(req: Request) {
       eventId: parsed.data.eventId,
       deviceId: parsed.data.deviceId,
       checkedInBy: user.id,
-      eventAccess: eventAccessFor(user),
     });
 
     return NextResponse.json(result);
