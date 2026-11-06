@@ -2,9 +2,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { canScanTickets } from "@/lib/auth/rbac";
-import { filterEventsByAssignment, isDoorStaffOnly } from "@/lib/auth/event-access";
-import { SCANNABLE_EVENT_STATUSES } from "@/lib/auth/scannable-events";
+import { isDoorStaffOnly } from "@/lib/auth/event-access";
+import {
+  loadAccessibleScannerEvents,
+  selectScannerEvent,
+} from "@/lib/auth/scanner-events";
 import { ScannerClient } from "@/components/scan/scanner-client";
 import { DoorStaffChrome } from "@/components/scan/door-staff-chrome";
 
@@ -37,30 +39,8 @@ export default async function ScanPage({ searchParams }: Props) {
   };
 
   const doorOnly = isDoorStaffOnly(user);
-
-  const events = await prisma.event.findMany({
-    where: {
-      // Include PAUSED: paused sales must not block ticket validation
-      status: { in: SCANNABLE_EVENT_STATUSES },
-      ...(user.globalRole === "SUPER_ADMIN"
-        ? {}
-        : { organization: { members: { some: { userId: user.id, isActive: true } } } }),
-    },
-    include: { organization: true },
-    orderBy: { startsAt: "asc" },
-    take: 50,
-  });
-
-  const scannable = events.filter((e) => canScanTickets(user, e.organizationId));
-  const accessible = filterEventsByAssignment(user, scannable);
-
-  // Auto-select when exactly one; honor ?event= when multiple / deep-link
-  const selected =
-    accessible.length === 1
-      ? accessible[0]
-      : sp.event
-        ? accessible.find((e) => e.id === sp.event || e.slug === sp.event)
-        : accessible[0];
+  const accessible = await loadAccessibleScannerEvents(user);
+  const selected = selectScannerEvent(accessible, sp.event);
 
   const chrome = doorOnly ? <DoorStaffChrome email={user.email} /> : null;
 
@@ -87,6 +67,11 @@ export default async function ScanPage({ searchParams }: Props) {
         </div>
       </div>
     );
+  }
+
+  // Deep-link sticky selection when multiple events are available
+  if (accessible.length > 1 && sp.event !== selected.id && sp.event !== selected.slug) {
+    redirect(`/scan?event=${selected.id}`);
   }
 
   return (

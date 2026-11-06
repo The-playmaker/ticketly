@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyMobileSession } from "@/app/api/mobile/auth/login/route";
-import { canScanTickets } from "@/lib/auth/rbac";
-import { filterEventsByAssignment } from "@/lib/auth/event-access";
-import { SCANNABLE_EVENT_STATUSES } from "@/lib/auth/scannable-events";
+import {
+  loadAccessibleScannerEvents,
+  selectScannerEvent,
+} from "@/lib/auth/scanner-events";
 
 export async function GET(req: Request) {
   const userId = await verifyMobileSession(req.headers.get("authorization"));
@@ -39,21 +40,21 @@ export async function GET(req: Request) {
     eventAssignments: user.eventAssignments,
   };
 
-  const events = await prisma.event.findMany({
-    where: {
-      // Include PAUSED: paused sales must not block ticket validation
-      status: { in: SCANNABLE_EVENT_STATUSES },
-      OR: [
-        { assignments: { some: { userId } } },
-        { organization: { members: { some: { userId, isActive: true } } } },
-        ...(user.globalRole === "SUPER_ADMIN" ? [{}] : []),
-      ],
-    },
-    select: { id: true, name: true, organizationId: true },
-  });
+  const accessible = await loadAccessibleScannerEvents(authUser);
+  const preferred = selectScannerEvent(accessible);
 
-  const scannable = events.filter((e) => canScanTickets(authUser, e.organizationId));
+  // Preferred first so mobile auto-selects the live/upcoming event
+  const ordered = preferred
+    ? [preferred, ...accessible.filter((e) => e.id !== preferred.id)]
+    : accessible;
+
   return NextResponse.json({
-    events: filterEventsByAssignment(authUser, scannable),
+    events: ordered.map((e) => ({
+      id: e.id,
+      name: e.name,
+      organizationId: e.organizationId,
+      startsAt: e.startsAt,
+      endsAt: e.endsAt,
+    })),
   });
 }
