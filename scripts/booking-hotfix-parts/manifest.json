@@ -1,0 +1,24 @@
+[
+  {
+    "path": "apps/web/src/services/event-service.ts",
+    "parts": [
+      "event-service.ts.b64.00",
+      "event-service.ts.b64.01",
+      "event-service.ts.b64.02",
+      "event-service.ts.b64.03",
+      "event-service.ts.b64.04"
+    ]
+  },
+  {
+    "path": "apps/web/src/services/reservation-service.ts",
+    "parts": [
+      "reservation-service.ts.b64.00",
+      "reservation-service.ts.b64.01",
+      "reservation-service.ts.b64.02",
+      "reservation-service.ts.b64.03",
+      "reservation-service.ts.b64.04",
+      "reservation-service.ts.b64.05",
+      "reservation-service.ts.b64.06"
+    ]
+  }
+]
