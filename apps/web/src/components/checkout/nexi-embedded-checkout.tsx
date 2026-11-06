@@ -90,7 +90,9 @@ export function NexiEmbeddedCheckout({
       }
     };
     script.onerror = () => {
-      setError("Kunne ikke laste betalingsmodul fra Nexi");
+      setError(
+        "Kunne ikke laste betalingsvinduet. Oppdater siden og prøv igjen. Hvis feilen vedvarer, kontakt arrangøren."
+      );
       setLoading(false);
     };
     document.body.appendChild(script);
