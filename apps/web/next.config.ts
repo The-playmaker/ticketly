@@ -32,8 +32,18 @@ const nextConfig: NextConfig = {
         { key: "Permissions-Policy", value: "camera=(self), microphone=()" },
         {
           key: "Content-Security-Policy",
-          value:
-            "default-src 'self'; img-src 'self' data: blob: https://images.unsplash.com https://*.public.blob.vercel-storage.com https://*.blob.vercel-storage.com https://*.stripe.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.js.stripe.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.stripe.com https://*.stripe.com https://*.public.blob.vercel-storage.com https://*.blob.vercel-storage.com https://vercel.com; frame-src https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com; media-src 'self' blob:;",
+          // Nexi/Nets Easy EmbeddedCheckout loads checkout.js + iframes from *.dibspayment.eu
+          // (test hosts are multi-label: test.checkout. / test.api. — need explicit entries).
+          // Stripe remains allowed for primary or create-time backup checkout.
+          value: [
+            "default-src 'self'",
+            "img-src 'self' data: blob: https://images.unsplash.com https://*.public.blob.vercel-storage.com https://*.blob.vercel-storage.com https://*.stripe.com https://*.dibspayment.eu https://checkout.dibspayment.eu https://test.checkout.dibspayment.eu",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.js.stripe.com https://checkout.dibspayment.eu https://test.checkout.dibspayment.eu",
+            "style-src 'self' 'unsafe-inline'",
+            "connect-src 'self' https://api.stripe.com https://*.stripe.com https://*.public.blob.vercel-storage.com https://*.blob.vercel-storage.com https://vercel.com https://api.dibspayment.eu https://test.api.dibspayment.eu https://checkout.dibspayment.eu https://test.checkout.dibspayment.eu",
+            "frame-src https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://checkout.dibspayment.eu https://test.checkout.dibspayment.eu https://*.dibspayment.eu",
+            "media-src 'self' blob:",
+          ].join("; ") + ";",
         },
       ],
     },
