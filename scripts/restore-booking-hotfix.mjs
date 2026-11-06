@@ -9,7 +9,14 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const partsDir = join(root, "scripts/booking-hotfix-parts");
-const manifest = JSON.parse(readFileSync(join(partsDir, "manifest.json"), "utf8"));
+const manifestPath = join(partsDir, "manifest.json");
+
+if (!existsSync(manifestPath)) {
+  console.log("[booking-hotfix] no manifest — skip");
+  process.exit(0);
+}
+
+const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 
 for (const entry of manifest) {
   const target = join(root, entry.path);
@@ -23,6 +30,13 @@ for (const entry of manifest) {
       existing.includes("is_visible"));
   if (already) {
     console.log(`[booking-hotfix] skip ${entry.path} (already applied)`);
+    continue;
+  }
+  const missing = entry.parts.filter((p) => !existsSync(join(partsDir, p)));
+  if (missing.length) {
+    console.warn(
+      `[booking-hotfix] skip ${entry.path} — missing parts: ${missing.join(", ")}`
+    );
     continue;
   }
   const b64 = entry.parts.map((p) => readFileSync(join(partsDir, p), "utf8").trim()).join("");
