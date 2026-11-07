@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { EMAIL_MESSAGES, emailSchema } from "@ticketly/validation";
 import { Button } from "@/components/ui/button";
@@ -52,10 +52,6 @@ function MemberEventAccessEditor({
     member.eventAccess.map((e) => e.id)
   );
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    setSelected(member.eventAccess.map((e) => e.id));
-  }, [member.eventAccess, member.userId, member.role]);
 
   if (!usesEventAssignment(member.role)) {
     return <span className="text-xs text-[color:var(--muted)]">Alle</span>;
@@ -300,6 +296,8 @@ export function TeamAdminClient({
                 </td>
                 <td className="px-3 py-2 align-top">
                   <MemberEventAccessEditor
+                    // Remount (reset local selection) when server-side access changes
+                    key={`${m.userId}:${m.role}:${m.eventAccess.map((e) => e.id).join(",")}`}
                     member={m}
                     events={events}
                     busy={busy}

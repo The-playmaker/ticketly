@@ -1,3 +1,4 @@
+import { cache } from "react";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/layout/site-header";
@@ -26,9 +27,14 @@ type Props = { params: Promise<{ slug: string }> };
 
 export const dynamic = "force-dynamic";
 
+/** One event query per request, shared by generateMetadata and the page. */
+const loadEvent = cache((slug: string) =>
+  EventService.getBySlug(slug, { skipInventoryCleanup: true })
+);
+
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
-  const event = await EventService.getBySlug(slug, { skipInventoryCleanup: true });
+  const event = await loadEvent(slug);
   if (!event) return { title: "Arrangement" };
   const title = event.name;
   const description =
@@ -66,8 +72,9 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function EventDetailPage({ params }: Props) {
   const { slug } = await params;
-  const event = await EventService.getBySlug(slug);
-  if (!event) notFound();
+  const base = await loadEvent(slug);
+  if (!base) notFound();
+  const event = await EventService.withFreshInventory(base);
   const cover = withCoverCacheBust(event.coverImageUrl, event.updatedAt);
 
   const eventSales: EventSalesContext = {

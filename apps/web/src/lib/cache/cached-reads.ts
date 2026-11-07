@@ -63,7 +63,7 @@ export type DashboardBundle = {
 
 async function fetchDashboardBundle(organizationId: string | null): Promise<DashboardBundle> {
   const orgFilter = organizationIdWhere(organizationId);
-  const [stats, events, paidOrders] = await Promise.all([
+  const [stats, events, salesRows] = await Promise.all([
     EventService.getOrgDashboardStats(organizationId),
     prisma.event.findMany({
       where: orgFilter,
@@ -77,24 +77,19 @@ async function fetchDashboardBundle(organizationId: string | null): Promise<Dash
       orderBy: { startsAt: "asc" },
       take: 10,
     }),
-    prisma.order.findMany({
-      where: {
-        ...orgFilter,
-        OR: [
-          { paidAt: { not: null } },
-          { paymentStatus: { in: ["PAID", "PARTIALLY_REFUNDED", "REFUNDED"] } },
-        ],
-      },
-      select: { total: true, paidAt: true, createdAt: true },
-      orderBy: { createdAt: "asc" },
-    }),
+    // Aggregate per UTC day in SQL instead of loading every paid order row.
+    prisma.$queryRaw<{ date: string; amount: bigint | number | null }[]>`
+      SELECT to_char(COALESCE("paidAt", "createdAt"), 'YYYY-MM-DD') AS date,
+             SUM("total") AS amount
+      FROM "Order"
+      WHERE (${organizationId ?? null}::text IS NULL OR "organizationId" = ${organizationId ?? null})
+        AND ("paidAt" IS NOT NULL
+             OR "paymentStatus" IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED'))
+      GROUP BY 1
+      ORDER BY 1 ASC
+    `,
   ]);
 
-  const byDayMap = new Map<string, number>();
-  for (const o of paidOrders) {
-    const d = (o.paidAt ?? o.createdAt).toISOString().slice(0, 10);
-    byDayMap.set(d, (byDayMap.get(d) ?? 0) + o.total);
-  }
 
   return {
     stats,
@@ -105,7 +100,7 @@ async function fetchDashboardBundle(organizationId: string | null): Promise<Dash
       startsAt: e.startsAt.toISOString(),
       organization: e.organization,
     })),
-    salesPerDay: [...byDayMap.entries()].map(([date, amount]) => ({ date, amount })),
+    salesPerDay: salesRows.map((r) => ({ date: r.date, amount: Number(r.amount ?? 0) })),
   };
 }
 

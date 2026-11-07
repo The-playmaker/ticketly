@@ -38,6 +38,8 @@ jobs:
       STRIPE_MOCK_MODE: "true"
       NODE_ENV: development
       EMAIL_PROVIDER: console
+      # prisma/seed.ts refuses to run without an explicit non-production mode
+      SEED_MODE: development
 
     steps:
       - uses: actions/checkout@v4

@@ -18,23 +18,27 @@ function SetPasswordForm() {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [invalid, setInvalid] = useState(false);
+  const [tokenRejected, setTokenRejected] = useState(false);
+  const invalid = !token || tokenRejected;
 
   useEffect(() => {
-    if (!token) {
-      setInvalid(true);
-      return;
-    }
-    fetch(`/api/auth/set-password?token=${encodeURIComponent(token)}`)
+    if (!token) return;
+    const controller = new AbortController();
+    fetch(`/api/auth/set-password?token=${encodeURIComponent(token)}`, {
+      signal: controller.signal,
+    })
       .then(async (res) => {
         if (!res.ok) {
-          setInvalid(true);
+          setTokenRejected(true);
           return;
         }
         const data = (await res.json()) as { email?: string };
         setEmail(data.email ?? null);
       })
-      .catch(() => setInvalid(true));
+      .catch((err: unknown) => {
+        if ((err as { name?: string })?.name !== "AbortError") setTokenRejected(true);
+      });
+    return () => controller.abort();
   }, [token]);
 
   async function onSubmit(e: React.FormEvent) {

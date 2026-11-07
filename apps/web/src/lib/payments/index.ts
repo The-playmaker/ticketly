@@ -5,11 +5,7 @@ import { MockStripePaymentProvider } from "./mock-stripe-provider";
 import { VippsPaymentProvider } from "./vipps-provider";
 import { NexiCheckoutProvider } from "./nexi-provider";
 import { MockPaymentProvider } from "./mock-provider";
-import {
-  isMockPaymentMode,
-  isStripeMockMode,
-  resolvePaymentProviderType,
-} from "./resolve-provider";
+import { isMockPaymentMode, resolvePaymentProviderType } from "./resolve-provider";
 
 export {
   isMockPaymentMode,

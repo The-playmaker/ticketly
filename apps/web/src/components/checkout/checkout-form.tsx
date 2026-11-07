@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
@@ -114,7 +114,7 @@ export function CheckoutForm({
     },
   });
 
-  const watchedEmail = form.watch("email");
+  const watchedEmail = useWatch({ control: form.control, name: "email" });
   const typoHint = useMemo(() => {
     const hint = emailTypoHint(watchedEmail ?? "");
     if (!hint) return null;

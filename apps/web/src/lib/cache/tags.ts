@@ -26,8 +26,16 @@ export const CACHE_TTL = {
 /** Immediate expire profile for Route Handler mutations (Next 16+). */
 const IMMEDIATE = { expire: 0 } as const;
 
+/**
+ * Cache busting must never turn a successful mutation into a 500: the write has
+ * already been committed, and stale caches self-heal within CACHE_TTL anyway.
+ */
 function bust(tag: string) {
-  revalidateTag(tag, IMMEDIATE);
+  try {
+    revalidateTag(tag, IMMEDIATE);
+  } catch (err) {
+    console.warn(`[cache] revalidateTag(${tag}) failed`, err);
+  }
 }
 
 /** Bust admin + public caches after event/org mutations. */

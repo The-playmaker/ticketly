@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { EventService } from "@/services/event-service";
-import { resolveUnitPrice, getAvailableQuantity } from "@/services/reservation-service";
+import { resolveUnitPrice } from "@/services/reservation-service";
 
 export async function GET() {
   const events = await EventService.listPublic({ take: 50 });

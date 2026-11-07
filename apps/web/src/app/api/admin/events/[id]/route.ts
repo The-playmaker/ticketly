@@ -7,6 +7,7 @@ import { requireEventManageAccess } from "@/lib/admin/org-access";
 import { jsonError, AppError } from "@/lib/api-error";
 import { isEventScopedBlobUrl, isOurBlobUrl } from "@/lib/blob/cover-image";
 import { writeAuditLog } from "@/lib/audit";
+import { revalidateAdminDataCaches } from "@/lib/cache/tags";
 import type { Prisma } from "@prisma/client";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -150,7 +151,11 @@ export async function PATCH(req: Request, ctx: Ctx) {
       }
       for (const t of body.ticketTypes.filter((x) => x._delete && x.id)) {
         const prev = existingTypes.find((x) => x.id === t.id);
-        if (prev && (prev.quantitySold > 0 || prev.quantityReserved > 0)) {
+        // Never delete ticket types that don't belong to this event (cross-tenant guard)
+        if (!prev) {
+          throw new AppError("TICKET_TYPE_NOT_FOUND", "Billettype ikke funnet", 404);
+        }
+        if (prev.quantitySold > 0 || prev.quantityReserved > 0) {
           throw new AppError(
             "TICKET_TYPE_IN_USE",
             `Kan ikke slette «${prev.name}» — det finnes solgte eller reserverte billetter`,
@@ -299,6 +304,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     revalidatePath(`/events/${updated.slug}`);
     revalidatePath("/admin/events");
     revalidatePath("/");
+    revalidateAdminDataCaches(updated.organizationId);
 
     const full = await prisma.event.findUniqueOrThrow({
       where: { id: updated.id },
