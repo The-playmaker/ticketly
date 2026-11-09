@@ -36,7 +36,8 @@ async function run(req: Request) {
     deadline: Date.now() + 240_000,
     sinceHours: Number.isFinite(sinceHours) && sinceHours > 0 ? sinceHours : 24,
     limit: Number.isFinite(limit) && limit > 0 ? Math.min(limit, 200) : 100,
-    concurrency: 8,
+    // Gentle on the Supabase pooler: each worker holds DB connections.
+    concurrency: 4,
   };
 
   const runStripe = provider === "all" || provider === "stripe";
