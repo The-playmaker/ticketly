@@ -3,7 +3,7 @@
   "framework": "nextjs",
   "crons": [
     {
-      "path": "/api/cron/payments-reconcile?provider=all&sinceHours=48&limit=200",
+      "path": "/api/cron/payments-reconcile?provider=all&sinceHours=48&limit=150",
       "schedule": "*/10 * * * *"
     },
     {

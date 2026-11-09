@@ -3,7 +3,7 @@ import { PaymentReconciliationService } from "@/services/payment-reconciliation-
 import { NexiPaymentReconciliationService } from "@/services/nexi-payment-reconciliation-service";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 /**
  * Cron: reconcile Stripe + Nets Easy payment state into Ticketly.
@@ -31,9 +31,12 @@ async function run(req: Request) {
 
   const opts = {
     apply: !dryRun,
+    actionableOnly: url.searchParams.get("all") !== "1",
+    // Leave headroom under maxDuration; the next run picks up the rest.
+    deadline: Date.now() + 240_000,
     sinceHours: Number.isFinite(sinceHours) && sinceHours > 0 ? sinceHours : 24,
     limit: Number.isFinite(limit) && limit > 0 ? Math.min(limit, 200) : 100,
-    concurrency: 5,
+    concurrency: 8,
   };
 
   const runStripe = provider === "all" || provider === "stripe";
