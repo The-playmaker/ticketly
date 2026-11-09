@@ -61,6 +61,28 @@ export default async function AdminOrderDetailPage({ params }: Props) {
     .filter((r) => r.status === "SUCCEEDED")
     .reduce((s, r) => s + r.amount, 0);
 
+  const failedWebhooks =
+    order.tickets.length === 0
+      ? await prisma.webhookEvent.findMany({
+          where: {
+            status: "FAILED",
+            OR: [
+              { orderId: order.id },
+              {
+                paymentId: {
+                  in: order.payments
+                    .map((p) => p.providerPaymentId)
+                    .filter((id): id is string => Boolean(id)),
+                },
+              },
+            ],
+          },
+          orderBy: { receivedAt: "desc" },
+          take: 3,
+          select: { id: true, eventType: true, error: true, receivedAt: true },
+        })
+      : [];
+
   const notifications = await prisma.notificationLog.findMany({
     where: { orderId: order.id },
     orderBy: { sentAt: "desc" },
@@ -227,6 +249,19 @@ export default async function AdminOrderDetailPage({ params }: Props) {
               </span>
             ))}
           </p>
+        ) : null}
+        {failedWebhooks.length > 0 ? (
+          <div className="mt-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-100">
+            <p className="font-medium">Billettutstedelse feilet etter betaling:</p>
+            {failedWebhooks.map((w) => (
+              <p key={w.id} className="mt-1 break-words font-mono text-xs">
+                {w.receivedAt.toISOString()} · {w.eventType} · {w.error ?? "ukjent feil"}
+              </p>
+            ))}
+            <p className="mt-1 text-xs">
+              Trykk «Send billett på nytt» for å utstede billettene nå.
+            </p>
+          </div>
         ) : null}
         <ul className="mt-3 divide-y divide-[color:var(--outline)]/20 text-sm">
           {order.tickets.map((t) => (

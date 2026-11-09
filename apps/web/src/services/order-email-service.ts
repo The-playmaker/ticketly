@@ -135,6 +135,45 @@ export class OrderEmailService {
       );
     }
 
+    // Paid but never fulfilled (e.g. issuance failed after the Stripe webhook):
+    // issue now. issueTicketsForPaidOrder is locked + idempotent and sends the
+    // confirmation/ticket e-mails itself when it is the issuer.
+    if (
+      order.tickets.length === 0 &&
+      order.ticketsFulfilledAt == null &&
+      order.paymentStatus === PaymentStatus.PAID
+    ) {
+      const { TicketService } = await import("@/services/ticket-service");
+      let issued;
+      try {
+        issued = await TicketService.issueTicketsForPaidOrder(order.id);
+      } catch (e) {
+        const reason =
+          e instanceof AppError ? `${e.code}: ${e.message}` : e instanceof Error ? e.message : String(e);
+        console.error("Manual fulfillment failed", order.orderNumber, reason);
+        throw new AppError(
+          "FULFILLMENT_FAILED",
+          `Kunne ikke utstede billetter: ${reason}`.slice(0, 400),
+          409
+        );
+      }
+      await writeAuditLog({
+        action: "ORDER_TICKETS_ISSUED_MANUALLY",
+        entityType: "Order",
+        entityId: order.id,
+        organizationId: order.organizationId,
+        actorId: input.actorId,
+        ipAddress: input.ipAddress ?? undefined,
+        metadata: { orderNumber: order.orderNumber, issued: issued.length },
+      });
+      return {
+        ok: true,
+        issued: issued.length,
+        email: order.customerEmail,
+        orderNumber: order.orderNumber,
+      };
+    }
+
     const activeTickets = order.tickets.filter((t) => isActiveTicketStatus(t.status));
     if (order.tickets.length === 0 || activeTickets.length === 0) {
       throw new AppError(
