@@ -1,4 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron/payments-reconcile?provider=all&sinceHours=48&limit=200",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/reservations-cleanup",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

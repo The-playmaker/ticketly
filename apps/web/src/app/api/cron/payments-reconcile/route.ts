@@ -10,7 +10,7 @@ export const maxDuration = 60;
  * Protect with CRON_SECRET (Authorization: Bearer …).
  * Bounded batch — idempotent; uses markOrderPaid for successful payments.
  *
- * Hobby: do not add Vercel crons schedule — invoke externally / manually.
+ * Scheduled in apps/web/vercel.json (Vercel Pro); Vercel sends Bearer CRON_SECRET.
  */
 async function run(req: Request) {
   const secret = process.env.CRON_SECRET?.trim();

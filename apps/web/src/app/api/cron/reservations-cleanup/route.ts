@@ -9,7 +9,7 @@ export const maxDuration = 60;
  * TicketType.quantityReserved from DB truth (also picks up pure counter drift).
  * Protect with CRON_SECRET (Authorization: Bearer …).
  *
- * Do NOT add to vercel.json crons (Hobby plan blocks schedules).
+ * Scheduled every 5 min in apps/web/vercel.json (Vercel Pro).
  * See docs/RESERVATIONS.md for curl + external scheduler setup.
  */
 async function run(req: Request) {
