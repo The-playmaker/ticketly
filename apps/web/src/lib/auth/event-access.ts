@@ -7,9 +7,11 @@ type UserWithAssignments = AuthUser & {
 };
 
 /**
- * Door staff: assigned events only (no assignments ⇒ no events).
  * ORGANIZER_ADMIN: all org events.
- * EVENT_MANAGER: all org events unless they have explicit assignments (then only those).
+ * EVENT_MANAGER / DOOR_STAFF: all org events unless they have explicit
+ * assignments (then only those). Previously door staff with no assignments
+ * saw nothing, so every new event silently locked them out of the scanner
+ * until an admin remembered to assign it.
  */
 export function filterEventsByAssignment<
   T extends { id: string; organizationId: string },
@@ -24,15 +26,14 @@ export function filterEventsByAssignment<
     );
     if (!membership) return false;
 
-    if (membership.role === OrgRole.DOOR_STAFF) {
-      return assignedIds.has(event.id);
-    }
-
     if (membership.role === OrgRole.ORGANIZER_ADMIN) {
       return true;
     }
 
-    if (membership.role === OrgRole.EVENT_MANAGER) {
+    if (
+      membership.role === OrgRole.EVENT_MANAGER ||
+      membership.role === OrgRole.DOOR_STAFF
+    ) {
       if (assignedIds.size === 0) return true;
       return assignedIds.has(event.id);
     }

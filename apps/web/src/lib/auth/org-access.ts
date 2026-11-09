@@ -70,7 +70,8 @@ export async function assertCanAccessOrder(user: AuthUser, orderId: string) {
 }
 
 export async function assertDeviceNotRevoked(deviceId: string | undefined | null) {
-  if (!deviceId) return;
+  // Browser scanners send this fixed label; it is never a Device row id.
+  if (!deviceId || deviceId === "web-scanner") return;
   const device = await prisma.device.findUnique({ where: { id: deviceId } });
   if (!device) return; // legacy web scanner device strings allowed
   if (device.revokedAt) {

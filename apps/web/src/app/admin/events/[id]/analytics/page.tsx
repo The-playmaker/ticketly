@@ -85,7 +85,8 @@ export default async function EventAnalyticsPage({ params }: Props) {
         {utmRows.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">NOT YET AVAILABLE — ingen UTM på betalte ordrer</p>
         ) : (
-          <table className="mt-3 w-full text-left text-sm">
+          <div className="mt-3 overflow-x-auto">
+          <table className="w-full min-w-[32rem] text-left text-sm">
             <thead className="text-zinc-500">
               <tr>
                 <th className="py-2">utm_source</th>
@@ -103,6 +104,7 @@ export default async function EventAnalyticsPage({ params }: Props) {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
     </div>

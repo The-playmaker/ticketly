@@ -17,7 +17,7 @@ vi.mock("@/lib/db", () => ({
 }));
 
 import { authorizeCredentials } from "@/lib/auth/credentials-authorize";
-import { refreshAuthJwt } from "@/lib/auth/jwt-refresh";
+import { refreshAuthJwt, resetAuthJwtCache } from "@/lib/auth/jwt-refresh";
 
 const memberships = [
   {
@@ -32,6 +32,7 @@ describe("auth hot path — no lastActiveAt writes", () => {
   beforeEach(() => {
     findUnique.mockReset();
     update.mockReset();
+    resetAuthJwtCache();
   });
 
   it("authenticates a valid user without calling User.update", async () => {
@@ -212,5 +213,44 @@ describe("auth hot path — no lastActiveAt writes", () => {
     expect(next.memberships).toEqual(memberships);
     expect(next.disabled).toBe(false);
     expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe("auth hot path — RBAC read cache", () => {
+  beforeEach(() => {
+    findUnique.mockReset();
+    resetAuthJwtCache();
+  });
+
+  it("parallel refreshes for one user share a single DB read", async () => {
+    findUnique.mockResolvedValue({
+      id: "user-9",
+      globalRole: GlobalRole.CUSTOMER,
+      isActive: true,
+      memberships,
+    });
+    await Promise.all([
+      refreshAuthJwt({ id: "user-9" }),
+      refreshAuthJwt({ id: "user-9" }),
+      refreshAuthJwt({ id: "user-9" }),
+    ]);
+    expect(findUnique).toHaveBeenCalledTimes(1);
+  });
+
+  it("a fresh login bypasses the cache", async () => {
+    findUnique.mockResolvedValue({
+      id: "user-9",
+      globalRole: GlobalRole.CUSTOMER,
+      isActive: true,
+      memberships,
+    });
+    await refreshAuthJwt({ id: "user-9" });
+    await refreshAuthJwt({}, {
+      id: "user-9",
+      globalRole: GlobalRole.CUSTOMER,
+      isActive: true,
+      memberships,
+    });
+    expect(findUnique).toHaveBeenCalledTimes(2);
   });
 });

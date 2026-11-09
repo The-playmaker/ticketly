@@ -72,9 +72,16 @@ describe("DOOR_STAFF event assignment enforcement", () => {
     expect(filterEventsByAssignment(withAssign, [events[1]!])).toEqual([]);
   });
 
-  it("no assignments ⇒ no scanner events", () => {
-    expect(filterEventsByAssignment({ ...door, eventAssignments: [] }, events)).toEqual([]);
-    expect(canAccessAssignedEvent({ ...door, eventAssignments: [] }, events[0]!)).toBe(false);
+  it("no assignments ⇒ all org events (new events need no manual assignment)", () => {
+    expect(
+      filterEventsByAssignment({ ...door, eventAssignments: [] }, events).map((e) => e.id)
+    ).toEqual(["e1", "e2"]);
+    expect(canAccessAssignedEvent({ ...door, eventAssignments: [] }, events[0]!)).toBe(true);
+  });
+
+  it("never grants events from another organization", () => {
+    const foreign = { id: "x1", organizationId: "org2" };
+    expect(filterEventsByAssignment({ ...door, eventAssignments: [] }, [foreign])).toEqual([]);
   });
 });
 
@@ -174,13 +181,13 @@ describe("Scanner event status filter (PAUSED sales ≠ no validation)", () => {
     expect(accessible.map((e) => e.id)).toEqual(["e1"]);
   });
 
-  it("no assignment ⇒ empty scanner list even when PAUSED events exist", () => {
+  it("no assignment ⇒ PAUSED org events stay scannable", () => {
     const dbEvents = [
       { id: "e1", organizationId: "org1", status: EventStatus.PAUSED },
     ].filter((e) => isScannableEventStatus(e.status));
     expect(
-      filterEventsByAssignment({ ...door, eventAssignments: [] }, dbEvents)
-    ).toEqual([]);
+      filterEventsByAssignment({ ...door, eventAssignments: [] }, dbEvents).map((e) => e.id)
+    ).toEqual(["e1"]);
   });
 
   it("cannot scan unassigned event even if PUBLISHED", () => {

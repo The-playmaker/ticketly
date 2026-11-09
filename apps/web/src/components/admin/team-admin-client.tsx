@@ -95,12 +95,8 @@ function MemberEventAccessEditor({
           })
         )}
       </div>
-      {member.role === "DOOR_STAFF" && selected.length === 0 ? (
-        <p className="text-[10px] text-[color:var(--muted)]">
-          Ingen (tildel events)
-        </p>
-      ) : null}
-      {member.role === "EVENT_MANAGER" && selected.length === 0 ? (
+      {(member.role === "EVENT_MANAGER" || member.role === "DOOR_STAFF") &&
+      selected.length === 0 ? (
         <p className="text-[10px] text-[color:var(--muted)]">
           Tom = alle events
         </p>

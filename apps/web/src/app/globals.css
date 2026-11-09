@@ -96,7 +96,10 @@ body {
   color: var(--foreground);
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+  /* optimizeLegibility is costly on long lists on Android tablets */
+  text-rendering: auto;
+  /* long e-mails / order numbers wrap instead of pushing cards wider */
+  overflow-wrap: break-word;
 }
 
 body,
@@ -314,4 +317,25 @@ main {
 .tl-scan-invalid {
   background: var(--scan-invalid);
   color: #fef2f2;
+}
+
+.tl-scan-pending {
+  background: var(--surface-high, #1f1f23);
+  color: var(--foreground, #fafafa);
+}
+
+/* html5-qrcode injects a <video> sized in px; keep it inside the scanner frame */
+#qr-reader {
+  width: 100%;
+}
+#qr-reader video {
+  width: 100% !important;
+  height: auto !important;
+  max-height: min(60dvh, 28rem);
+  object-fit: cover;
+  display: block;
+}
+#qr-reader img[alt="Info icon"],
+#qr-reader__dashboard_section_csr {
+  display: none !important;
 }
