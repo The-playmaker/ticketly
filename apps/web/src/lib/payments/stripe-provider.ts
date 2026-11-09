@@ -22,6 +22,17 @@ function getStripe(): Stripe {
   return new Stripe(key, { apiVersion: STRIPE_API_VERSION });
 }
 
+/**
+ * Some orders only stored the Checkout Session id (the completed event can
+ * arrive without payment_intent). Refunds need the PaymentIntent.
+ */
+export async function resolveStripePaymentIntentId(sessionId: string): Promise<string | null> {
+  const session = await getStripe().checkout.sessions.retrieve(sessionId);
+  const pi = session.payment_intent;
+  if (!pi) return null;
+  return typeof pi === "string" ? pi : pi.id;
+}
+
 export function getStripePublishableKey(): string {
   const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();
   if (!key || key.includes("placeholder") || key.length < 8) {
