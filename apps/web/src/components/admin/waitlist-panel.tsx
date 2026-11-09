@@ -95,8 +95,8 @@ export function WaitlistPanel({
       </div>
       {msg ? <p className="text-sm text-[color:var(--muted)]">{msg}</p> : null}
 
-      <div className="overflow-hidden rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)]">
-        <table className="w-full text-left text-sm">
+      <div className="overflow-x-auto rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)]">
+        <table className="w-full min-w-[36rem] text-left text-sm">
           <thead className="bg-[color:var(--surface-high)] text-[color:var(--muted)]">
             <tr>
               <th className="px-4 py-3">E-post</th>

@@ -182,7 +182,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
           </nav>
 
-          <main className="flex-1 px-3 py-5 sm:px-4 sm:py-6 md:px-6 md:py-8">{children}</main>
+          <main className="min-w-0 flex-1 px-3 py-5 sm:px-4 sm:py-6 md:px-6 md:py-8">{children}</main>
         </div>
       </div>
     </div>

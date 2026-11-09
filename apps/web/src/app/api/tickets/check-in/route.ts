@@ -12,7 +12,6 @@ import { canAccessAssignedEvent } from "@/lib/auth/event-access";
 import { prisma } from "@/lib/db";
 import { clientIp, rateLimit } from "@/lib/security/rate-limit";
 import { verifyMobileSession } from "@/app/api/mobile/auth/login/route";
-import { assertDeviceNotRevoked } from "@/lib/auth/org-access";
 import { jsonError } from "@/lib/api-error";
 import { looksLikeDynamicQrCredential } from "@/lib/tickets/dynamic-qr";
 import type { CheckInEventAccess } from "@/services/check-in-service";
@@ -73,6 +72,19 @@ async function resolveUser(
   };
 }
 
+/**
+ * Keep-warm ping used by the web scanner while it is open: wakes this exact
+ * serverless function and its DB connection so the next real scan is fast.
+ * Returns no data.
+ */
+export async function GET(req: Request) {
+  const rl = rateLimit(`qr-warm:${clientIp(req)}`, 30);
+  if (rl.success) {
+    await prisma.$queryRaw`SELECT 1`.catch(() => undefined);
+  }
+  return new NextResponse(null, { status: 204 });
+}
+
 export async function POST(req: Request) {
   const ip = clientIp(req);
   const rl = rateLimit(`qr-validate:${ip}`, 120);
@@ -89,7 +101,10 @@ export async function POST(req: Request) {
       if (!parsed.success) {
         return NextResponse.json({ error: "Ugyldig data" }, { status: 400 });
       }
-      const event = await prisma.event.findUniqueOrThrow({ where: { id: parsed.data.eventId } });
+      const event = await prisma.event.findUniqueOrThrow({
+        where: { id: parsed.data.eventId },
+        select: { id: true, organizationId: true },
+      });
       if (
         !canScanTickets(user, event.organizationId) ||
         !canAccessAssignedEvent(user, event)
@@ -109,8 +124,6 @@ export async function POST(req: Request) {
         }
       }
 
-      await assertDeviceNotRevoked(parsed.data.deviceId);
-
       const result = await CheckInService.checkInByTicketId({
         ...parsed.data,
         checkedInBy: user.id,
@@ -124,7 +137,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Ugyldig data" }, { status: 400 });
     }
 
-    const event = await prisma.event.findUniqueOrThrow({ where: { id: parsed.data.eventId } });
+    const event = await prisma.event.findUniqueOrThrow({
+      where: { id: parsed.data.eventId },
+      select: { id: true, organizationId: true },
+    });
     if (
       !canScanTickets(user, event.organizationId) ||
       !canAccessAssignedEvent(user, event)
@@ -141,8 +157,6 @@ export async function POST(req: Request) {
       const match = raw.match(/\/t\/verify\/([^/?#]+)/);
       token = match?.[1] ?? raw;
     }
-
-    await assertDeviceNotRevoked(parsed.data.deviceId);
 
     const result = await CheckInService.checkInByToken({
       token,

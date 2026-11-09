@@ -94,8 +94,8 @@ describe("Door staff event assignments", () => {
     expect(canAccessAssignedEvent(withAssign, events[1]!)).toBe(false);
   });
 
-  it("denies door staff with no assignments", () => {
-    expect(filterEventsByAssignment({ ...door, eventAssignments: [] }, events)).toEqual([]);
+  it("door staff with no assignments may scan all org events", () => {
+    expect(filterEventsByAssignment({ ...door, eventAssignments: [] }, events)).toHaveLength(2);
   });
 
   it("allows organizer admin all org events", () => {

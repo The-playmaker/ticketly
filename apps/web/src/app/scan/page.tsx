@@ -53,7 +53,7 @@ export default async function ScanPage({ searchParams }: Props) {
             <h1 className="font-display text-2xl font-semibold">Ingen arrangementer</h1>
             <p className="mt-2 text-[color:var(--muted)]">
               Du har ikke scanner-tilgang til noen events.
-              {doorOnly ? " Be en administrator om å tildele eventtilgang." : null}
+              {doorOnly ? " Be en administrator sjekke at brukeren er aktivt medlem av organisasjonen, og at arrangementet er publisert." : null}
             </p>
             {!doorOnly ? (
               <Link

@@ -29,6 +29,7 @@ type ScanResult = {
 };
 
 function resultPanelClass(result: string) {
+  if (result === "PENDING") return "tl-scan-pending";
   if (result === "SUCCESS") return "tl-scan-valid";
   if (result === "ALREADY_USED") return "tl-scan-duplicate";
   if (result === "WRONG_EVENT") return "tl-scan-duplicate";
@@ -79,10 +80,67 @@ export function ScannerClient({
     }
   }
 
-  async function validateToken(token: string) {
-    if (busy || token === lastToken.current) return;
+  // Refs, not state: the camera callback is registered once, so state read
+  // inside it would be stale (busy was always false there).
+  const busyRef = useRef(false);
+  const autoCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioRef = useRef<AudioContext | null>(null);
+
+  function feedback(ok: boolean) {
+    try {
+      navigator.vibrate?.(ok ? 80 : [60, 60, 160]);
+    } catch {
+      /* ignore */
+    }
+    try {
+      const Ctx =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) return;
+      audioRef.current ??= new Ctx();
+      const ctx = audioRef.current;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = ok ? 1320 : 220;
+      gain.gain.value = 0.15;
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + (ok ? 0.09 : 0.3));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function showResult(data: ScanResult) {
+    if (autoCloseRef.current) clearTimeout(autoCloseRef.current);
+    setResult(data);
+    feedback(data.result === "SUCCESS");
+    // Valid tickets clear themselves so the next guest can step up; problems
+    // stay until staff tap them away.
+    if (data.result === "SUCCESS" && !data.ticket?.requireIdCheck && data.ticket?.ageLimit == null) {
+      autoCloseRef.current = setTimeout(() => setResult(null), 1600);
+    }
+  }
+
+  function errorMessage(data: unknown, fallback: string): string {
+    const err = (data as { error?: unknown } | null)?.error;
+    if (typeof err === "string") return err;
+    if (err && typeof err === "object" && "message" in err) {
+      const code = (err as { code?: string }).code;
+      if (code === "FORBIDDEN") return "INGEN SCANNER-TILGANG TIL DETTE ARRANGEMENTET";
+      if (code === "UNAUTHORIZED") return "LOGG INN PÅ NYTT";
+      return String((err as { message: unknown }).message);
+    }
+    return fallback;
+  }
+
+  async function validateToken(raw: string) {
+    const token = raw.trim();
+    if (!token || busyRef.current || token === lastToken.current) return;
     lastToken.current = token;
+    busyRef.current = true;
     setBusy(true);
+    setResult({ result: "PENDING", message: "SJEKKER…" });
     try {
       // Extract token from URL if full verify URL was encoded
       const match = token.match(/\/t\/verify\/([^/?#]+)/);
@@ -93,22 +151,64 @@ export function ScannerClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: secureToken, eventId, deviceId: "web-scanner" }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Feil");
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(errorMessage(data, "UGYLDIG BILLETT"));
       applyResolvedEvent(data);
-      setResult(data);
+      showResult(data);
     } catch (e) {
-      setResult({
+      showResult({
         result: "INVALID",
-        message: e instanceof Error ? e.message : "UGYLDIG BILLETT",
+        message:
+          e instanceof TypeError
+            ? "INGEN NETT — PRØV IGJEN"
+            : e instanceof Error
+              ? e.message
+              : "UGYLDIG BILLETT",
       });
     } finally {
+      busyRef.current = false;
       setBusy(false);
       setTimeout(() => {
-        lastToken.current = "";
+        if (lastToken.current === token) lastToken.current = "";
       }, 2500);
     }
   }
+
+  // Keep the serverless function and DB connection warm while the door is open,
+  // so the first scan after a quiet spell is not a multi-second cold start.
+  useEffect(() => {
+    const ping = () =>
+      void fetch("/api/tickets/check-in", { cache: "no-store" }).catch(() => undefined);
+    ping();
+    const id = setInterval(ping, 4 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // USB/Bluetooth QR scanners act as a keyboard: they "type" the code very
+  // fast and end with Enter. Capture that anywhere on the page.
+  useEffect(() => {
+    let buf = "";
+    let last = 0;
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      const now = performance.now();
+      if (now - last > 80) buf = "";
+      last = now;
+      if (e.key === "Enter") {
+        if (buf.length >= 8) {
+          e.preventDefault();
+          void validateToken(buf);
+        }
+        buf = "";
+        return;
+      }
+      if (e.key.length === 1) buf += e.key;
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
 
   useEffect(() => {
     if (mode !== "scan") return;
@@ -116,20 +216,40 @@ export function ScannerClient({
 
     async function start() {
       try {
-        const { Html5Qrcode } = await import("html5-qrcode");
-        const scanner = new Html5Qrcode("qr-reader");
+        const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
+        if (cancelled) return;
+        const scanner = new Html5Qrcode("qr-reader", {
+          verbose: false,
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+          // Native BarcodeDetector (Chrome on Android) is many times faster than
+          // the JS decoder; falls back automatically where unsupported.
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+        });
         scannerRef.current = scanner;
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 8, qrbox: { width: 240, height: 240 } },
+          {
+            fps: 20,
+            disableFlip: true,
+            qrbox: (w: number, h: number) => {
+              const size = Math.floor(Math.min(w, h) * 0.75);
+              return { width: size, height: size };
+            },
+            videoConstraints: {
+              facingMode: "environment",
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+          },
           (decoded) => {
             void validateToken(decoded);
           },
           () => undefined
         );
+        if (cancelled) void scanner.stop().catch(() => undefined);
       } catch {
         if (!cancelled) {
-          setCameraError("Kamera ikke tilgjengelig — bruk manuell søk eller lim inn token.");
+          setCameraError("Kamera ikke tilgjengelig — bruk manuell søk, lim inn token eller en QR-leser.");
         }
       }
     }
@@ -139,6 +259,7 @@ export function ScannerClient({
     return () => {
       cancelled = true;
       void scannerRef.current?.stop().catch(() => undefined);
+      scannerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, eventId]);
@@ -167,19 +288,13 @@ export function ScannerClient({
           note: opts?.note,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setResult({
-          result: "INVALID",
-          message:
-            typeof data.error === "object"
-              ? data.error?.message ?? "UGYLDIG"
-              : data.error ?? "UGYLDIG",
-        });
+        showResult({ result: "INVALID", message: errorMessage(data, "UGYLDIG") });
         return;
       }
       applyResolvedEvent(data);
-      setResult(data);
+      showResult(data);
       setOverrideTicketId(null);
       setOverrideReason("");
     } finally {
@@ -248,7 +363,9 @@ export function ScannerClient({
                 className="h-12 text-base"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    void validateToken((e.target as HTMLInputElement).value);
+                    const el = e.target as HTMLInputElement;
+                    void validateToken(el.value);
+                    el.value = "";
                   }
                 }}
               />
@@ -330,7 +447,9 @@ export function ScannerClient({
             "fixed inset-x-0 bottom-0 z-50 max-h-[92dvh] overflow-y-auto px-4 py-10 text-center animate-scale-in tl-safe-bottom sm:inset-x-auto sm:left-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:rounded-t-2xl",
             resultPanelClass(result.result)
           )}
-          onClick={() => setResult(null)}
+          onClick={() => {
+            if (result.result !== "PENDING") setResult(null);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Escape") setResult(null);
           }}
@@ -412,7 +531,9 @@ export function ScannerClient({
           {result.result !== "SUCCESS" && result.ticket?.holderName ? (
             <p className="mt-4 text-lg font-medium opacity-90">{result.ticket.holderName}</p>
           ) : null}
-          <p className="mt-6 text-sm opacity-80">Trykk for å scanne neste</p>
+          {result.result !== "PENDING" ? (
+            <p className="mt-6 text-sm opacity-80">Trykk for å scanne neste</p>
+          ) : null}
         </div>
       ) : null}
     </div>
