@@ -7,6 +7,7 @@ import { checkoutContactSchema } from "@/lib/validators";
 import { jsonError, AppError } from "@/lib/api-error";
 import { resolvePaymentProviderType } from "@/lib/payments";
 import { prisma } from "@/lib/db";
+import { assertCheckoutAttemptsAllowed } from "@/lib/security/checkout-attempts";
 
 const bodySchema = checkoutContactSchema
   .extend({
@@ -77,6 +78,8 @@ export async function POST(req: Request) {
         parsed.error.flatten()
       );
     }
+
+    await assertCheckoutAttemptsAllowed(parsed.data.email);
 
     const eventForAge = await prisma.event.findUnique({
       where: { id: parsed.data.eventId },
