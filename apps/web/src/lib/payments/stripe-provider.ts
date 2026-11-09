@@ -89,6 +89,9 @@ export class StripePaymentProvider implements PaymentProvider {
         ],
         // Form UI uses return_url (not success_url/cancel_url)
         return_url: input.successUrl,
+        // Default is 24 h, which left abandoned orders PENDING all day. 31 min
+        // (Stripe minimum is 30) lets reconciliation cancel them promptly.
+        expires_at: Math.floor(Date.now() / 1000) + 31 * 60,
         billing_address_collection: "auto",
         phone_number_collection: { enabled: false },
         automatic_tax: { enabled: false },

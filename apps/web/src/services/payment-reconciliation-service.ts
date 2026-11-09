@@ -683,9 +683,15 @@ export class PaymentReconciliationService {
       }
 
       case "mark_cancelled": {
+        // Abandoned checkout: close the order too so it stops showing as PENDING
+        // (only when nothing was ever issued).
+        const ticketCount = await prisma.ticket.count({ where: { orderId } });
         await prisma.order.update({
           where: { id: orderId },
-          data: { paymentStatus: PaymentStatus.CANCELLED },
+          data: {
+            paymentStatus: PaymentStatus.CANCELLED,
+            ...(ticketCount === 0 ? { orderStatus: "CANCELLED" as const } : {}),
+          },
         });
         await prisma.payment.updateMany({
           where: { orderId, provider: PaymentProviderType.STRIPE },
@@ -955,6 +961,36 @@ export class PaymentReconciliationService {
       decision.action !== "verify_ok"
     ) {
       // Dry-run still records mismatch visibility for ops when requested? Skip to avoid noise.
+    }
+
+    // Stripe confirms paid and Ticketly is PAID, but no tickets were ever issued
+    // (issuance failed after the webhook). Issue through the locked, idempotent
+    // fulfillment path — the same one markOrderPaid uses.
+    if (apply && decision.action === "verify_ok") {
+      const state = await prisma.order.findUnique({
+        where: { id: order.id },
+        select: {
+          paymentStatus: true,
+          paymentAnomaly: true,
+          ticketsFulfilledAt: true,
+          _count: { select: { tickets: true } },
+        },
+      });
+      if (
+        state?.paymentStatus === PaymentStatus.PAID &&
+        !state.paymentAnomaly &&
+        state.ticketsFulfilledAt == null &&
+        state._count.tickets === 0
+      ) {
+        try {
+          const { TicketService } = await import("@/services/ticket-service");
+          const issued = await TicketService.issueTicketsForPaidOrder(order.id);
+          applied = true;
+          detail = `issued_missing_tickets:${issued.length}`;
+        } catch (e) {
+          detail = `issue_failed:${e instanceof Error ? e.message.slice(0, 180) : "unknown"}`;
+        }
+      }
     }
 
     const fresh = await prisma.order.findUniqueOrThrow({
