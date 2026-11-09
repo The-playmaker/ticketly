@@ -4,6 +4,10 @@ import { PaymentService } from "@/services/payment-service";
 import { isStripeMockMode } from "@/lib/payments";
 import { jsonError } from "@/lib/api-error";
 
+// Fulfillment can wait on row locks during a rush; give it room (Vercel Pro).
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
   const signature = req.headers.get("stripe-signature");
   const rawBody = await req.text();
