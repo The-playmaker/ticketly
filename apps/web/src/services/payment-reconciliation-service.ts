@@ -100,6 +100,14 @@ export type ReconcileOptions = {
   filter?: ReconciliationFilter;
   stripeClient?: StripeLookupClient;
   actorId?: string;
+  /**
+   * Cron mode: only orders that can need action — unpaid/failed orders
+   * created within sinceHours, and PAID orders that still have no tickets.
+   * Skips re-verifying healthy PAID orders (that made the cron time out).
+   */
+  actionableOnly?: boolean;
+  /** Stop starting new Stripe lookups after this epoch ms (time budget). */
+  deadline?: number;
 };
 
 export type ReconcileResult = {
@@ -345,6 +353,37 @@ export class PaymentReconciliationService {
           refunds: true,
         },
         take: 1,
+      });
+    }
+
+    if (opts.actionableOnly) {
+      const createdSince = new Date(Date.now() - sinceHours * 3600_000);
+      return prisma.order.findMany({
+        where: {
+          payments: { some: { provider: PaymentProviderType.STRIPE } },
+          OR: [
+            {
+              paymentStatus: { in: CANDIDATE_STATUSES },
+              orderStatus: { not: "CANCELLED" },
+              createdAt: { gte: createdSince },
+            },
+            {
+              paymentStatus: PaymentStatus.PAID,
+              ticketsFulfilledAt: null,
+              tickets: { none: {} },
+            },
+          ],
+        },
+        include: {
+          payments: {
+            where: { provider: PaymentProviderType.STRIPE },
+            orderBy: { createdAt: "desc" },
+          },
+          refunds: true,
+        },
+        // Least recently touched first, so repeated runs make progress.
+        orderBy: { updatedAt: "asc" },
+        take: limit,
       });
     }
 
@@ -683,9 +722,15 @@ export class PaymentReconciliationService {
       }
 
       case "mark_cancelled": {
+        // Abandoned checkout: close the order too so it stops showing as PENDING
+        // (only when nothing was ever issued).
+        const ticketCount = await prisma.ticket.count({ where: { orderId } });
         await prisma.order.update({
           where: { id: orderId },
-          data: { paymentStatus: PaymentStatus.CANCELLED },
+          data: {
+            paymentStatus: PaymentStatus.CANCELLED,
+            ...(ticketCount === 0 ? { orderStatus: "CANCELLED" as const } : {}),
+          },
         });
         await prisma.payment.updateMany({
           where: { orderId, provider: PaymentProviderType.STRIPE },
@@ -957,6 +1002,36 @@ export class PaymentReconciliationService {
       // Dry-run still records mismatch visibility for ops when requested? Skip to avoid noise.
     }
 
+    // Stripe confirms paid and Ticketly is PAID, but no tickets were ever issued
+    // (issuance failed after the webhook). Issue through the locked, idempotent
+    // fulfillment path — the same one markOrderPaid uses.
+    if (apply && decision.action === "verify_ok") {
+      const state = await prisma.order.findUnique({
+        where: { id: order.id },
+        select: {
+          paymentStatus: true,
+          paymentAnomaly: true,
+          ticketsFulfilledAt: true,
+          _count: { select: { tickets: true } },
+        },
+      });
+      if (
+        state?.paymentStatus === PaymentStatus.PAID &&
+        !state.paymentAnomaly &&
+        state.ticketsFulfilledAt == null &&
+        state._count.tickets === 0
+      ) {
+        try {
+          const { TicketService } = await import("@/services/ticket-service");
+          const issued = await TicketService.issueTicketsForPaidOrder(order.id);
+          applied = true;
+          detail = `issued_missing_tickets:${issued.length}`;
+        } catch (e) {
+          detail = `issue_failed:${e instanceof Error ? e.message.slice(0, 180) : "unknown"}`;
+        }
+      }
+    }
+
     const fresh = await prisma.order.findUniqueOrThrow({
       where: { id: order.id },
       select: { paymentStatus: true },
@@ -997,9 +1072,10 @@ export class PaymentReconciliationService {
     const filter = opts.filter ?? "all";
     const orders = await this.findCandidateOrders(opts);
 
-    const rows = await mapWithConcurrency(orders, concurrency, async (order) =>
-      this.reconcileOrder(order.id, opts)
+    const results = await mapWithConcurrency(orders, concurrency, async (order) =>
+      opts.deadline && Date.now() > opts.deadline ? null : this.reconcileOrder(order.id, opts)
     );
+    const rows = results.filter((r): r is ReconciliationRow => r != null);
 
     const filtered = rows.filter((r) => matchesFilter(r, filter));
     const discrepancies = filtered.filter(

@@ -131,6 +131,12 @@ export async function PATCH(req: Request, ctx: Ctx) {
           if (!prev || prev.eventId !== event.id) {
             throw new AppError("TICKET_TYPE_NOT_FOUND", "Billettype ikke funnet", 404);
           }
+          // Lowering total without sending release used to leave release > total:
+          // the shop kept selling up to the old release and paid orders then
+          // failed fulfillment. Clamp release to the new total.
+          if (t.quantityReleased == null && prev.quantityReleased > t.quantityTotal) {
+            t.quantityReleased = t.quantityTotal;
+          }
           const released = t.quantityReleased ?? prev.quantityReleased;
           if (t.quantityTotal < prev.quantitySold) {
             throw new AppError(

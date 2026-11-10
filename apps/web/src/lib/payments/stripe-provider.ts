@@ -22,6 +22,17 @@ function getStripe(): Stripe {
   return new Stripe(key, { apiVersion: STRIPE_API_VERSION });
 }
 
+/**
+ * Some orders only stored the Checkout Session id (the completed event can
+ * arrive without payment_intent). Refunds need the PaymentIntent.
+ */
+export async function resolveStripePaymentIntentId(sessionId: string): Promise<string | null> {
+  const session = await getStripe().checkout.sessions.retrieve(sessionId);
+  const pi = session.payment_intent;
+  if (!pi) return null;
+  return typeof pi === "string" ? pi : pi.id;
+}
+
 export function getStripePublishableKey(): string {
   const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();
   if (!key || key.includes("placeholder") || key.length < 8) {
@@ -89,6 +100,9 @@ export class StripePaymentProvider implements PaymentProvider {
         ],
         // Form UI uses return_url (not success_url/cancel_url)
         return_url: input.successUrl,
+        // Default is 24 h, which left abandoned orders PENDING all day. 31 min
+        // (Stripe minimum is 30) lets reconciliation cancel them promptly.
+        expires_at: Math.floor(Date.now() / 1000) + 31 * 60,
         billing_address_collection: "auto",
         phone_number_collection: { enabled: false },
         automatic_tax: { enabled: false },

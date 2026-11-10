@@ -6,6 +6,7 @@ export type SendEmailInput = {
   html: string;
   text?: string;
   from?: EmailAddress;
+  replyTo?: string;
 };
 
 /**
@@ -38,8 +39,9 @@ export class ResendEmailProvider implements EmailProvider {
       input.from ??
       ({
         email: process.env.EMAIL_FROM ?? "noreply@ticketly.local",
-        name: "Ticketly",
+        name: process.env.EMAIL_FROM_NAME?.trim() || "Ticketly",
       } satisfies EmailAddress);
+    const replyTo = input.replyTo ?? (process.env.EMAIL_REPLY_TO?.trim() || undefined);
 
     const toList = Array.isArray(input.to) ? input.to : [input.to];
     const res = await fetch("https://api.resend.com/emails", {
@@ -54,6 +56,7 @@ export class ResendEmailProvider implements EmailProvider {
         subject: input.subject,
         html: input.html,
         text: input.text,
+        ...(replyTo ? { reply_to: replyTo } : {}),
       }),
     });
 

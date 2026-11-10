@@ -1,5 +1,6 @@
 import {
   OrderStatus,
+  PaymentProviderType,
   PaymentStatus,
   RefundStatus,
   TicketStatus,
@@ -80,8 +81,57 @@ export class RefundService {
       throw new AppError("REFUND_EXCEEDS_PAID", "Refusjon overstiger betalt beløp", 400);
     }
 
-    const payment = order.payments[0];
+    // A paid order whose payment row never got status PAID (webhook/fulfillment
+    // timeouts) would otherwise look like "no provider payment" and be
+    // refunded only on paper. Fall back to the latest real provider attempt.
+    const payment =
+      order.payments[0] ??
+      (order.total > 0
+        ? (await prisma.payment.findFirst({
+            where: {
+              orderId: order.id,
+              provider: { not: PaymentProviderType.MOCK },
+              status: { notIn: [PaymentStatus.FAILED, PaymentStatus.CANCELLED] },
+            },
+            orderBy: { createdAt: "desc" },
+          })) ?? undefined
+        : undefined);
     let providerRefundId: string | undefined;
+
+    // Never mark a paid order refunded without actually refunding at the
+    // provider. Previously a missing providerPaymentId skipped Stripe entirely
+    // while Ticketly recorded SUCCEEDED and voided the tickets.
+    let providerPaymentId = payment?.providerPaymentId ?? null;
+    if (
+      !providerPaymentId &&
+      payment?.provider === PaymentProviderType.STRIPE &&
+      payment.providerSessionId
+    ) {
+      try {
+        const { resolveStripePaymentIntentId } = await import("@/lib/payments/stripe-provider");
+        providerPaymentId = await resolveStripePaymentIntentId(payment.providerSessionId);
+      } catch (e) {
+        console.error("Refund: could not resolve PaymentIntent from session", e);
+      }
+      if (providerPaymentId) {
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: { providerPaymentId },
+        });
+      }
+    }
+    if (
+      payment &&
+      order.total > 0 &&
+      !providerPaymentId &&
+      payment.provider !== PaymentProviderType.MOCK
+    ) {
+      throw new AppError(
+        "REFUND_NO_PAYMENT_REFERENCE",
+        "Fant ikke betalingen hos betalingsleverandøren — refunder i Stripe-dashbordet og marker ordren manuelt.",
+        409
+      );
+    }
 
     // Create PENDING refund first; only mark SUCCEEDED after provider confirms.
     // providerRefundId is @unique — webhook retries must not insert a second SUCCEEDED row.
@@ -98,11 +148,11 @@ export class RefundService {
       },
     });
 
-    if (payment?.providerPaymentId && order.total > 0) {
+    if (payment && providerPaymentId && order.total > 0) {
       const provider = getPaymentProvider(payment.provider);
       try {
         const result = await provider.refund({
-          providerPaymentId: payment.providerPaymentId,
+          providerPaymentId,
           providerChargeId: payment.providerChargeId ?? undefined,
           amount: refundAmount,
           currency: order.currency,

@@ -6,9 +6,10 @@ import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/utils";
 import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { organizationIdWhere } from "@/lib/admin/org-context";
-import { isSuperAdmin } from "@/lib/auth/rbac";
+import { canRefund, isSuperAdmin } from "@/lib/auth/rbac";
 import { expectedTicketCountForItems } from "@/lib/tickets/expected-count";
 import { OrderCustomerEmailPanel } from "@/components/admin/order-customer-email-panel";
+import { OrderRefundPanel } from "@/components/admin/order-refund-panel";
 import {
   AdminPaymentAttemptsList,
   providerLabel,
@@ -40,6 +41,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
     },
     include: {
       event: true,
+      organization: { select: { allowRefunds: true } },
       items: { include: { ticketType: true } },
       tickets: true,
       payments: { orderBy: { createdAt: "asc" } },
@@ -60,6 +62,28 @@ export default async function AdminOrderDetailPage({ params }: Props) {
   const refundedAmount = order.refunds
     .filter((r) => r.status === "SUCCEEDED")
     .reduce((s, r) => s + r.amount, 0);
+
+  const failedWebhooks =
+    order.tickets.length === 0
+      ? await prisma.webhookEvent.findMany({
+          where: {
+            status: "FAILED",
+            OR: [
+              { orderId: order.id },
+              {
+                paymentId: {
+                  in: order.payments
+                    .map((p) => p.providerPaymentId)
+                    .filter((id): id is string => Boolean(id)),
+                },
+              },
+            ],
+          },
+          orderBy: { receivedAt: "desc" },
+          take: 3,
+          select: { id: true, eventType: true, error: true, receivedAt: true },
+        })
+      : [];
 
   const notifications = await prisma.notificationLog.findMany({
     where: { orderId: order.id },
@@ -102,6 +126,15 @@ export default async function AdminOrderDetailPage({ params }: Props) {
       t.status === TicketStatus.CHECKED_IN ||
       t.status === TicketStatus.TRANSFERRED
   ).length;
+  const refundableCount = order.tickets.filter(
+    (t) => t.status === TicketStatus.VALID || t.status === TicketStatus.TRANSFERRED
+  ).length;
+  const showRefund =
+    refundableCount > 0 &&
+    order.total > 0 &&
+    (order.paymentStatus === PaymentStatus.PAID ||
+      order.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED) &&
+    canRefund(user, order.organizationId, order.organization.allowRefunds);
   const canResend =
     (order.paymentStatus === PaymentStatus.PAID ||
       order.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED) &&
@@ -126,6 +159,16 @@ export default async function AdminOrderDetailPage({ params }: Props) {
         customerEmail={order.customerEmail}
         canResend={canResend}
       />
+
+      {showRefund ? (
+        <OrderRefundPanel
+          orderNumber={order.orderNumber}
+          refundableCount={refundableCount}
+          totalTickets={activeTicketCount}
+          pricePerTicket={Math.round(order.total / Math.max(1, order.tickets.length))}
+          currency={order.currency}
+        />
+      ) : null}
 
       <section className="grid gap-4 md:grid-cols-2">
         <div className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5">
@@ -227,6 +270,19 @@ export default async function AdminOrderDetailPage({ params }: Props) {
               </span>
             ))}
           </p>
+        ) : null}
+        {failedWebhooks.length > 0 ? (
+          <div className="mt-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-100">
+            <p className="font-medium">Billettutstedelse feilet etter betaling:</p>
+            {failedWebhooks.map((w) => (
+              <p key={w.id} className="mt-1 break-words font-mono text-xs">
+                {w.receivedAt.toISOString()} · {w.eventType} · {w.error ?? "ukjent feil"}
+              </p>
+            ))}
+            <p className="mt-1 text-xs">
+              Trykk «Send billett på nytt» for å utstede billettene nå.
+            </p>
+          </div>
         ) : null}
         <ul className="mt-3 divide-y divide-[color:var(--outline)]/20 text-sm">
           {order.tickets.map((t) => (

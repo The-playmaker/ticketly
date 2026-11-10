@@ -1,4 +1,17 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "regions": [
+    "fra1"
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/payments-reconcile?provider=all&sinceHours=48&limit=150",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/reservations-cleanup",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

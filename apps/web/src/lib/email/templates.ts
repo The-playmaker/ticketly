@@ -8,9 +8,12 @@ import {
   wrapEmailHtml,
 } from "./layout";
 
+// Customers recognise the venue, not the platform: an unfamiliar sender name
+// gets marked as spam. Set EMAIL_FROM_NAME (e.g. "XO Drammen") and
+// EMAIL_REPLY_TO (e.g. support@…) in the environment.
 const from = () => ({
   email: process.env.EMAIL_FROM ?? "noreply@ticketly.local",
-  name: "Ticketly",
+  name: process.env.EMAIL_FROM_NAME?.trim() || "Ticketly",
 });
 
 async function deliver(params: {

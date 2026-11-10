@@ -29,7 +29,14 @@ export async function handleProviderWebhookImpl(input: {
   if (existingWebhook?.status === WebhookProcessStatus.PROCESSED) {
     return { duplicate: true, type: parsed.type };
   }
-  if (existingWebhook && existingWebhook.status !== WebhookProcessStatus.RECEIVED) {
+  // FAILED events are re-attempted on provider redelivery (fulfillment is
+  // idempotent under the Order row lock). Previously a single failure after
+  // payment meant the order never got tickets, even though Stripe retried.
+  if (
+    existingWebhook &&
+    existingWebhook.status !== WebhookProcessStatus.RECEIVED &&
+    existingWebhook.status !== WebhookProcessStatus.FAILED
+  ) {
     return { duplicate: true, type: parsed.type };
   }
   let webhookRowId = existingWebhook?.id;

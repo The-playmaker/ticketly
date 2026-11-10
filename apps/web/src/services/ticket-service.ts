@@ -145,13 +145,31 @@ export class TicketService {
         const row = typeRows[0];
         if (!row) throw new AppError("TICKET_TYPE_MISSING", "Billettype mangler", 500);
 
-        // After converting reserved→sold, sold must not exceed total (sale units)
+        // The customer has already paid and their reservation held the seat.
+        // Never refuse to issue at this point (that left paid orders with no
+        // tickets); record the overrun for ops instead.
         if (row.quantity_sold + item.quantity > row.quantity_total) {
-          throw new AppError(
-            "INVENTORY_INVARIANT",
-            "Kan ikke utstede billetter — kapasitet brutt",
-            409
-          );
+          console.error("INVENTORY_OVERSOLD", {
+            orderId: order.id,
+            ticketTypeId: item.ticketTypeId,
+            sold: row.quantity_sold,
+            quantity: item.quantity,
+            total: row.quantity_total,
+          });
+          await tx.auditLog.create({
+            data: {
+              action: "INVENTORY_OVERSOLD",
+              entityType: "TicketType",
+              entityId: item.ticketTypeId,
+              organizationId: order.organizationId,
+              metadata: {
+                orderId: order.id,
+                sold: row.quantity_sold,
+                quantity: item.quantity,
+                total: row.quantity_total,
+              },
+            },
+          });
         }
 
         await tx.ticketType.update({

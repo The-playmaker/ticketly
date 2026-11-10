@@ -32,6 +32,10 @@ const serverSchema = z.object({
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
   EMAIL_PROVIDER: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
+  /** Sender display name, e.g. "XO Drammen" (default "Ticketly"). */
+  EMAIL_FROM_NAME: z.string().optional(),
+  /** Where customer replies go, e.g. support@… (default: none). */
+  EMAIL_REPLY_TO: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   NODE_ENV: z.enum(["development", "test", "production"]).optional(),
 });
