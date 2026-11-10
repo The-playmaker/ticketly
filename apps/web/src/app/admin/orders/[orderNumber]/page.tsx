@@ -6,9 +6,10 @@ import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/utils";
 import { resolveOrgScopeForUser } from "@/lib/admin/org-access";
 import { organizationIdWhere } from "@/lib/admin/org-context";
-import { isSuperAdmin } from "@/lib/auth/rbac";
+import { canRefund, isSuperAdmin } from "@/lib/auth/rbac";
 import { expectedTicketCountForItems } from "@/lib/tickets/expected-count";
 import { OrderCustomerEmailPanel } from "@/components/admin/order-customer-email-panel";
+import { OrderRefundPanel } from "@/components/admin/order-refund-panel";
 import {
   AdminPaymentAttemptsList,
   providerLabel,
@@ -40,6 +41,7 @@ export default async function AdminOrderDetailPage({ params }: Props) {
     },
     include: {
       event: true,
+      organization: { select: { allowRefunds: true } },
       items: { include: { ticketType: true } },
       tickets: true,
       payments: { orderBy: { createdAt: "asc" } },
@@ -124,6 +126,15 @@ export default async function AdminOrderDetailPage({ params }: Props) {
       t.status === TicketStatus.CHECKED_IN ||
       t.status === TicketStatus.TRANSFERRED
   ).length;
+  const refundableCount = order.tickets.filter(
+    (t) => t.status === TicketStatus.VALID || t.status === TicketStatus.TRANSFERRED
+  ).length;
+  const showRefund =
+    refundableCount > 0 &&
+    order.total > 0 &&
+    (order.paymentStatus === PaymentStatus.PAID ||
+      order.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED) &&
+    canRefund(user, order.organizationId, order.organization.allowRefunds);
   const canResend =
     (order.paymentStatus === PaymentStatus.PAID ||
       order.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED) &&
@@ -148,6 +159,16 @@ export default async function AdminOrderDetailPage({ params }: Props) {
         customerEmail={order.customerEmail}
         canResend={canResend}
       />
+
+      {showRefund ? (
+        <OrderRefundPanel
+          orderNumber={order.orderNumber}
+          refundableCount={refundableCount}
+          totalTickets={activeTicketCount}
+          pricePerTicket={Math.round(order.total / Math.max(1, order.tickets.length))}
+          currency={order.currency}
+        />
+      ) : null}
 
       <section className="grid gap-4 md:grid-cols-2">
         <div className="rounded-xl border border-[color:var(--outline)]/35 bg-[color:var(--surface-container)] p-5">
