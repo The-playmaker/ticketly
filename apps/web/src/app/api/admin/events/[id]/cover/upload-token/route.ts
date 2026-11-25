@@ -5,6 +5,7 @@ import { jsonError, AppError } from "@/lib/api-error";
 import { clientIp, rateLimitAsync } from "@/lib/security/rate-limit";
 import {
   COVER_ALLOWED_MIME,
+  isCoverMime,
   COVER_MAX_BYTES,
   coverBlobPathname,
   requireBlobToken,
@@ -63,12 +64,13 @@ export async function POST(req: Request, ctx: Ctx) {
 }
 
 /** Suggested unique pathname for client uploads (event-scoped). */
-export async function GET(_req: Request, ctx: Ctx) {
+export async function GET(req: Request, ctx: Ctx) {
   try {
     const { id } = await ctx.params;
     await requireEventManageAccess(id);
-    // Default to jpg pathname; client may still upload png/webp — suffix randomized by blob.
-    const pathname = coverBlobPathname(id, "image/jpeg");
+    // Client passes ?mime= so the file extension matches (e.g. .gif for animated covers).
+    const requested = new URL(req.url).searchParams.get("mime");
+    const pathname = coverBlobPathname(id, isCoverMime(requested) ? requested : "image/jpeg");
     return NextResponse.json({ pathname });
   } catch (e) {
     return jsonError(e);

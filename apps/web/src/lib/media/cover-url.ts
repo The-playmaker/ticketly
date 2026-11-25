@@ -25,3 +25,16 @@ export function withCoverCacheBust(
     return `${url}${sep}v=${encodeURIComponent(v)}`;
   }
 }
+
+/**
+ * GIF covers may be animated. next/image's optimizer would only add a hop (and
+ * re-encoding can drop frames), so render GIFs with `unoptimized`.
+ */
+export function isGifCover(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    return new URL(url).pathname.toLowerCase().endsWith(".gif");
+  } catch {
+    return /\.gif(\?|#|$)/i.test(url);
+  }
+}

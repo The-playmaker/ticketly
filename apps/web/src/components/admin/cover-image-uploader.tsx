@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { withCoverCacheBust } from "@/lib/media/cover-url";
 
 const MAX_BYTES = 10 * 1024 * 1024;
-const ACCEPT = "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp";
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const ACCEPT = `${ALLOWED_TYPES.join(",")},.jpg,.jpeg,.png,.webp,.gif`;
 
 type Props = {
   eventId: string;
@@ -38,8 +39,8 @@ export function CoverImageUploader({ eventId, coverImageUrl, updatedAt, onChange
       return "Bildet er for stort. Maksimal størrelse er 10 MB.";
     }
     const type = file.type.toLowerCase();
-    if (type && !["image/jpeg", "image/png", "image/webp"].includes(type)) {
-      return "Ugyldig bildeformat. Kun JPG, PNG og WebP er tillatt.";
+    if (type && !ALLOWED_TYPES.includes(type)) {
+      return "Ugyldig bildeformat. Kun JPG, PNG, WebP og GIF er tillatt.";
     }
     return null;
   }
@@ -77,7 +78,8 @@ export function CoverImageUploader({ eventId, coverImageUrl, updatedAt, onChange
   }
 
   async function uploadViaClientToken(file: File) {
-    const pathRes = await fetch(`/api/admin/events/${eventId}/cover/upload-token`);
+    const mimeParam = file.type ? `?mime=${encodeURIComponent(file.type.toLowerCase())}` : "";
+    const pathRes = await fetch(`/api/admin/events/${eventId}/cover/upload-token${mimeParam}`);
     if (!pathRes.ok) {
       // Fall back to server upload if token endpoint unavailable
       return uploadViaServer(file);
@@ -168,7 +170,7 @@ export function CoverImageUploader({ eventId, coverImageUrl, updatedAt, onChange
       <div>
         <h2 className="font-medium">Cover-bilde</h2>
         <p className="mt-1 text-xs text-[color:var(--muted)]">
-          Anbefalt 1920×1080 (16:9). JPG, PNG eller WebP — maks 10 MB. Forhåndsvis før du lagrer.
+          Anbefalt 1920×1080 (16:9). JPG, PNG, WebP eller GIF (animert er OK) — maks 10 MB. Forhåndsvis før du lagrer.
         </p>
       </div>
 

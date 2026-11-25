@@ -3,16 +3,21 @@ import { nanoid } from "nanoid";
 import { AppError } from "@/lib/api-error";
 
 export const COVER_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
-export const COVER_ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"] as const;
+export const COVER_ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
 export type CoverMime = (typeof COVER_ALLOWED_MIME)[number];
 
 const MIME_EXT: Record<CoverMime, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
+  "image/gif": "gif",
 };
 
-/** JPEG / PNG / WebP magic-byte detection (ignores client-supplied Content-Type). */
+export function isCoverMime(value: unknown): value is CoverMime {
+  return typeof value === "string" && (COVER_ALLOWED_MIME as readonly string[]).includes(value);
+}
+
+/** JPEG / PNG / WebP / GIF magic-byte detection (ignores client-supplied Content-Type). */
 export function detectImageMime(bytes: Uint8Array): CoverMime | null {
   if (bytes.length < 12) return null;
   // JPEG FF D8 FF
@@ -42,6 +47,17 @@ export function detectImageMime(bytes: Uint8Array): CoverMime | null {
     bytes[11] === 0x50
   ) {
     return "image/webp";
+  }
+  // GIF: "GIF87a" or "GIF89a" (animated covers are served as-is by next/image)
+  if (
+    bytes[0] === 0x47 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x38 &&
+    (bytes[4] === 0x37 || bytes[4] === 0x39) &&
+    bytes[5] === 0x61
+  ) {
+    return "image/gif";
   }
   return null;
 }
@@ -108,7 +124,7 @@ export async function validateCoverBuffer(buffer: ArrayBuffer | Uint8Array): Pro
   if (!mime) {
     throw new AppError(
       "INVALID_IMAGE_TYPE",
-      "Ugyldig bildeformat. Kun JPG, PNG og WebP er tillatt.",
+      "Ugyldig bildeformat. Kun JPG, PNG, WebP og GIF er tillatt.",
       400
     );
   }

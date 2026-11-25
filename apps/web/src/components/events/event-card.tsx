@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { formatEventDateTime } from "@/lib/time";
 import { formatMoney } from "@/lib/utils";
-import { withCoverCacheBust } from "@/lib/media/cover-url";
+import { isGifCover, withCoverCacheBust } from "@/lib/media/cover-url";
 import { getAvailableQuantity, resolveUnitPrice } from "@/services/reservation-service";
 import {
   resolveEventAvailability,
@@ -76,6 +76,7 @@ export function EventCard({ event }: EventCardProps) {
         {cover ? (
           <Image
             src={cover}
+            unoptimized={isGifCover(cover)}
             alt={event.name}
             fill
             className="object-cover transition duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
