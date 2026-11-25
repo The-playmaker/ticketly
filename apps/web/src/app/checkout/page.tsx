@@ -4,7 +4,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { CheckoutForm } from "@/components/checkout/checkout-form";
 import { prisma } from "@/lib/db";
 import { calculatePricing } from "@/services/order-service";
-import { withCoverCacheBust } from "@/lib/media/cover-url";
+import { isGifCover, withCoverCacheBust } from "@/lib/media/cover-url";
 
 type Props = {
   searchParams: Promise<{ event?: string; session?: string; items?: string; cancelled?: string }>;
@@ -62,6 +62,7 @@ export default async function CheckoutPage({ searchParams }: Props) {
           >
             <Image
               src={cover}
+            unoptimized={isGifCover(cover)}
               alt={event.name}
               fill
               className="object-cover"

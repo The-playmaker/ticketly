@@ -8,7 +8,7 @@ import {
   isOurBlobUrl,
   validateCoverBuffer,
 } from "@/lib/blob/cover-image";
-import { withCoverCacheBust } from "@/lib/media/cover-url";
+import { isGifCover, withCoverCacheBust } from "@/lib/media/cover-url";
 import { AppError } from "@/lib/api-error";
 
 function jpegHeader(extra = 0): Uint8Array {
@@ -30,6 +30,33 @@ function webpHeader(): Uint8Array {
   return buf;
 }
 
+function gifHeader(version: "87a" | "89a" = "89a"): Uint8Array {
+  const buf = new Uint8Array(12);
+  buf.set([0x47, 0x49, 0x46, 0x38, version === "87a" ? 0x37 : 0x39, 0x61]);
+  return buf;
+}
+
+describe("GIF covers", () => {
+  it("detects GIF87a and GIF89a", () => {
+    expect(detectImageMime(gifHeader("87a"))).toBe("image/gif");
+    expect(detectImageMime(gifHeader("89a"))).toBe("image/gif");
+  });
+
+  it("accepts a GIF buffer", async () => {
+    await expect(validateCoverBuffer(gifHeader())).resolves.toMatchObject({ mime: "image/gif" });
+  });
+
+  it("rejects text that merely starts with GIF", () => {
+    expect(detectImageMime(new TextEncoder().encode("GIF hello world"))).toBeNull();
+  });
+
+  it("isGifCover detects .gif URLs (with cache-bust query)", () => {
+    expect(isGifCover("https://x.public.blob.vercel-storage.com/events/e/cover-a.gif?v=1")).toBe(true);
+    expect(isGifCover("https://x.public.blob.vercel-storage.com/events/e/cover-a.jpg")).toBe(false);
+    expect(isGifCover(null)).toBe(false);
+  });
+});
+
 describe("cover image MIME / magic validation", () => {
   it("detects JPEG, PNG, WebP from magic bytes", () => {
     expect(detectImageMime(jpegHeader())).toBe("image/jpeg");
@@ -41,7 +68,7 @@ describe("cover image MIME / magic validation", () => {
   it("rejects invalid and oversized buffers with Norwegian errors", async () => {
     await expect(validateCoverBuffer(new Uint8Array([1, 2, 3, 4]))).rejects.toMatchObject({
       code: "INVALID_IMAGE_TYPE",
-      message: expect.stringContaining("JPG, PNG og WebP"),
+      message: expect.stringContaining("JPG, PNG, WebP og GIF"),
     });
 
     const huge = new Uint8Array(COVER_MAX_BYTES + 1);

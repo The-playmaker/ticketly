@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { EventOpsPanel } from "@/components/admin/event-ops-panel";
 import { EditEventLink } from "@/components/admin/edit-event-link";
-import { withCoverCacheBust } from "@/lib/media/cover-url";
+import { isGifCover, withCoverCacheBust } from "@/lib/media/cover-url";
 import { notFound } from "next/navigation";
 
 type Props = { params: Promise<{ id: string }> };
@@ -26,6 +26,7 @@ export default async function EventAdminDashboard({ params }: Props) {
             <div className="relative mb-3 aspect-[21/9] max-w-xl overflow-hidden rounded-lg border border-[color:var(--outline)]/30">
               <Image
                 src={cover}
+            unoptimized={isGifCover(cover)}
                 alt=""
                 fill
                 className="object-cover"

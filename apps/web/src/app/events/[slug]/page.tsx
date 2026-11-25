@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { EventService } from "@/services/event-service";
 import { formatEventDate, formatEventTime } from "@/lib/time";
 import { formatMoney } from "@/lib/utils";
-import { withCoverCacheBust } from "@/lib/media/cover-url";
+import { isGifCover, withCoverCacheBust } from "@/lib/media/cover-url";
 import { getAvailableQuantity, resolveUnitPrice } from "@/services/reservation-service";
 import { TicketSelector } from "@/components/checkout/ticket-selector";
 import { WaitlistJoinForm } from "@/components/checkout/waitlist-join-form";
@@ -120,7 +120,7 @@ export default async function EventDetailPage({ params }: Props) {
       <main>
         <div className="relative aspect-[16/10] max-h-[48vh] min-h-[220px] w-full overflow-hidden border-b border-[color:var(--outline)]/30 sm:aspect-[21/9] sm:max-h-[560px]">
           {cover ? (
-            <Image src={cover} alt={event.name} fill className="object-cover" priority sizes="100vw" />
+            <Image src={cover} unoptimized={isGifCover(cover)} alt={event.name} fill className="object-cover" priority sizes="100vw" />
           ) : (
             <div className="h-full bg-gradient-to-br from-[color:var(--surface-high)] to-[color:var(--background)]" />
           )}
